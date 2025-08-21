@@ -2,26 +2,19 @@ import { prisma } from "../prismaClient";
 import { CreateProductDTO } from "../dtos/createProduct.dto";
 
 export const ProductRepository = {
-  async create(dto: CreateProductDTO) {
-    // Si viene providerName, buscamos o creamos provider primero
-    let providerId = undefined;
-    if (dto.providerName) {
-      const provider = await prisma.provider.upsert({
-        where: { name: dto.providerName },
-        update: {},
-        create: { name: dto.providerName },
-      });
-      providerId = provider.id;
-    }
-
+  async create(dto: CreateProductDTO, userId: string) {
     const product = await prisma.product.create({
       data: {
         sku: dto.sku,
         name: dto.name,
         description: dto.description,
-        costPrice: dto.purchasePrice,
+        costPrice: dto.costPrice,
         salePrice: dto.salePrice,
-        providerId,
+        stock: dto.stock,
+        category: dto.category,
+        brand: dto.brand,
+        providerId: dto.providerId,
+        createdBy: userId, // aquí guardamos el userId que viene del token
       },
     });
 

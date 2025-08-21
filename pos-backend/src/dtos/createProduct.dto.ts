@@ -2,7 +2,10 @@ export interface CreateProductDTO {
   sku: string;
   name: string;
   description?: string;
-  purchasePrice: number;
+  costPrice: number;
   salePrice: number;
-  providerName?: string; // aceptamos nombre de proveedor (si no existe, lo creamos)
+  providerId: string; //porveedor asociado
+  stock: number; // cantidad de stock inicial
+  category?: string; // opcional, si se quiere asociar a una categoría
+  brand?: string; // opcional, si se quiere asociar a una marca
 }

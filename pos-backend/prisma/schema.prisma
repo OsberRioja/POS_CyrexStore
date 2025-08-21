@@ -13,10 +13,31 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  ADMIN       // administrador
+  SUPERVISOR  // supervisor
+  SELLER      // vendedor
+}
+
+
 model Provider {
   id        String    @id @default(uuid())
   name      String    @unique
+  phone     String
   createdAt DateTime  @default(now())
+  updatedAt DateTime @updatedAt
+  products  Product[]
+}
+
+
+model User {
+  id        String    @id @default(uuid())
+  userCode  Int       @unique //código de usuario unico
+  name      String
+  email     String    @unique
+  phone     String
+  password  String
+  role      Role      @default(SELLER)
   products  Product[]
 }
 
@@ -25,9 +46,18 @@ model Product {
   sku          String   @unique                    // sku único
   name         String
   description  String?                              
-  costPrice Float
-  salePrice     Float
-  providerId   String? 
-  provider     Provider?   @relation(fields: [providerId], references: [id])
-  createdAt    DateTime   @default(now())
+  costPrice    Float
+  salePrice    Float
+  stock        Int
+  category     String?
+  brand        String?
+  createdAt   DateTime @default(now())
+  createdBy   String   // <- el id del usuario que lo creó
+  user        User      @relation(fields: [createdBy], references: [id])
+
+  // relación con proveedor (puede ser opcional)
+  providerId  String?
+  provider    Provider? @relation(fields: [providerId], references: [id])
 }
+
+

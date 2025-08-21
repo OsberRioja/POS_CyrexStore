@@ -3,14 +3,14 @@ import { CreateProductDTO } from "../dtos/createProduct.dto";
 import { Prisma } from "@prisma/client";
 
 export const ProductService = {
-  async createProduct(dto: CreateProductDTO) {
+  async createProduct(dto: CreateProductDTO, userId : string) {
     // Validación mínima por el servicio (más reglas pueden ir aquí)
-    if (!dto.sku || !dto.name || dto.purchasePrice == null || dto.salePrice == null) {
-      throw { status: 400, message: "sku, name, purchasePrice y salePrice son requeridos" };
+    if (!dto.sku || !dto.name || dto.costPrice == null || dto.salePrice == null) {
+      throw { status: 400, message: "código, name, purchasePrice y salePrice son requeridos" };
     }
 
     try {
-      const created = await ProductRepository.create(dto);
+      const created = await ProductRepository.create(dto, userId);
       return created;
     } catch (err) {
       // Detectar error de unique constraint (SKU duplicado)

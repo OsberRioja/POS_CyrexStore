@@ -1,16 +1,20 @@
 import { Request, Response } from "express";
 import { ProductService } from "../services/product.service";
+import { CreateProductDTO } from "../dtos/createProduct.dto";
 
 export const ProductController = {
   async create(req: Request, res: Response) {
-    try {
-      const created = await ProductService.createProduct(req.body);
-      return res.status(201).json(created);
-    } catch (err: any) {
-      const status = err.status || 500;
-      return res.status(status).json({ error: err.message || "Internal Error" });
-    }
-  },
+  try {
+    const dto: CreateProductDTO = req.body;
+    const userId = req.userId; // ✅ ahora sí existe
+    if (!userId) return res.status(401).json({ message: "No autorizado" });
+
+    const product = await ProductService.createProduct(dto, userId);
+    res.json(product);
+  } catch (err: any) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+},
 
   async list(req: Request, res: Response) {
     try {
