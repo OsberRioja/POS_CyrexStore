@@ -6,7 +6,7 @@ export const ProductService = {
   async createProduct(dto: CreateProductDTO, userId : string) {
     // Validación mínima por el servicio (más reglas pueden ir aquí)
     if (!dto.sku || !dto.name || dto.costPrice == null || dto.salePrice == null) {
-      throw { status: 400, message: "código, name, purchasePrice y salePrice son requeridos" };
+      throw { status: 400, message: "código, name, Precio de Costo y PrecioDeVenta son requeridos" };
     }
 
     try {

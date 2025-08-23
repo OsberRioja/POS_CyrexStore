@@ -32,7 +32,7 @@ model Provider {
 
 model User {
   id        String    @id @default(uuid())
-  userCode  Int       @unique //código de usuario unico
+  userCode  Int?       @unique //código de usuario unico
   name      String
   email     String    @unique
   phone     String

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ProductService } from "../services/product.service";
 import { CreateProductDTO } from "../dtos/createProduct.dto";
+import { authMiddleware } from "../middlewares/auth.middleware";
 
 export const ProductController = {
   async create(req: Request, res: Response) {
