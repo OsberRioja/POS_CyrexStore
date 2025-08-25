@@ -83,6 +83,12 @@ export const UserController = {
         } catch (error: any) {
           res.status(error.status || 500).json({ message: error.message || "Error al eliminar usuario" });
         }
-    }
+    },
+
+    // async search(req: Request, res: Response) {
+    //   const q = typeof req.query.q === 'string' ? req.query.q : undefined;
+    //   const users = await UserService.searchUsers(q);
+    //   res.json(users);
+    // }
 
 };

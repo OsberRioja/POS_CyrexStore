@@ -1,4 +1,4 @@
-import React from "react";
+//import React from "react";
 import { deleteUser } from "../services/userService";
 
 export default function UserTable({

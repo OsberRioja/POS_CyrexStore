@@ -159,6 +159,11 @@ export const UserService = {
         const user = await UserRepository.deleteUser(id);
         if (!user) throw { status: 404, message: "Usuario no encontrado" };
         return user;
-    }
+    },
+
+    // async searchUsers(q?: string) {
+    //   return UserRepository.findByQuery(q);
+    // }
+ 
 
 };

@@ -83,5 +83,23 @@ export const UserRepository = {
     });
 
     return deletedUser;
- }
+ },
+
+  // async findByQuery(q?: string) {
+  //  if (!q || !q.trim()) return prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+ 
+  //  const text = q.trim();
+  //  const numeric = /^\d+$/.test(text) ? Number(text) : null;
+ 
+  //  const or: any[] = [];
+  //  if (numeric !== null) or.push({ usercode: numeric });
+  //  or.push({ name: { contains: text, mode: "insensitive" } });
+  //  or.push({ email: { contains: text, mode: "insensitive" } });
+  //  or.push({ phone: { contains: text, mode: "insensitive" } });
+ 
+  //  return prisma.user.findMany({
+  //    where: { OR: or },
+  //    orderBy: { createdAt: "desc" },
+  //  });
+  // } 
 };
