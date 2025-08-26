@@ -12,6 +12,7 @@ export default function UsersPage() {
   const [filtered, setFiltered] = useState<any[]>([]);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
+  const [roleFilter, setRoleFilter] = useState<"ALL" | "ADMIN" | "SUPERVISOR" | "SELLER">("ALL");
 
   const loadUsers = async () => {
     setLoading(true);
@@ -38,6 +39,15 @@ export default function UsersPage() {
     const numeric = /^\d+$/.test(q) ? Number(q) : null;
 
     const result = users.filter((u) => {
+      // Primer: filtrado por rol (si aplica)
+      if (roleFilter !== "ALL") {
+        // normalizar valor de rol que venga del backend (puede ser 'ADMIN' o 'admin')
+        const r = (u.role ?? "").toString().toUpperCase();
+        if (r !== roleFilter) return false;
+      }
+
+      // Luego: búsqueda multicriterio
+      if (!q) return true; // si no hay query, ya pasó el filtro de rol
       // normalizar campos
       const code = (u.userCode ?? u.usercode ?? "").toString().toLowerCase();
       const name = (u.name ?? u.username ?? "").toString().toLowerCase();
@@ -53,6 +63,10 @@ export default function UsersPage() {
     setFiltered(result);
   }, [debouncedQuery, users]);
 
+  const handleEdit = (user: any) => { setSelectedUser(user); setShowForm(true); };
+  const handleNew = () => { setSelectedUser(null); setShowForm(true); };
+
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -64,11 +78,24 @@ export default function UsersPage() {
             placeholder="Buscar por código, nombre, correo o teléfono"
             className="border p-2 rounded w-80"
           />
-          <button onClick={() => { setSelectedUser(null); setShowForm(true); }} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
+          {/* FILTRO POR ROL */}
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as any)}
+            className="border p-2 rounded"
+            aria-label="Filtrar por rol"
+          >
+            <option value="ALL">Todos los roles</option>
+            <option value="ADMIN">Administradores</option>
+            <option value="SUPERVISOR">Supervisores</option>
+            <option value="SELLER">Vendedores</option>
+          </select>
+
+          <button onClick={handleNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
         </div>
       </div>
 
-      <UserTable users={filtered} loading={loading} onEdit={(u)=> { setSelectedUser(u); setShowForm(true); }} onRefresh={loadUsers} />
+      <UserTable users={filtered} loading={loading} onEdit={handleEdit} onRefresh={loadUsers} />
 
       {showForm && (
         <UserForm user={selectedUser} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadUsers(); }} />

@@ -84,6 +84,9 @@ export const UserRepository = {
 
     return deletedUser;
  },
+ async getByRole(role: "ADMIN" | "SUPERVISOR" | "SELLER") {
+    return prisma.user.findMany({ where: { role } });
+  }
 
   // async findByQuery(q?: string) {
   //  if (!q || !q.trim()) return prisma.user.findMany({ orderBy: { createdAt: "desc" } });

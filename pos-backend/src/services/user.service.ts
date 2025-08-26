@@ -164,6 +164,10 @@ export const UserService = {
     // async searchUsers(q?: string) {
     //   return UserRepository.findByQuery(q);
     // }
+
+    // async getBYRole(role: "ALL" | "ADMIN" | "SUPERVISOR" | "SELLER") {
+    //   return UserRepository.getByRole(role);
+    // }
  
 
 };
