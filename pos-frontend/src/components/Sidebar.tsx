@@ -1,5 +1,3 @@
-//import React from "react";
-
 export default function Sidebar({
   selected,
   onSelect,
@@ -13,10 +11,19 @@ export default function Sidebar({
         <button
           onClick={() => onSelect("usuarios")}
           className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
-            selected === "usuarios" ? "bg-blue-600" : "bg-blue-500/90"
+            selected === "usuarios" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
           USUARIOS
+        </button>
+
+        <button
+          onClick={() => onSelect("clientes")}
+          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            selected === "clientes" ? "bg-blue-600" : "bg-gray-500/90"
+          }`}
+        >
+          CLIENTES
         </button>
       </div>
 
