@@ -30,7 +30,7 @@ export default function ClientTable({
       <table className="min-w-full text-sm">
         <thead>
           <tr className="bg-gray-100">
-            <th className="p-3 border text-left">ID</th>
+            {/* <th className="p-3 border text-left">ID</th> */}
             <th className="p-3 border text-left">Tipo</th>
             <th className="p-3 border text-left">Nombre</th>
             <th className="p-3 border text-left">Teléfono</th>
@@ -42,7 +42,7 @@ export default function ClientTable({
         <tbody>
           {clients.map((c) => (
             <tr key={c.id_cliente ?? c.id ?? c.idCliente}>
-              <td className="p-3 border font-semibold">{c.id_cliente ?? c.id ?? c.idCliente}</td>
+              {/* <td className="p-3 border font-semibold">{c.id_cliente ?? c.id ?? c.idCliente}</td> */}
               <td className="p-3 border">{(c.tipo_cliente ?? c.tipoCliente ?? "").toString()}</td>
               <td className="p-3 border">{c.nombre ?? c.name ?? c.nombre}</td>
               <td className="p-3 border">{c.telefono ?? c.phone}</td>

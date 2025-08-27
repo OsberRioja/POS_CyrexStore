@@ -13,14 +13,27 @@ export const ClienteController = {
     }
   },
 
+  // GET /api/clientes?q=...&page=1&limit=20
   async list(req: Request, res: Response) {
     try {
-      const list = await ClienteService.listClientes();
-      res.json(list);
+      const q = typeof req.query.q === "string" ? (req.query.q as string) : undefined;
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = req.query.limit ? Number(req.query.limit) : 20;
+
+      const result = await ClienteService.searchClients(q, page, limit);
+      // Devolver formato consistente: { data, total, page, limit }
+      return res.json({
+        data: result.data,
+        total: result.total,
+        page,
+        limit,
+      });
     } catch (err: any) {
-      res.status(500).json({ error: "Error interno" });
+      console.error("Error GET /api/clientes:", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
     }
   },
+
 
   async getById(req: Request, res: Response) {
     try {

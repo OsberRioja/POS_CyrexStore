@@ -4,6 +4,22 @@ import type { CreateClienteDTO } from "../dtos/createClient.dto";
 import type { UpdateClienteDTO } from "../dtos/updateClient.dto";
 
 export const ClienteService = {
+    /**
+   * q: texto de búsqueda
+   * page: número de página (1-based)
+   * limit: items por página
+   */
+  async searchClients(q?: string, page = 1, limit = 20) {
+    // Validaciones y sanitización básica
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 20;
+    if (pageNum < 1) throw { status: 400, message: "page debe ser >= 1" };
+    if (limitNum < 1 || limitNum > 100) throw { status: 400, message: "limit debe estar entre 1 y 100" };
+
+    return ClienteRepository.searchAndPaginate({ q: q?.toString(), page: pageNum, limit: limitNum });
+  },
+
+
   async createCliente(dto: CreateClienteDTO) {
     // aquí podrías añadir validaciones de negocio (ej: formato de teléfono)
     return ClienteRepository.create(dto);

@@ -77,7 +77,7 @@ export default function ClientsPage() {
             placeholder="Buscar por código, nombre, teléfono, género..."
             className="border p-2 rounded w-80"
           />
-          <button onClick={openNew} className="bg-green-600 text-white px-4 py-2 rounded">+ NUEVO</button>
+          <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
         </div>
       </div>
 
