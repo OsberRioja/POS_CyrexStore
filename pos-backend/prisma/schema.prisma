@@ -14,62 +14,32 @@ generator client {
 }
 
 enum Role {
-  ADMIN       // administrador
-  SUPERVISOR  // supervisor
-  SELLER      // vendedor
+  ADMIN // administrador
+  SUPERVISOR // supervisor
+  SELLER // vendedor
 }
-
-
-model Provider {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  phone     String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime @updatedAt
-  products  Product[]
-}
-
 
 model User {
   id        String    @id @default(uuid())
-  userCode  Int?       @unique //código de usuario unico
+  userCode  Int?      @unique //código de usuario unico
   name      String
   email     String    @unique
   phone     String
   password  String
   role      Role      @default(SELLER)
-  createdAt   DateTime @default(now())
+  createdAt DateTime  @default(now())
   products  Product[]
 }
 
-model Product {
-  id           String   @id @default(uuid())      // id automático (UUID)
-  sku          String   @unique                    // sku único
-  name         String
-  description  String?                              
-  costPrice    Float
-  salePrice    Float
-  stock        Int
-  category     String?
-  brand        String?
-  createdAt   DateTime @default(now())
-  createdBy   String   // <- el id del usuario que lo creó
-  user        User      @relation(fields: [createdBy], references: [id])
-
-  // relación con proveedor (puede ser opcional)
-  providerId  String?
-  provider    Provider? @relation(fields: [providerId], references: [id])
-}
-
 model Cliente {
-  id_cliente       Int      @id @default(autoincrement())
+  id_cliente       Int         @id @default(autoincrement())
   tipo_cliente     TipoCliente @default(PERSONA)
   nombre           String
   telefono         String
-  genero           String?     // Opcional
-  fecha_nacimiento DateTime?   // Opcional
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  genero           String? // Opcional
+  fecha_nacimiento DateTime? // Opcional
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 enum TipoCliente {
@@ -77,3 +47,30 @@ enum TipoCliente {
   EMPRESA
 }
 
+model Provider {
+  id_provider Int       @id @default(autoincrement())
+  name        String
+  phone       String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Product     Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid()) // UUID
+  sku         String   @unique
+  name        String
+  description String?
+  costPrice   Float
+  salePrice   Float
+  stock       Int
+  category    String?
+  brand       String?
+  createdAt   DateTime @default(now())
+  createdBy   String // id (uuid) del usuario que creó el producto
+  user        User     @relation(fields: [createdBy], references: [id])
+
+  // relación con Provider (opcional). providerId es Int para coincidir con Provider.id_provider
+  providerId Int?
+  provider   Provider? @relation(fields: [providerId], references: [id_provider])
+}

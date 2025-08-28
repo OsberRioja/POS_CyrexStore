@@ -7,6 +7,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { prisma } from './prismaClient';
 import clientRoutes from './routes/client.routes';
 import userRoutes from './routes/user.routes';
+import providerRoutes from "./routes/provider.routes";
 
 const app = express();
 app.use(express.json()); // <- necesario para parsear JSON
@@ -20,6 +21,7 @@ app.use(morgan('dev'));
 // prefijo API
 app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
+app.use("/api/providers", providerRoutes);
 
 // healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));
