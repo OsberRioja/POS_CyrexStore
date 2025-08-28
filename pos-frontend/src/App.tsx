@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import UsersPage from "./pages/usersPage";
 import ClientsPage from "./pages/clientsPage";
 import ProvidersPage from "./pages/providersPage";
+import HomePage from "./pages/homePage";
 
 export default function App() {
   const [page, setPage] = useState<string | null>(null); // null = Bienvenido
@@ -22,11 +23,8 @@ export default function App() {
           {page === "usuarios" && <UsersPage />}
           {page === "clientes" && <ClientsPage />}
           {page === "proveedores" && <ProvidersPage />}
-          {page === null && (
-            <div className="h-full flex items-start justify-start">
-              <h1 className="text-3xl font-bold text-gray-800">BIENVENIDO</h1>
-            </div>
-          )}
+          {page === "salir" && <HomePage />}
+          {page === null && <HomePage />}
         </div>
       </main>
     </div>

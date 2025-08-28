@@ -36,6 +36,16 @@ export default function Sidebar({
         >
           PROVEEDORES
         </button>
+
+        <button
+          onClick={() => { console.log('Sidebar click: salir'); onSelect('salir'); }}
+
+          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            selected === "proveedores" ? "bg-blue-600" : "bg-gray-500/90"
+          }`}
+        >
+          SALIR
+        </button>
       </div>
 
       {/* línea vertical separadora */}
