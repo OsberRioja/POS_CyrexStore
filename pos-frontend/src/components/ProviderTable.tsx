@@ -1,0 +1,55 @@
+import { deleteProvider } from "../services/providerService";
+
+export default function ProviderTable({
+  providers,
+  loading,
+  onEdit,
+  onRefresh,
+}: {
+  providers: any[];
+  loading: boolean;
+  onEdit: (p: any) => void;
+  onRefresh: () => void;
+}) {
+  const handleDelete = async (id: number) => {
+    if (!confirm("Eliminar proveedor?")) return;
+    try {
+      await deleteProvider(id);
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert("Error al eliminar proveedor");
+    }
+  };
+
+  if (loading) return <div>Cargando...</div>;
+  if (!providers.length) return <div>No hay proveedores.</div>;
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="p-3 border text-left">Nombre</th>
+            <th className="p-3 border text-left">Teléfono</th>
+            <th className="p-3 border text-left">Creado</th>
+            <th className="p-3 border text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {providers.map((p) => (
+            <tr key={p.id_provider ?? p.id ?? p.idProveedor} className="odd:bg-white even:bg-gray-50">
+              <td className="p-3 border">{p.nombre ?? p.name}</td>
+              <td className="p-3 border">{p.telefono ?? p.phone}</td>
+              <td className="p-3 border">{p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}</td>
+              <td className="p-3 border flex gap-2">
+                <button onClick={() => onEdit(p)} className="px-2 py-1 bg-yellow-500 text-white rounded">Editar</button>
+                <button onClick={() => handleDelete(p.id_provider ?? p.id)} className="px-2 py-1 bg-red-600 text-white rounded">Eliminar</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

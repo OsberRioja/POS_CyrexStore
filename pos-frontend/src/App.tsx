@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import UsersPage from "./pages/usersPage";
 import ClientsPage from "./pages/clientsPage";
+import ProvidersPage from "./pages/providersPage";
 
 export default function App() {
   const [page, setPage] = useState<string | null>(null); // null = Bienvenido
@@ -20,6 +21,7 @@ export default function App() {
         <div className="bg-white rounded-3xl shadow-sm min-h-[80vh] p-6 border border-gray-200">
           {page === "usuarios" && <UsersPage />}
           {page === "clientes" && <ClientsPage />}
+          {page === "proveedores" && <ProvidersPage />}
           {page === null && (
             <div className="h-full flex items-start justify-start">
               <h1 className="text-3xl font-bold text-gray-800">BIENVENIDO</h1>

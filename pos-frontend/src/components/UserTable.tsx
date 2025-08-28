@@ -45,7 +45,7 @@ export default function UserTable({
               <td className="p-3 border">{u.phone}</td>
               <td className="p-3 border">{u.role}</td>
               <td className="p-3 border flex gap-2">
-                <button onClick={() => onEdit(u)} className="px-2 py-1 bg-blue-500 text-white rounded text-sm">Editar</button>
+                <button onClick={() => onEdit(u)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
                 <button onClick={() => handleDelete(u.id)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
               </td>
             </tr>

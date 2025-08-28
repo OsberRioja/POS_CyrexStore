@@ -26,6 +26,16 @@ export default function Sidebar({
         >
           CLIENTES
         </button>
+
+        <button
+          onClick={() => { console.log('Sidebar click: proveedores'); onSelect('proveedores'); }}
+
+          className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            selected === "proveedores" ? "bg-blue-600" : "bg-gray-500/90"
+          }`}
+        >
+          PROVEEDORES
+        </button>
       </div>
 
       {/* línea vertical separadora */}

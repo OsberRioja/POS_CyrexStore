@@ -49,7 +49,7 @@ export default function ClientTable({
               <td className="p-3 border">{c.genero ?? c.gender ?? "-"}</td>
               <td className="p-3 border">{c.fecha_nacimiento ? new Date(c.fecha_nacimiento).toLocaleDateString() : "-"}</td>
               <td className="p-3 border flex gap-2">
-                <button onClick={() => onEdit(c)} className="px-2 py-1 bg-blue-500 text-white rounded text-sm">Editar</button>
+                <button onClick={() => onEdit(c)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
                 <button onClick={() => handleDelete(c.id_cliente ?? c.id ?? c.idCliente)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
               </td>
             </tr>
