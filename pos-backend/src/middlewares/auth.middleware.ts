@@ -19,7 +19,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
     
     // Guardar información del usuario en el request
-    req.userId = decoded.sub as string;
+    req.userId = decoded.sub ?? decoded.id ?? decoded.userId as string;
     req.user = decoded;
     
     next();

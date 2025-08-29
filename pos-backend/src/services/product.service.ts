@@ -4,7 +4,12 @@ import { UpdateProductDTO } from "../dtos/updateProduct.dto";
 
 export const productService = {
   async createProduct(dto: CreateProductDTO, userId: string) {
-    return await productRepository.create(dto, userId);
+    // validaciones mínimas
+    if (!dto.sku || !dto.name || dto.salePrice == null || dto.costPrice == null) {
+      throw { status: 400, message: "sku, name, costPrice y salePrice son requeridos" };
+    }
+    // delegar repository (que espera createdBy)
+    return productRepository.create(dto, userId);
   },
 
   async getProducts() {

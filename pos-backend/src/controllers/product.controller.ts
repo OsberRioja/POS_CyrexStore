@@ -4,11 +4,15 @@ import { productService } from "../services/product.service";
 export const productController = {
   async create(req: Request, res: Response) {
     try {
-      const userId = (req as any).user.id; // ID del usuario logueado desde middleware JWT
-      const product = await productService.createProduct(req.body, userId);
-      res.json(product);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      const userId = (req as any).userId ?? (req as any).user?.sub ?? (req as any).user?.id; // ID del usuario logueado desde middleware JWT
+      if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
+
+      const dto = req.body; // body validado por DTO idealmente
+      const created = await productService.createProduct(dto, String(userId));
+      return res.status(201).json(created);
+    } catch (err: any) {
+      console.error("POST /products error:", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
     }
   },
 

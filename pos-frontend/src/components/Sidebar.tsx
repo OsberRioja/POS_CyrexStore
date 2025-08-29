@@ -47,6 +47,15 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         </button>
 
         <button
+          onClick={() => { console.log('Sidebar click: productos'); onSelect('productos'); }}
+          className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            selected === "productos" ? "bg-blue-600" : "bg-gray-500/90"
+          }`}
+        >
+          PRODUCTOS
+        </button>
+
+        <button
           onClick={() => { console.log('Sidebar click: salir'); onSelect('salir'); }}
           className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
             selected === "salir" ? "bg-blue-600" : "bg-gray-500/90"

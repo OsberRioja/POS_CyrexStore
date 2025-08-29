@@ -6,6 +6,7 @@ import UsersPage from "./pages/usersPage";
 import ClientsPage from "./pages/clientsPage";
 import ProvidersPage from "./pages/providersPage";
 import HomePage from "./pages/homePage";
+import ProductsPage from "./pages/productPage";
 
 // Componente principal que maneja la lógica de autenticación
 function MainApp() {
@@ -57,6 +58,7 @@ function MainApp() {
           {page === "usuarios" && <UsersPage />}
           {page === "clientes" && <ClientsPage />}
           {page === "proveedores" && <ProvidersPage />}
+          {page === "productos" && <ProductsPage />}
           {page === "salir" && <HomePage />}
           {page === null && <HomePage />}
         </div>
