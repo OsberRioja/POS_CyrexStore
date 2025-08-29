@@ -73,4 +73,84 @@ model Product {
   // relación con Provider (opcional). providerId es Int para coincidir con Provider.id_provider
   providerId Int?
   provider   Provider? @relation(fields: [providerId], references: [id_provider])
+
+  saleItems SaleItem[]
+}
+
+model PaymentMethod {
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  salePayments SalePayment[]
+  expenses Expense[]
+}
+
+model CashBox {
+  id                Int      @id @default(autoincrement())
+  openedAt          DateTime @default(now())
+  closedAt          DateTime?
+  openedBy          String   // User.id (uuid)
+  closedBy          String?  // User.id (uuid)
+  initialAmount     Float
+  closedAmount      Float?   // calculado al cerrar
+  status            CashBoxStatus @default(OPEN)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sales             Sale[]    @relation("box_sales")
+  expenses          Expense[] 
+}
+
+enum CashBoxStatus {
+  OPEN
+  CLOSED
+}
+
+model Sale {
+  id            String      @id @default(uuid())
+  sellerId      String      // User.id -> el vendedor (puede elegirse por userCode o id)
+  clientId      Int?        // Cliente.id_cliente (opcional)
+  total         Float
+  createdAt     DateTime    @default(now())
+  cashBoxId     Int?        // caja abierta donde se registró la venta
+  cashBox       CashBox?    @relation(fields: [cashBoxId], references: [id], name: "box_sales")
+  items         SaleItem[]
+  payments      SalePayment[]
+  createdBy     String?     // quien registró la venta (si difiere del seller)
+}
+
+model SaleItem {
+  id          Int     @id @default(autoincrement())
+  saleId      String
+  sale        Sale    @relation(fields: [saleId], references: [id])
+  productId   String  // Product.id
+  product     Product @relation(fields: [productId], references: [id])
+  quantity    Int
+  unitPrice   Float   // precio de venta tomado al momento
+  subtotal    Float
+}
+
+model SalePayment {
+  id               Int      @id @default(autoincrement())
+  saleId           String
+  sale             Sale     @relation(fields: [saleId], references: [id])
+  paymentMethodId  Int
+  paymentMethod    PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  amount           Float
+  cashBoxId        Int?     // si es efectivo y hay caja abierta, linkear
+  createdAt        DateTime @default(now())
+}
+
+model Expense {
+  id             Int      @id @default(autoincrement())
+  cashBoxId      Int?     // caja relacionada si fue en efectivo y dentro de una caja
+  cashBox        CashBox? @relation(fields: [cashBoxId], references: [id])
+  amount         Float
+  concept        String
+  paymentMethodId Int
+  paymentMethod  PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  createdAt      DateTime @default(now())
+  createdBy      String? // user id
 }

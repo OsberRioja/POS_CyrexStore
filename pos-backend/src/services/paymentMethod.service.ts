@@ -1,0 +1,76 @@
+// src/services/paymentMethod.service.ts
+import { PaymentMethodRepository } from "../repositories/paymentMethod.repository";
+import type { CreatePaymentMethodDTO, UpdatePaymentMethodDTO } from "../dtos/paymentMethod.dto";
+import { Prisma } from "@prisma/client";
+
+const DEFAULTS = ["EFECTIVO", "TARJETA"];
+
+export const PaymentMethodService = {
+  async listAll() {
+    return PaymentMethodRepository.findAll();
+  },
+
+  async getById(id: number) {
+    const pm = await PaymentMethodRepository.findById(id);
+    if (!pm) throw { status: 404, message: "Método de pago no encontrado" };
+    return pm;
+  },
+
+  async create(dto: CreatePaymentMethodDTO) {
+    if (!dto?.name || !dto.name.trim()) throw { status: 400, message: "name es requerido" };
+    try {
+      const created = await PaymentMethodRepository.create({ name: dto.name.trim() });
+      return created;
+    } catch (err: any) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw { status: 409, message: "Método de pago ya existe" };
+      }
+      throw { status: 500, message: "Error al crear método de pago" };
+    }
+  },
+
+  async update(id: number, dto: UpdatePaymentMethodDTO) {
+    // validar existencia
+    const existing = await PaymentMethodRepository.findById(id);
+    if (!existing) throw { status: 404, message: "Método de pago no encontrado" };
+
+    if (dto.name && !dto.name.trim()) throw { status: 400, message: "name vacío" };
+
+    try {
+      const updated = await PaymentMethodRepository.update(id, { name: dto.name?.trim() });
+      return updated;
+    } catch (err: any) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw { status: 409, message: "Nombre ya está en uso" };
+      }
+      throw { status: 500, message: "Error al actualizar método de pago" };
+    }
+  },
+
+  async remove(id: number) {
+    const existing = await PaymentMethodRepository.findById(id);
+    if (!existing) throw { status: 404, message: "Método de pago no encontrado" };
+    // opcional: revisar si hay ventas asociadas antes de borrar (recomendado)
+    try {
+      const deleted = await PaymentMethodRepository.delete(id);
+      return deleted;
+    } catch (err: any) {
+      throw { status: 500, message: "Error al eliminar método de pago" };
+    }
+  },
+
+  /** Crea métodos por defecto si no existen (idempotente) */
+  async ensureDefaults() {
+    const created: any[] = [];
+    for (const name of DEFAULTS) {
+      try {
+        const pm = await PaymentMethodRepository.upsertByName(name);
+        created.push(pm);
+      } catch (err) {
+        // ignorar y continuar
+        console.warn("ensureDefaults: error upsert", name, err);
+      }
+    }
+    return created;
+  },
+};

@@ -11,6 +11,17 @@ import userRoutes from './routes/user.routes';
 import providerRoutes from "./routes/provider.routes";
 import authRoutes from "./routes/auth.routes";
 import productRoutes from "./routes/prodcut.routes";
+import PaymentMethodRoutes from "./routes/paymentMethod.routes";
+import { PaymentMethodService } from "./services/paymentMethod.service";
+
+(async () => {
+  try {
+    await PaymentMethodService.ensureDefaults();
+    console.log("Payment methods defaults ensured");
+  } catch (err) {
+    console.warn("Error ensureDefaults:", err);
+  }
+})();
 
 const app = express();
 
@@ -35,6 +46,7 @@ app.use('/api/clients', clientRoutes);
 app.use("/api/providers", providerRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/payment-methods", PaymentMethodRoutes);
 
 // healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));
