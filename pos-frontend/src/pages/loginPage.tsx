@@ -56,13 +56,13 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Correo Electrónico
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                correo electrónico
               </label>
               <input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 required
                 value={form.email}
                 onChange={handleChange}

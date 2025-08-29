@@ -63,10 +63,10 @@ export const UserService = {
     for (let attempt = 0; attempt < CREATE_RETRY; attempt++) {
       try {
         const user = await UserRepository.create({
-          usercode,
+          userCode: usercode,
           name: dto.name,
           email: dto.email,
-          passwordHash,
+          password: passwordHash,   // enviar la contraseña ya hasheada
           phone: dto.phone ?? null,
           role: role as "ADMIN" | "SUPERVISOR" | "SELLER",
         });
@@ -150,7 +150,16 @@ export const UserService = {
       role?: "ADMIN" | "SUPERVISOR" | "SELLER";
     }
     ): Promise<User | null> {
-        const user = await UserRepository.updateUser(id, data);
+        // comprobar existencia
+        const existing = await UserRepository.findById(id);
+        if (!existing) throw { status: 404, message: "Usuario no encontrado" };
+
+        const updatedData: any = { ...data };
+        if (data.password) {
+          updatedData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
+        }
+
+        const user = await UserRepository.updateUser(id, updatedData);
         if (!user) throw { status: 404, message: "Usuario no encontrado"};
         return user;
     },

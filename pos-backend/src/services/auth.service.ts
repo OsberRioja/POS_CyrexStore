@@ -20,6 +20,9 @@ export const AuthService = {
     if (!user) throw { status: 401, message: "Credenciales inválidas" };
 
     const match = await bcrypt.compare(password, user.password);
+    console.log("login attempt for:", email);
+    console.log("stored password:", user.password);
+
     if (!match) throw { status: 401, message: "Credenciales inválidas" };
 
     // construir payload y firmar token
