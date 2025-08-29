@@ -3,22 +3,15 @@ import { CreateUserDTO } from "../dtos/createUser.dto";
 import { User } from "@prisma/client";
 
 export const UserRepository = {
-  async create(data: {
-    usercode: number;
-    name: string;
-    email: string;
-    passwordHash: string;
-    phone: string;
-    role: "ADMIN" | "SUPERVISOR" | "SELLER";
-  }) {
+  async create(dto: CreateUserDTO): Promise<User> {
     return prisma.user.create({
       data: {
-        userCode: data.usercode,
-        name: data.name,
-        email: data.email,
-        password: data.passwordHash,
-        phone: data.phone ?? null,
-        role: data.role,
+        userCode: dto.userCode,
+        name: dto.name,
+        email: dto.email,
+        password: dto.password,
+        phone: dto.phone ?? null,
+        role: dto.role,
       },
     });
   },

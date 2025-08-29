@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../context/authContext";
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -41,12 +43,22 @@ export default function HomePage() {
       <div className="bg-white rounded-lg shadow-md p-8 mb-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            ¡Bienvenido al Sistema POS!
+            ¡Bienvenido, {user?.name || "Usuario"}!
           </h1>
-          <p className="text-gray-600 mb-4">
-            CYREX STORE
+          <p className="text-gray-600 mb-2">
+            Sistema de Punto de Venta para Tienda de Computadoras
           </p>
           <div className="text-sm text-gray-500">
+            {user && (
+              <div className="flex items-center justify-center space-x-4 mb-2">
+                <span>Código: #{user.userCode}</span>
+                <span>•</span>
+                <span className="capitalize">
+                  {user.role === "ADMIN" ? "Administrador" : 
+                   user.role === "SUPERVISOR" ? "Supervisor" : "Vendedor"}
+                </span>
+              </div>
+            )}
             {formatDate(currentTime)}
           </div>
         </div>
