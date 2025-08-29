@@ -3,7 +3,10 @@ import { PaymentMethodRepository } from "../repositories/paymentMethod.repositor
 import type { CreatePaymentMethodDTO, UpdatePaymentMethodDTO } from "../dtos/paymentMethod.dto";
 import { Prisma } from "@prisma/client";
 
-const DEFAULTS = ["EFECTIVO", "TARJETA"];
+const DEFAULTS = [
+  { name: "EFECTIVO", isCash: true },
+  { name: "TARJETA", isCash: false },
+];
 
 export const PaymentMethodService = {
   async listAll() {
@@ -62,13 +65,13 @@ export const PaymentMethodService = {
   /** Crea métodos por defecto si no existen (idempotente) */
   async ensureDefaults() {
     const created: any[] = [];
-    for (const name of DEFAULTS) {
+    for (const def of DEFAULTS) {
       try {
-        const pm = await PaymentMethodRepository.upsertByName(name);
+        const pm = await PaymentMethodRepository.upsertByName(def.name, def.isCash);
         created.push(pm);
       } catch (err) {
         // ignorar y continuar
-        console.warn("ensureDefaults: error upsert", name, err);
+        console.warn("ensureDefaults: error upsert", def, err);
       }
     }
     return created;

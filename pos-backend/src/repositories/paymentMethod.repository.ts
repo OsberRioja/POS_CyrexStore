@@ -28,12 +28,12 @@ export const PaymentMethodRepository = {
     return prisma.paymentMethod.delete({ where: { id } });
   },
 
-  upsertByName: async (name: string): Promise<PaymentMethod> => {
+  upsertByName: async (name: string, isCash:boolean): Promise<PaymentMethod> => {
     // usa upsert para garantizar existencia (name es unique)
     return prisma.paymentMethod.upsert({
       where: { name },
       update: {},
-      create: { name },
+      create: { name, isCash },
     });
   },
 };

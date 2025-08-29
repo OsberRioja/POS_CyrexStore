@@ -80,6 +80,7 @@ model Product {
 model PaymentMethod {
   id                Int      @id @default(autoincrement())
   name              String   @unique
+  isCash            Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
