@@ -10,7 +10,7 @@ import clientRoutes from './routes/client.routes';
 import userRoutes from './routes/user.routes';
 import providerRoutes from "./routes/provider.routes";
 import authRoutes from "./routes/auth.routes";
-
+import productRoutes from "./routes/prodcut.routes";
 
 const app = express();
 
@@ -34,6 +34,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
 app.use("/api/providers", providerRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
 
 // healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));

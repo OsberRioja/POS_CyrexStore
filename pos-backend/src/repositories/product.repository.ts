@@ -1,38 +1,52 @@
-import { prisma } from "../prismaClient";
-import { CreateProductDTO } from "../dtos/createProduct.dto";
+import { PrismaClient } from "@prisma/client";
+import type { Product } from "@prisma/client";
+import type { CreateProductDTO} from "../dtos/createProduct.dto";
+import type { UpdateProductDTO } from "../dtos/updateProduct.dto";
 
-export const ProductRepository = {
-  async create(dto: CreateProductDTO, userId: string) {
-    const product = await prisma.product.create({
+const prisma = new PrismaClient();
+
+export const productRepository = {
+  async create(dto: CreateProductDTO, createdBy: string): Promise<Product> {
+    return prisma.product.create({
       data: {
+        createdBy,
         sku: dto.sku,
         name: dto.name,
-        description: dto.description,
+        description: dto.description,   
         costPrice: dto.costPrice,
         salePrice: dto.salePrice,
         stock: dto.stock,
         category: dto.category,
         brand: dto.brand,
-        providerId: dto.providerId,
-        createdBy: userId, // aquí guardamos el userId que viene del token
-      },
+        providerId: dto.providerId ? Number(dto.providerId) : null, // 👈 convertir a númer
+    },
+      include: { user: true, provider: true },
     });
-
-    return product;
   },
 
   async findAll() {
-    return prisma.product.findMany({
+    return await prisma.product.findMany({
+      include: { user: true, provider: true },
       orderBy: { createdAt: "desc" },
-      include: { provider: true },
     });
   },
 
-  async findBySku(sku: string) {
-    return prisma.product.findUnique({ where: { sku } });
+  async findById(id: string) {
+    return await prisma.product.findUnique({
+      where: { id },
+      include: { user: true, provider: true },
+    });
   },
 
-  async findById(id: string) {
-    return prisma.product.findUnique({ where: { id }, include: { provider: true } });
-  }
+  async update(id: string, data: UpdateProductDTO) {
+    return await prisma.product.update({
+      where: { id },
+      data,
+      include: { user: true, provider: true },
+    });
+  },
+
+  async delete(id: string) {
+    return await prisma.product.delete({ where: { id } });
+  },
 };

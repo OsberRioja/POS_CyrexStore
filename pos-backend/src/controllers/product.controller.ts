@@ -1,37 +1,46 @@
 import { Request, Response } from "express";
-import { ProductService } from "../services/product.service";
-import { CreateProductDTO } from "../dtos/createProduct.dto";
-import { authMiddleware } from "../middlewares/auth.middleware";
+import { productService } from "../services/product.service";
 
-export const ProductController = {
+export const productController = {
   async create(req: Request, res: Response) {
-  try {
-    const dto: CreateProductDTO = req.body;
-    const userId = req.userId; // ✅ ahora sí existe
-    if (!userId) return res.status(401).json({ message: "No autorizado" });
-
-    const product = await ProductService.createProduct(dto, userId);
-    res.json(product);
-  } catch (err: any) {
-    res.status(err.status || 500).json({ message: err.message });
-  }
-},
-
-  async list(req: Request, res: Response) {
     try {
-      const products = await ProductService.listProducts();
-      return res.json(products);
-    } catch (err: any) {
-      return res.status(500).json({ error: "Error al listar productos" });
+      const userId = (req as any).user.id; // ID del usuario logueado desde middleware JWT
+      const product = await productService.createProduct(req.body, userId);
+      res.json(product);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   },
 
-  async getOne(req: Request, res: Response) {
+  async getAll(req: Request, res: Response) {
+    const products = await productService.getProducts();
+    res.json(products);
+  },
+
+  async getById(req: Request, res: Response) {
     try {
-      const product = await ProductService.getProductById(req.params.id);
-      return res.json(product);
-    } catch (err: any) {
-      return res.status(err.status || 500).json({ error: err.message || "Error interno" });
+      const product = await productService.getProductById(req.params.id);
+      res.json(product);
+    } catch (error: any) {
+      res.status(404).json({ error: error.message });
     }
-  }
+  },
+
+  async update(req: Request, res: Response) {
+    try {
+      const product = await productService.updateProduct(req.params.id, req.body);
+      res.json(product);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
+  async delete(req: Request, res: Response) {
+    try {
+      await productService.deleteProduct(req.params.id);
+      res.json({ message: "Producto eliminado" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  },
 };
