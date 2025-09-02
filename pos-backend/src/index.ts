@@ -14,6 +14,7 @@ import productRoutes from "./routes/prodcut.routes";
 import PaymentMethodRoutes from "./routes/paymentMethod.routes";
 import { PaymentMethodService } from "./services/paymentMethod.service";
 import cashBoxRoutes from "./routes/cashbox.routes";
+import salesRoutes from "./routes/sale.routes";
 
 (async () => {
   try {
@@ -48,7 +49,8 @@ app.use("/api/providers", providerRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/payment-methods", PaymentMethodRoutes);
-app.use("/api/cashbox", cashBoxRoutes); // importación dinámica para evitar ciclos
+app.use("/api/cashbox", cashBoxRoutes);
+app.use('/api/sales', salesRoutes);
 
 // healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));

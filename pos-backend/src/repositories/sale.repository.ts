@@ -1,32 +1,74 @@
+// src/repositories/sale.repository.ts
 import { PrismaClient } from "@prisma/client";
+
 const prisma = new PrismaClient();
 
 export const SaleRepository = {
-  createFull: async (dto:any, sellerId:string, clientId?:number, cashBoxId?:number) => {
-    //dto.items [{productId, quantity}] and dto.payments [{paymentMethodId, amount}]
-    //build items with unitPrice from product.salePrice and subtotal
-    const itemsData = await Promise.all(dto.items.map(async (it:any) => {
-      const p = await prisma.product.findUnique({ where:{ id: it.productId }});
-      const price = p?.salePrice ?? 0;
-      return { productId: it.productId, quantity: it.quantity, unitPrice: price, subtotal: price * it.quantity };
-    }));
-    const total = itemsData.reduce((s:any,i:any) => s + i.subtotal, 0);
-
-    // create sale with nested items and payments
+  async create(payload: any) {
+    // payload must contain: sellerId, clientId?, total, createdBy?, items[], payments[], cashBoxId?
     return prisma.sale.create({
       data: {
-        sellerId,
-        clientId: clientId ?? undefined,
-        total,
-        cashBoxId: cashBoxId ?? undefined,
-        createdBy: dto.createdBy,
-        items: { create: itemsData },
-        payments: { create: dto.payments.map((p:any)=>({ paymentMethodId: p.paymentMethodId, amount: p.amount, cashBoxId: p.paymentMethodId /* placeholder */ })) }
+        sellerId: payload.sellerId,
+        clientId: payload.clientId ?? undefined,
+        total: payload.total,
+        createdBy: payload.createdBy ?? undefined,
+        cashBoxId: payload.cashBoxId ?? undefined,
+        items: { create: payload.items },
+        payments: { create: payload.payments },
+        // if you have note etc:
+        ...(payload.note ? { note: payload.note } : {}),
       },
-      include: { items: true, payments: true }
+      include: {
+        items: true,
+        payments: { include: { paymentMethod: true } },
+      },
     });
   },
 
-  findAll: (opts?:any) => prisma.sale.findMany({ include:{ items:true, payments:true, }, orderBy:{ createdAt: "desc" } }),
-  findById: (id:string) => prisma.sale.findUnique({ where:{ id }, include:{ items: true, payments:true } }),
+  async findAll(opts: {
+    page?: number;
+    limit?: number;
+    sellerId?: string;
+    sellerUserCode?: number;
+    cashBoxId?: number;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    const { page = 1, limit = 20, sellerId, cashBoxId, dateFrom, dateTo } = opts;
+    const where: any = {};
+
+    if (sellerId) where.sellerId = sellerId;
+    if (cashBoxId !== undefined) where.cashBoxId = Number(cashBoxId);
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+
+    const skip = Math.max(0, (Math.max(1, page) - 1) * Math.max(1, limit));
+    const take = Math.max(1, Math.min(limit, 100));
+
+    const [total, data] = await Promise.all([
+      prisma.sale.count({ where }),
+      prisma.sale.findMany({
+        where,
+        include: { items: { include: { product: true } }, payments: { include: { paymentMethod: true } }, /* optionally include client, seller user */ },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+      }),
+    ]);
+
+    return { total, data };
+  },
+
+  async findById(id: string) {
+    return prisma.sale.findUnique({
+      where: { id },
+      include: {
+        items: { include: { product: true } },
+        payments: { include: { paymentMethod: true } },
+      },
+    });
+  },
 };

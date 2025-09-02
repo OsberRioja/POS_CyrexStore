@@ -16,5 +16,6 @@ export interface CreateSaleDTO {
   items: SaleItemDTO[];
   payments: SalePaymentDTO[]; // suma debe igualar total
   createdBy?: string; // quien registró
+  note?: string; // opcional
   cashBoxId?: number | null; // opcional
 }
