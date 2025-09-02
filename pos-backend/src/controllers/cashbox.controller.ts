@@ -1,0 +1,54 @@
+// src/controllers/cashbox.controller.ts
+import { Request, Response } from "express";
+import { CashBoxService } from "../services/cashbox.service";
+import type { OpenCashBoxDTO, CloseCashBoxDTO } from "../dtos/cashBox.dto";
+
+export const CashBoxController = {
+  async open(req: Request, res: Response) {
+    try {
+      const dto = req.body as OpenCashBoxDTO;
+      const userId = (req as any).userId ?? (req as any).user?.sub;
+      if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
+      const created = await CashBoxService.open(dto, String(userId));
+      return res.status(201).json(created);
+    } catch (err: any) {
+      console.error("POST /cashbox/open", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
+
+  async getOpen(req: Request, res: Response) {
+    try {
+      const open = await CashBoxService.getOpen();
+      return res.json(open);
+    } catch (err: any) {
+      console.error("GET /cashbox/open", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+  async close(req: Request, res: Response) {
+    try {
+      const boxId = Number(req.params.id);
+      const dto = req.body as CloseCashBoxDTO;
+      const userId = (req as any).userId ?? (req as any).user?.sub;
+      if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
+
+      const result = await CashBoxService.close(boxId, String(userId), dto);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("POST /cashbox/:id/close", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
+
+  async getById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const data = await CashBoxService.getById(id);
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
+};
