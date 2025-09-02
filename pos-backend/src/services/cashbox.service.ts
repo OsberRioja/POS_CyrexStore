@@ -50,7 +50,10 @@ export const CashBoxService = {
     // 2) calcular total gastos en efectivo para esta caja
     const expensesSum = await prisma.expense.aggregate({
       _sum: { amount: true },
-      where: { cashBoxId: boxId },
+      where: {
+        cashBoxId: boxId,
+        paymentMethod: { isCash: true }, // solo efectivo
+      },
     });
     const totalCashExpenses = expensesSum._sum.amount ?? 0;
 

@@ -15,6 +15,7 @@ import PaymentMethodRoutes from "./routes/paymentMethod.routes";
 import { PaymentMethodService } from "./services/paymentMethod.service";
 import cashBoxRoutes from "./routes/cashbox.routes";
 import salesRoutes from "./routes/sale.routes";
+import expenseRoutes from "./routes/expense.routes";
 
 (async () => {
   try {
@@ -51,6 +52,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/payment-methods", PaymentMethodRoutes);
 app.use("/api/cashbox", cashBoxRoutes);
 app.use('/api/sales', salesRoutes);
+app.use('/api/expenses', expenseRoutes)
 
 // healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));
