@@ -27,4 +27,6 @@ export const productService = {
   create: (payload: ProductPayload) => axios.post(`${BASE}/products`, payload, { headers: { ...authHeader() } }),
   update: (id: string, payload: Partial<ProductPayload>) => axios.put(`${BASE}/products/${id}`, payload, { headers: { ...authHeader() } }),
   remove: (id: string) => axios.delete(`${BASE}/products/${id}`, { headers: { ...authHeader() } }),
+  search: (params?: { q?: string }) =>
+    axios.get(`${BASE}/products`, { params: params ?? {}, headers: { ...authHeader() } }),
 };

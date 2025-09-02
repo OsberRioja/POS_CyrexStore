@@ -1,5 +1,5 @@
 //import React from "react";
-import { deleteUser } from "../services/userService";
+import { userService } from "../services/userService";
 
 export default function UserTable({
   users,
@@ -14,7 +14,7 @@ export default function UserTable({
 }) {
   const handleDelete = async (id: string) => {
     if (!confirm("¿Eliminar usuario?")) return;
-    await deleteUser(id);
+    await userService.remove(id);
     onRefresh();
   };
 

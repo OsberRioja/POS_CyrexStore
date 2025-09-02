@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import ClientTable from "../components/ClientTable";
 import ClientForm from "../components/ClientForm";
-import { getClients } from "../services/clientService";
+import { clientService } from "../services/clientService";
 import { useDebounce } from "../hooks/useDebounce"; // usa el hook que ya tienes
 
 export default function ClientsPage() {
@@ -19,7 +19,7 @@ export default function ClientsPage() {
   const loadClients = async (q = debouncedQuery, p = page) => {
     setLoading(true);
     try {
-      const res = await getClients({ q: q || undefined, page: p, limit });
+      const res = await clientService.getClients({ q: q || undefined, page: p, limit });
       // backend ideally debe devolver { data: [...], total: N } o solo array
       if (res.data && Array.isArray(res.data)) {
         setClients(res.data);

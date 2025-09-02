@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { createUser, updateUser } from "../services/userService";
+import { userService } from "../services/userService";
 
 export default function UserForm({ user, onClose, onSaved }: { user: any | null; onClose: () => void; onSaved: () => void; }) {
   const [form, setForm] = useState({
@@ -46,9 +46,9 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
       if (form.password) payload.password = form.password;
 
       if (isEditing) {
-        await updateUser(user.id, payload);
+        await userService.update(user.id, payload);
       } else {
-        await createUser(payload);
+        await userService.create(payload);
       }
       onSaved();
     } catch (err: any) {

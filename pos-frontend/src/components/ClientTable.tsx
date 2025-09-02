@@ -1,4 +1,4 @@
-import { deleteClient } from "../services/clientService";
+import { clientService } from "../services/clientService";
 
 export default function ClientTable({
   clients,
@@ -14,7 +14,7 @@ export default function ClientTable({
   const handleDelete = async (id: number) => {
     if (!confirm("Eliminar cliente?")) return;
     try {
-      await deleteClient(id);
+      await clientService.remove(id);
       onDelete();
     } catch (err) {
       console.error(err);

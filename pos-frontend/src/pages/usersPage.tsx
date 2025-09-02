@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import UserTable from "../components/UserTable";
 import UserForm from "../components/UserForm";
-import { getUsers } from "../services/userService";
+import { userService } from "../services/userService";
 import { useDebounce } from "../hooks/useDebounce";
 
 export default function UsersPage() {
@@ -17,7 +17,7 @@ export default function UsersPage() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await getUsers();
+      const res = await userService.getUsers();
       setUsers(res.data || []);
       setFiltered(res.data || []);
     } catch (err) {

@@ -20,6 +20,15 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
 
       <div className="w-full flex flex-col items-start pl-2 space-y-3">
         <button
+          onClick={() => onSelect("caja")}
+          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            selected === "caja" ? "bg-blue-600" : "bg-gray-500/90"
+          }`}
+        >
+          CAJA
+        </button>
+
+        <button
           onClick={() => onSelect("usuarios")}
           className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
             selected === "usuarios" ? "bg-blue-600" : "bg-gray-500/90"

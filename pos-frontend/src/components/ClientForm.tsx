@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { createClient, updateClient } from "../services/clientService";
+import { clientService } from "../services/clientService";
 
 export default function ClientForm({ client, onClose }: { client: any | null; onClose: () => void }) {
   const [form, setForm] = useState({
@@ -61,9 +61,9 @@ export default function ClientForm({ client, onClose }: { client: any | null; on
       };
 
       if (client && (client.id_cliente ?? client.id)) {
-        await updateClient(client.id_cliente ?? client.id, payload);
+        await clientService.update(client.id_cliente ?? client.id, payload);
       } else {
-        await createClient(payload);
+        await clientService.create(payload);
       }
       onClose();
     } catch (err: any) {
