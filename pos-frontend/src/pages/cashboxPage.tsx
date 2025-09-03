@@ -16,6 +16,8 @@ export default function CashboxPage() {
   const [cashboxes, setCashboxes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState<string | null>(null);
+  const [sales, setSales] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
 
   // modales
   const [showOpenModal, setShowOpenModal] = useState(false);
@@ -27,12 +29,41 @@ export default function CashboxPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_token]);
 
+  async function loadSales(cashBoxId: number) {
+    try {
+      const r = await saleService.listByBox(cashBoxId, _token);
+      //console.error("caja:", cashBoxId, "ventas:", r.data);
+      setSales(Array.isArray(r?.data) ? r.data : []);
+    } catch (err: any) {
+      console.error("Error cargando ventas de caja:", err?.response?.data ?? err.message ?? err);
+      setSales([]);
+    } finally { setLoading(false); }
+  }
+
+  async function loadExpenses(boxId: number) {
+    try {
+      const r = await expenseService.listByBox(boxId, _token); 
+      setExpenses(Array.isArray(r?.data) ? r.data : []);
+    } catch (err: any) {
+      console.error("Error cargando gastos de caja:", err?.response?.data ?? err.message ?? err);
+      setExpenses([]);
+    } finally { setLoading(false); }
+  }
+
+
   async function loadAll() {
     setLoading(true);
     setWarning(null);
     try {
       const rOpen = await cashboxService.getOpen(_token);
-      setOpenCashbox(rOpen?.data ?? null);
+      const open = rOpen?.data ?? null;
+      setOpenCashbox(open);
+      if (open?.id) {
+        await Promise.all([loadSales(open.id), loadExpenses(open.id)]);
+      }else{
+        setSales([]);
+        setExpenses([]);
+      }
     } catch (err: any) {
       console.error("GET /cashbox/open error:", err?.response?.data ?? err.message ?? err);
       setOpenCashbox(null);
@@ -56,12 +87,20 @@ export default function CashboxPage() {
 
   const handleSaleSuccess = async () => {
     setShowSaleModal(false);
-    await loadAll();
+    if(openCashbox?.id){
+      await Promise.all([loadSales(openCashbox.id), cashboxService.getById(openCashbox.id, _token).then(r => setOpenCashbox(r.data)).catch(()=>{})]);
+    }else{
+      await loadAll();
+    }
   };
 
   const handleExpenseSuccess = async () => {
     setShowExpenseModal(false);
-    await loadAll();
+    if(openCashbox?.id){
+      await Promise.all([loadExpenses(openCashbox.id), cashboxService.getById(openCashbox.id, _token).then(r => setOpenCashbox(r.data)).catch(()=>{})]);
+    }else{
+      await loadAll();
+    }
   };
 
   const handleCloseCashbox = async () => {
@@ -118,7 +157,7 @@ export default function CashboxPage() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <h3 className="font-semibold mb-2">Ventas</h3>
-              {openCashbox.sales?.length ? (
+              {sales?.length ? (
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-100"><tr>
                     <th className="p-2 text-left">Fecha</th>
@@ -127,7 +166,7 @@ export default function CashboxPage() {
                     <th className="p-2 text-left">Vendedor</th>
                   </tr></thead>
                   <tbody>
-                    {openCashbox.sales.map((s: any) => (
+                    {sales.map((s: any) => (
                       <tr key={s.id} className="border-b">
                         <td className="p-2">{s.createdAt ? new Date(s.createdAt).toLocaleString() : "-"}</td>
                         <td className="p-2">{(s.items ?? []).length}</td>
@@ -142,7 +181,7 @@ export default function CashboxPage() {
 
             <div>
               <h3 className="font-semibold mb-2">Gastos</h3>
-              {openCashbox.expenses?.length ? (
+              {expenses?.length ? (
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-100"><tr>
                     <th className="p-2 text-left">Fecha</th>
@@ -151,7 +190,7 @@ export default function CashboxPage() {
                     <th className="p-2 text-left">Método</th>
                   </tr></thead>
                   <tbody>
-                    {openCashbox.expenses.map((e: any) => (
+                    {expenses.map((e: any) => (
                       <tr key={e.id} className="border-b">
                         <td className="p-2">{e.createdAt ? new Date(e.createdAt).toLocaleString() : "-"}</td>
                         <td className="p-2">{e.concept ?? e.description ?? "-"}</td>

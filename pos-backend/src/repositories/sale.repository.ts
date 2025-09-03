@@ -16,7 +16,7 @@ export const SaleRepository = {
         items: { create: payload.items },
         payments: { create: payload.payments },
         // if you have note etc:
-        ...(payload.note ? { note: payload.note } : {}),
+        //...(payload.note ? { note: payload.note } : {}),
       },
       include: {
         items: true,
@@ -71,4 +71,15 @@ export const SaleRepository = {
       },
     });
   },
+
+  async findByBox(cashBoxId: number) {
+    return prisma.sale.findMany({
+      where: { cashBoxId: cashBoxId },
+      include: {
+        items: { include: { product: true } },
+        payments: { include: { paymentMethod: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
 };

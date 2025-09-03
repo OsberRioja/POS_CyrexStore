@@ -89,6 +89,10 @@ export default function SaleFormModal({ cashBoxId, token, onClose, onSuccess } :
   };
 
   const handleSubmit = async (e:React.FormEvent) => {
+    if(!clientSelected){
+      return alert("Selecciona o crea un cliente para continuar");
+    }
+
     e.preventDefault();
     if (items.length === 0) return alert("Agrega al menos 1 producto");
     if (payments.length === 0) return alert("Agrega al menos 1 pago");
@@ -111,7 +115,8 @@ export default function SaleFormModal({ cashBoxId, token, onClose, onSuccess } :
       onSuccess();
     } catch (err:any) {
       console.error("sale create:", err?.response?.data ?? err.message ?? err);
-      alert("Error guardando venta. Ver consola.");
+      const resp=err?.response;
+      alert("Error guardando venta. Status: " + (resp?.status ?? "??") + "\nBody: " + JSON.stringify(resp?.data ?? err.message));
     } finally {
       setSaving(false);
     }

@@ -44,4 +44,24 @@ export const SaleController = {
       return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
     }
   },
+
+  async getByBox(req: Request, res: Response) {
+    try {
+      // aceptar tanto query como params por robustez
+      const raw = (req.query.cashBoxId ?? req.query.cashboxId ?? req.params.cashBoxId) as string | undefined;
+      if (!raw) return res.status(400).json({ error: "ID de caja requerido" });
+
+      const cashBoxId = Number(raw);
+      if (!Number.isInteger(cashBoxId) || cashBoxId <= 0) {
+        return res.status(400).json({ error: "ID de caja inválido" });
+      }
+
+      // reutilizamos el service list o una función dedicada
+      const result = await SaleService.list({ cashBoxId });
+      return res.json(result);
+    } catch (err: any) {
+      console.error("GET /sales/by-box:", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
 };
