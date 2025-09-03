@@ -38,4 +38,10 @@ export const CashBoxRepository = {
   update: async (id: number, data: Partial<any>) => {
     return prisma.cashBox.update({ where: { id }, data });
   },
+  
+  list: async (): Promise<CashBox[]> => {
+    return prisma.cashBox.findMany({
+      orderBy: { openedAt: "desc" },
+    });
+  }
 };

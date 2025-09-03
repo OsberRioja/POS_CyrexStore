@@ -90,5 +90,10 @@ export const CashBoxService = {
     const sales = await prisma.sale.findMany({ where: { cashBoxId: boxId }, include: { items: true, payments: true } });
     const expenses = await prisma.expense.findMany({ where: { cashBoxId: boxId }, include: { paymentMethod: true } });
     return { box, sales, expenses };
-  }
+  },
+
+  async list() {
+    const boxes = await CashBoxRepository.list();
+    return boxes;
+  } 
 };

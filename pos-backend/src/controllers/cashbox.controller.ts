@@ -51,4 +51,14 @@ export const CashBoxController = {
       return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
     }
   },
+
+  async list(req: Request, res: Response) {
+    try {
+      const boxes = await CashBoxService.list();
+      return res.json(boxes);
+    } catch (err: any) {
+      console.error("GET /cashbox", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  }
 };
