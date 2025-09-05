@@ -171,7 +171,7 @@ export default function CashboxPage() {
                         <td className="p-2">{s.createdAt ? new Date(s.createdAt).toLocaleString() : "-"}</td>
                         <td className="p-2">{(s.items ?? []).length}</td>
                         <td className="p-2 text-right">{Number(s.total ?? 0).toFixed(2)}</td>
-                        <td className="p-2">{s.seller?.name ?? s.sellerName ?? "-"}</td>
+                        <td className="p-2">{s.seller?.name ?? s.sellerName ?? s.sellerId ?? "-"}</td>
                       </tr>
                     ))}
                   </tbody>

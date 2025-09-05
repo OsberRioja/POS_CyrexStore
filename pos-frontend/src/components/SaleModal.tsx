@@ -58,7 +58,7 @@ export default function SaleFormModal({ cashBoxId, token, onClose, onSuccess } :
   const removeItem = (idx:number) => setItems(s => s.filter((_,i)=>i!==idx));
 
   const total = items.reduce((a,i)=>a + i.subtotal, 0);
-  const totalPayments = payments.reduce((a,p)=>a + p.amount, 0);
+  //const totalPayments = payments.reduce((a,p)=>a + p.amount, 0);
 
   const searchClients = async (q:string) => {
     if (!q) { setClientsResults([]); return; }
