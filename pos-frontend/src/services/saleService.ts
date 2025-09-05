@@ -17,6 +17,5 @@ export const saleService = {
   getById: (id: number) =>
     axios.get(`${BASE}/sales/${id}`, { headers: { ...authHeader() } }),
   //listByBox: (boxId: number, token?: string) => axios.get(`${BASE}/sales/bybox?cashBoxId=${boxId}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
-  listByBox: (params?: any, token?: string) =>
-    axios.get(`${BASE}/sales`, { params: params ?? {}, headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
+  listByBox: (cashBoxId: number, token?: string) => axios.get(`${BASE}/sales/bybox?boxId=${cashBoxId}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
 };
