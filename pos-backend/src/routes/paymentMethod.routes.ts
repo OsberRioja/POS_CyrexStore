@@ -18,4 +18,6 @@ router.delete("/:id", authMiddleware, PaymentMethodController.remove);
 // endpoint opcional para forzar creación de defaults (solo dev)
 router.post("/__init_defaults", authMiddleware, PaymentMethodController.initDefaults);
 
+router.get("/summary", authMiddleware, PaymentMethodController.summaryByBox);
+
 export default router;

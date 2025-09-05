@@ -76,4 +76,10 @@ export const PaymentMethodService = {
     }
     return created;
   },
+
+  // -> Nuevo: devuelve lista de métodos de pago con total para la cashbox solicitada
+  async summaryByCashBox(cashBoxId: number) {
+    if (!cashBoxId || Number.isNaN(Number(cashBoxId))) throw { status: 400, message: "cashBoxId inválido" };
+    return PaymentMethodRepository.summaryByCashBox(Number(cashBoxId));
+  },
 };

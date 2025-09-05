@@ -36,4 +36,36 @@ export const PaymentMethodRepository = {
       create: { name, isCash },
     });
   },
+
+  summaryByCashBox: async (cashBoxId: number): Promise<Array<{ id: number; name: string; isCash: boolean; total: number }> > => {
+    // 1) todos los métodos
+    const methods = await prisma.paymentMethod.findMany();
+
+    // 2) agrupar sumas por paymentMethodId donde la venta pertenece a la cashbox
+    // Nota: usa relacion sale en salePayment (salePayment.sale -> sale.cashBoxId)
+    const groups = await prisma.salePayment.groupBy({
+      by: ["paymentMethodId"],
+      where: {
+        sale: { cashBoxId }, // filtra payments de ventas cuyo sale.cashBoxId === cashBoxId
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    const sumsMap: Record<number, number> = {};
+    for (const g of groups) {
+      sumsMap[g.paymentMethodId] = Number(g._sum.amount ?? 0);
+    }
+
+    // Opcional: sumar gastos por metodo (si quieres restarlos o mostrarlos separados).
+    // const expenseGroups = await prisma.expense.groupBy({ by: ["paymentMethodId"], where: { cashBoxId }, _sum: { amount: true }});
+
+    return methods.map((m) => ({
+      id: m.id,
+      name: m.name,
+      isCash: !!m.isCash,
+      total: sumsMap[m.id] ?? 0,
+    }));
+  },
 };

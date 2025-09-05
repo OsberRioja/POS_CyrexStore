@@ -63,5 +63,15 @@ export const PaymentMethodController = {
     } catch (err: any) {
       res.status(500).json({ error: "Error inicializando métodos por defecto" });
     }
+  },
+
+  async summaryByBox(req: Request, res: Response) {
+  try {
+    const cashBoxId = req.query.cashBoxId ? Number(req.query.cashBoxId) : undefined;
+    const data = await PaymentMethodService.summaryByCashBox(cashBoxId as number);
+    return res.json(data);
+    } catch (err:any) {
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
   }
 };
