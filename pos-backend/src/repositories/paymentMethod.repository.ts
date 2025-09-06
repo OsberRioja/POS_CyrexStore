@@ -8,8 +8,13 @@ export const PaymentMethodRepository = {
     return prisma.paymentMethod.findMany({ orderBy: { name: "asc" } });
   },
 
-  findById: async (id: number): Promise<PaymentMethod | null> => {
-    return prisma.paymentMethod.findUnique({ where: { id } });
+  async findById(id: number | string | undefined): Promise<PaymentMethod | null> {
+    // Validación defensiva: lanzar error si id es inválido
+    console.log("getById called with id=", id);
+    if (id === undefined || id === null) throw new Error("findById: id es requerido");
+    const nid = Number(id);
+    if (Number.isNaN(nid)) throw new Error("findById: id inválido");
+    return prisma.paymentMethod.findUnique({ where: { id: nid } });
   },
 
   findByName: async (name: string): Promise<PaymentMethod | null> => {

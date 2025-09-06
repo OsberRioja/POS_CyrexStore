@@ -13,11 +13,17 @@ export const PaymentMethodService = {
     return PaymentMethodRepository.findAll();
   },
 
-  async getById(id: number) {
-    const pm = await PaymentMethodRepository.findById(id);
-    if (!pm) throw { status: 404, message: "Método de pago no encontrado" };
-    return pm;
+  async getById(id?: number | string) {
+    if (!id) throw { status: 400, message: "id requerido" };
+    try {
+      const m = await PaymentMethodRepository.findById(id);
+      if (!m) throw { status: 404, message: "Método no encontrado" };
+      return m;
+    } catch (err: any) {
+      throw { status: 400, message: err?.message ?? "id inválido" };
+    }
   },
+
 
   async create(dto: CreatePaymentMethodDTO) {
     if (!dto?.name || !dto.name.trim()) throw { status: 400, message: "name es requerido" };
@@ -78,8 +84,10 @@ export const PaymentMethodService = {
   },
 
   // -> Nuevo: devuelve lista de métodos de pago con total para la cashbox solicitada
-  async summaryByCashBox(cashBoxId: number) {
-    if (!cashBoxId || Number.isNaN(Number(cashBoxId))) throw { status: 400, message: "cashBoxId inválido" };
-    return PaymentMethodRepository.summaryByCashBox(Number(cashBoxId));
+  async summaryByCashBox(cashBoxId?: number | string) {
+    if (!cashBoxId) throw { status: 400, message: "cashBoxId requerido" };
+    const cbn = Number(cashBoxId);
+    if (Number.isNaN(cbn)) throw { status: 400, message: "cashBoxId inválido" };
+    return PaymentMethodRepository.summaryByCashBox(cbn);
   },
 };

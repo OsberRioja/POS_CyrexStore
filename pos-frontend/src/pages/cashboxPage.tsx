@@ -6,6 +6,7 @@ import OpenCashboxModal from "../components/openBoxModal";
 import { useAuth } from "../context/authContext";
 import SalesPage from "./salesPage";
 import ExpensesPage from "./expensesPage";
+import PaymentMethodsPage from "./paymentMethodPage";
 
 export default function CashboxPage() {
   const { token } = useAuth();
@@ -17,7 +18,7 @@ export default function CashboxPage() {
   const [warning, setWarning] = useState<string | null>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
-  const [view, setView] = useState<"ventas" | "gastos" | null>(null);
+  const [view, setView] = useState<"ventas" | "gastos" | "paymentMethods" | null>(null);
 
   const [showOpenModal, setShowOpenModal] = useState(false);
 
@@ -97,6 +98,7 @@ export default function CashboxPage() {
             <>
               <button onClick={() => setView("ventas")} className="px-3 py-2 bg-blue-500 text-white rounded">Ventas</button>
               <button onClick={() => setView("gastos")} className="px-3 py-2 bg-yellow-600 text-white rounded">Gastos</button>
+              <button onClick={() => setView("paymentMethods")} className="px-3 py-2 bg-indigo-600 text-white rounded">Métodos de pago</button>
               <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-600 text-white rounded">Cerrar</button>
             </>
           )}
@@ -128,6 +130,12 @@ export default function CashboxPage() {
               onReload={() => loadExpenses(openCashbox.id)}
               openCashboxId={openCashbox.id}
               token={_token}
+            />
+          )}
+          {view === "paymentMethods" && (
+            <PaymentMethodsPage
+              cashBoxId={openCashbox?.id}
+              onBack={() => setView(null)}
             />
           )}
         </>

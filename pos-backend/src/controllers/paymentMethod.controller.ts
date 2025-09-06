@@ -68,6 +68,7 @@ export const PaymentMethodController = {
   async summaryByBox(req: Request, res: Response) {
   try {
     const cashBoxId = req.query.cashBoxId ? Number(req.query.cashBoxId) : undefined;
+    if (!cashBoxId || Number.isNaN(cashBoxId)) return res.status(400).json({ error: "cashBoxId requerido" });
     const data = await PaymentMethodService.summaryByCashBox(cashBoxId as number);
     return res.json(data);
     } catch (err:any) {
