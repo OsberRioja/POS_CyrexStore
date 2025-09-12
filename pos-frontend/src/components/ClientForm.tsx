@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { clientService } from "../services/clientService";
 
-export default function ClientForm({ client, onClose }: { client: any | null; onClose: () => void }) {
+export default function ClientForm({ client, onClose, onSaved }: { client: any | null; onClose: () => void; onSaved?: (createdClient: any) => void }) {
   const [form, setForm] = useState({
     tipoCliente: client?.tipo_cliente ?? client?.tipoCliente ?? "PERSONA",
     nombre: client?.nombre ?? client?.name ?? "",
@@ -61,9 +61,11 @@ export default function ClientForm({ client, onClose }: { client: any | null; on
       };
 
       if (client && (client.id_cliente ?? client.id)) {
-        await clientService.update(client.id_cliente ?? client.id, payload);
+        const res = await clientService.update(client.id_cliente ?? client.id, payload);
+        onSaved && onSaved(res.data);
       } else {
-        await clientService.create(payload);
+        const res = await clientService.create(payload);
+        onSaved && onSaved(res.data);
       }
       onClose();
     } catch (err: any) {

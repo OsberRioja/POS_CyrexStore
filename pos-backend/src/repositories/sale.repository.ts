@@ -52,7 +52,7 @@ export const SaleRepository = {
       prisma.sale.count({ where }),
       prisma.sale.findMany({
         where,
-        include: { items: { include: { product: true } }, payments: { include: { paymentMethod: true } }, /* optionally include client, seller user */ },
+        include: { items: { include: { product: true } }, payments: { include: { paymentMethod: true } }, seller: { select: { id: true, userCode: true } }, client: true},
         orderBy: { createdAt: "desc" },
         skip,
         take,
