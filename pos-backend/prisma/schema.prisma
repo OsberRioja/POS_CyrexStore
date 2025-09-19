@@ -112,18 +112,23 @@ enum CashBoxStatus {
 }
 
 model Sale {
-  id        String        @id @default(uuid())
-  sellerId  String // User.id -> el vendedor (puede elegirse por userCode o id)
-  seller    User          @relation(fields: [sellerId], references: [id])
-  clientId  Int? // Cliente.id_cliente (opcional)
-  client    Cliente?      @relation(fields: [clientId], references: [id_cliente])
-  total     Float
-  createdAt DateTime      @default(now())
-  cashBoxId Int? // caja abierta donde se registró la venta
-  cashBox   CashBox?      @relation(fields: [cashBoxId], references: [id], name: "box_sales")
-  items     SaleItem[]
-  payments  SalePayment[]
-  createdBy String? // quien registró la venta (si difiere del seller)
+  id            String        @id @default(uuid())
+  sellerId      String // User.id -> el vendedor (puede elegirse por userCode o id)
+  seller        User          @relation(fields: [sellerId], references: [id])
+  clientId      Int? // Cliente.id_cliente (opcional)
+  client        Cliente?      @relation(fields: [clientId], references: [id_cliente])
+  total         Float
+  totalPaid     Float         @default(0) // NUEVO: total pagado hasta el momento
+  balance       Float         @default(0) // NUEVO: saldo pendiente
+  paymentStatus PaymentStatus @default(PENDING) // NUEVO: estado del pago
+  createdAt     DateTime      @default(now())
+  cashBoxId     Int? // caja abierta donde se registró la venta
+  cashBox       CashBox?      @relation(fields: [cashBoxId], references: [id], name: "box_sales")
+  items         SaleItem[]
+  payments      SalePayment[]
+  createdBy     String? // quien registró la venta (si difiere del seller)
+
+  @@map("sales")
 }
 
 model SaleItem {
@@ -135,6 +140,8 @@ model SaleItem {
   quantity  Int
   unitPrice Float // precio de venta tomado al momento
   subtotal  Float
+
+  @@map("sale_items")
 }
 
 model SalePayment {
@@ -146,6 +153,17 @@ model SalePayment {
   amount          Float
   cashBoxId       Int? // si es efectivo y hay caja abierta, linkear
   createdAt       DateTime      @default(now())
+
+  @@map("sale_payments")
+}
+
+enum PaymentStatus {
+  PENDING // Pago pendiente (saldo > 0)
+  PARTIAL // Pago parcial (0 < totalPaid < total)
+  PAID // Totalmente pagado (totalPaid = total)
+  OVERPAID // Sobrepagado (totalPaid > total) - por si acaso
+
+  @@map("payment_status")
 }
 
 model Expense {

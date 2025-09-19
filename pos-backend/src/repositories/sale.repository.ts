@@ -1,5 +1,5 @@
 // src/repositories/sale.repository.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, PaymentStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -33,12 +33,16 @@ export const SaleRepository = {
     cashBoxId?: number;
     dateFrom?: string;
     dateTo?: string;
+    paymentStatus?: PaymentStatus;
   }) {
-    const { page = 1, limit = 20, sellerId, cashBoxId, dateFrom, dateTo } = opts;
+    const { page = 1, limit = 20, sellerId, cashBoxId, dateFrom, dateTo, paymentStatus } = opts;
     const where: any = {};
 
     if (sellerId) where.sellerId = sellerId;
     if (cashBoxId !== undefined) where.cashBoxId = Number(cashBoxId);
+    if (paymentStatus) {
+      where.paymentStatus = paymentStatus; // Ya es del tipo correcto
+    }
     if (dateFrom || dateTo) {
       where.createdAt = {};
       if (dateFrom) where.createdAt.gte = new Date(dateFrom);
@@ -81,5 +85,65 @@ export const SaleRepository = {
       },
       orderBy: { createdAt: "desc" },
     });
+  },
+
+  // NUEVO: Método específico para ventas pendientes
+  async findPendingSales(params: { page?: number; limit?: number } = {}) {
+    const { page = 1, limit = 50 } = params;
+    
+    const where = {
+      OR: [
+        { paymentStatus: PaymentStatus.PENDING },
+        { paymentStatus: PaymentStatus.PARTIAL }
+      ]
+    };
+
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        include: {
+          client: true,
+          seller: { 
+            select: { 
+              id: true,
+              name: true, 
+              userCode: true 
+            } 
+          },
+          items: { 
+            include: { 
+              product: { 
+                select: { 
+                  name: true, 
+                  sku: true 
+                } 
+              } 
+            } 
+          },
+          payments: { 
+            include: { 
+              paymentMethod: { 
+                select: { 
+                  name: true, 
+                  isCash: true 
+                } 
+              } 
+            } 
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.sale.count({ where })
+    ]);
+
+    return { 
+      data: sales, 
+      total, 
+      page, 
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 };

@@ -1,13 +1,23 @@
 // src/routes/sale.routes.ts
 import { Router } from "express";
-import { SaleController } from "../controllers/sale.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import * as SaleController from '../controllers/sale.controller';
 
 const router = Router();
 
-router.get("/bybox", authMiddleware, SaleController.getByBox);
-router.post("/", authMiddleware, SaleController.create);
-router.get("/", authMiddleware, SaleController.list);
-router.get("/:id", authMiddleware, SaleController.getById);
+// IMPORTANTE: Las rutas más específicas deben ir ANTES que las genéricas
+// Si pones '/pending' después de '/:id', Express lo interpretará como si 'pending' fuera un ID
+
+// Rutas específicas primero
+router.get('/pending', authMiddleware, SaleController.getPendingSales);
+router.get('/bybox', authMiddleware, SaleController.getByBox);
+
+// Rutas con parámetros después
+router.post('/:saleId/payments', authMiddleware, SaleController.addPayment);
+router.get('/:id', authMiddleware, SaleController.getById);
+
+// Rutas generales al final
+router.post('/', authMiddleware, SaleController.create);
+router.get('/', authMiddleware, SaleController.list);
 
 export default router;

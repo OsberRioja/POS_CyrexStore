@@ -1,7 +1,7 @@
 // src/services/sale.service.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, PaymentStatus } from "@prisma/client";
 import { SaleRepository } from "../repositories/sale.repository";
-import type { CreateSaleDTO, SaleItemDTO, SalePaymentDTO } from "../dtos/sale.dto";
+import type { CreateSaleDTO, SaleItemDTO, SalePaymentDTO, AddPaymentDTO } from "../dtos/sale.dto";
 import { CashBoxRepository } from "../repositories/cashBox.repository";
 import { PaymentMethodRepository } from "../repositories/paymentMethod.repository";
 
@@ -9,10 +9,20 @@ const prisma = new PrismaClient();
 
 export const SaleService = {
   /**
+   * Función helper para calcular estado de pago
+   */
+  calculatePaymentStatus(total: number, totalPaid: number): PaymentStatus {
+    if (totalPaid <= 0) return PaymentStatus.PENDING;
+    if (Math.abs(totalPaid - total) < 0.01) return PaymentStatus.PAID; // considerando precisión decimal
+    if (totalPaid > total) return PaymentStatus.OVERPAID;
+    return PaymentStatus.PARTIAL;
+  },
+
+  /**
    * Crea una venta completa en transacción:
    * - valida productos / stock
    * - calcula unitPrice y subtotal
-   * - valida suma de pagos == total
+   * - permite pagos parciales si allowPartialPayment = true
    * - asigna cashBoxId a pagos en efectivo si hay caja abierta
    * - decrementa stock de productos
    */
@@ -54,14 +64,20 @@ export const SaleService = {
     const paymentsDto = dto.payments;
     if (!paymentsDto || paymentsDto.length === 0) throw { status: 400, message: "Debe incluir al menos un payment" };
     for (const p of paymentsDto) {
-      if (!p.paymentMethodId || Number.isNaN(Number(p.amount))) throw { status: 400, message: "Cada payment debe incluir paymentMethodId y amount válidos" };
+      if (!p.paymentMethodId || Number.isNaN(Number(p.amount))) {
+        throw { status: 400, message: "Cada payment debe incluir paymentMethodId y amount válidos" };
+      }
+      if (Number(p.amount) < 0) {
+        throw { status: 400, message: "Los montos de pago no pueden ser negativos" };
+      }
     }
 
     // calcular total (desde itemsData usando unitPrice * qty)
-    const total = itemsData.reduce((s, i) => s + Number(i.unitPrice) * Number(i.quantity), 0);
-    const sumPayments = paymentsDto.reduce((s: number, p: any) => s + Number(p.amount), 0);
-    if (Math.abs(Number(sumPayments.toFixed(2)) - Number(total.toFixed(2))) > 0.01) {
-      throw { status: 400, message: `Suma de payments (${sumPayments}) no coincide con total calculado (${total})` };
+    const totalPaid = paymentsDto.reduce((s: number, p: any) => s + Number(p.amount), 0);
+
+    // NUEVA VALIDACIÓN: Permitir pagos parciales con flag explícito
+    if (totalPaid < 0) {
+      throw { status: 400, message: 'El monto pagado no puede ser negativo' };
     }
 
     // Reglas sobre cliente: obligamos a que venga dto.client
@@ -113,6 +129,8 @@ export const SaleService = {
 
       // 1) validar productos (existen y stock)
       const itemsToCreate: any[] = [];
+      let calculatedTotal = 0;
+
       for (const it of itemsData) {
         const product = await tx.product.findUnique({ where: { id: it.productId } });
         if (!product) throw { status: 404, message: `Producto ${it.productId} no encontrado` };
@@ -120,6 +138,7 @@ export const SaleService = {
 
         const unitPrice = Number(product.salePrice);
         const subtotal = unitPrice * Number(it.quantity);
+        calculatedTotal += subtotal;
         itemsToCreate.push({
           productId: it.productId,
           quantity: it.quantity,
@@ -127,6 +146,24 @@ export const SaleService = {
           subtotal,
         });
       }
+
+      // NUEVA LÓGICA: Validar pagos vs total calculado
+      if (totalPaid > calculatedTotal) {
+        throw { status: 400, message: `El monto pagado (${totalPaid}) no puede ser mayor al total (${calculatedTotal})` };
+      }
+
+      // Si el pago es menor al total, validar que se permita pago parcial
+      if (totalPaid < calculatedTotal && !dto.allowPartialPayment) {
+        throw { 
+          status: 400, 
+          message: `Suma de payments (${totalPaid}) no coincide con total calculado (${calculatedTotal}). Use allowPartialPayment=true para crear un anticipo.` 
+        };
+      }
+
+      // Calcular saldo y estado
+      const balance = calculatedTotal - totalPaid;
+      const paymentStatus = this.calculatePaymentStatus(calculatedTotal, totalPaid);
+
 
       // 2) preparar paymentsData (y verificar métodos)
       const paymentsData: any[] = [];
@@ -146,15 +183,43 @@ export const SaleService = {
         data: {
           sellerId: String(sellerId),
           clientId: clientId ?? undefined,
-          total,
+          total: Number(calculatedTotal.toFixed(2)),
+          totalPaid: Number(totalPaid.toFixed(2)),
+          balance: Number(balance.toFixed(2)),
+          paymentStatus: paymentStatus,
           createdBy: dto.createdBy ?? actorUserId,
           cashBoxId: openBox.id,
           items: { create: itemsToCreate },
           payments: { create: paymentsData },
         },
         include: {
-          items: true,
-          payments: { include: { paymentMethod: true } },
+          items: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                  sku: true
+                }
+              }
+            }
+          },
+          payments: { 
+            include: { 
+              paymentMethod: {
+                select: {
+                  name: true,
+                  isCash: true
+                }
+              }
+            } 
+          },
+          seller: {
+            select: {
+              name: true,
+              userCode: true
+            }
+          },
+          client: true
         },
       });
 
@@ -169,7 +234,114 @@ export const SaleService = {
       return created;
     });
   },
+  /**
+   * NUEVO: Método para completar un pago pendiente
+   */
+  async addPayment(addPaymentDto: AddPaymentDTO, actorUserId: string) {
+    return await prisma.$transaction(async (tx) => {
+      // Obtener la venta actual
+      const sale = await tx.sale.findUnique({
+        where: { id: addPaymentDto.saleId },
+        include: { payments: true }
+      });
 
+      if (!sale) {
+        throw { status: 404, message: 'Venta no encontrada' };
+      }
+
+      if (sale.paymentStatus === PaymentStatus.PAID) {
+        throw { status: 400, message: 'Esta venta ya está completamente pagada' };
+      }
+
+      // Validar que el nuevo pago no exceda el saldo
+      const newPaymentAmount = Number(addPaymentDto.amount);
+      if (newPaymentAmount > sale.balance) {
+        throw { status: 400, message: `El pago (${newPaymentAmount}) excede el saldo pendiente (${sale.balance})` };
+      }
+
+      if (newPaymentAmount <= 0) {
+        throw { status: 400, message: 'El monto del pago debe ser positivo' };
+      }
+
+      // Verificar método de pago
+      const paymentMethod = await tx.paymentMethod.findUnique({
+        where: { id: addPaymentDto.paymentMethodId }
+      });
+      
+      if (!paymentMethod) {
+        throw { status: 404, message: 'Método de pago no encontrado' };
+      }
+
+      // Determinar cashBoxId para pagos en efectivo
+      let cashBoxId = null;
+      if ((paymentMethod as any).isCash) {
+        if (addPaymentDto.cashBoxId) {
+          cashBoxId = addPaymentDto.cashBoxId;
+        } else {
+          const openBox = await CashBoxRepository.findOpen();
+          if (!openBox) {
+            throw { status: 400, message: 'Debe tener una caja abierta para pagos en efectivo' };
+          }
+          cashBoxId = openBox.id;
+        }
+      }
+
+      // Agregar el nuevo pago
+      await tx.salePayment.create({
+        data: {
+          saleId: sale.id,
+          paymentMethodId: addPaymentDto.paymentMethodId,
+          amount: newPaymentAmount,
+          cashBoxId: cashBoxId,
+        }
+      });
+
+      // Actualizar totales y estado de la venta
+      const newTotalPaid = sale.totalPaid + newPaymentAmount;
+      const newBalance = sale.total - newTotalPaid;
+      const newPaymentStatus = this.calculatePaymentStatus(sale.total, newTotalPaid);
+
+      const updatedSale = await tx.sale.update({
+        where: { id: addPaymentDto.saleId },
+        data: {
+          totalPaid: Number(newTotalPaid.toFixed(2)),
+          balance: Number(newBalance.toFixed(2)),
+          paymentStatus: newPaymentStatus,
+        },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                  sku: true
+                }
+              }
+            }
+          },
+          payments: {
+            include: {
+              paymentMethod: {
+                select: {
+                  name: true,
+                  isCash: true
+                }
+              }
+            }
+          },
+          seller: {
+            select: {
+              name: true,
+              userCode: true
+            }
+          },
+          client: true
+        }
+      });
+
+      return updatedSale;
+    });
+  },
 
   async list(params: {
     page?: number;
@@ -178,6 +350,7 @@ export const SaleService = {
     cashBoxId?: number;
     dateFrom?: string;
     dateTo?: string;
+    paymentStatus?: PaymentStatus; // NUEVO: filtrar por estado de pago
   }) {
     return SaleRepository.findAll(params);
   },
@@ -191,5 +364,37 @@ export const SaleService = {
   async findByBox(cashBoxId: number) {
     const sales = await SaleRepository.findByBox(cashBoxId);
     return sales;
-  } 
+  },
+
+   /**
+   * NUEVO: Obtener ventas con saldo pendiente
+   */
+  async findPendingSales(params: { page?: number; limit?: number } = {}) {
+    const { page = 1, limit = 50 } = params;
+    
+    const where = {
+      OR: [
+        { paymentStatus: PaymentStatus.PENDING },
+        { paymentStatus: PaymentStatus.PARTIAL }
+      ]
+    };
+
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        include: {
+          client: true,
+          seller: { select: { name: true, userCode: true } },
+          items: { include: { product: { select: { name: true, sku: true } } } },
+          payments: { include: { paymentMethod: { select: { name: true, isCash: true } } } }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.sale.count({ where })
+    ]);
+
+    return { data: sales, total, page, limit };
+  }
 };

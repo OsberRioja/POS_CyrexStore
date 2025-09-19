@@ -40,6 +40,10 @@ export default function SaleFormModal({
   const [methods, setMethods] = useState<any[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
 
+  // NUEVO: Estado para pagos parciales
+  const [allowPartialPayment, setAllowPartialPayment] = useState(false);
+  const [paymentWarning, setPaymentWarning] = useState("");
+
   // UI
   const [saving, setSaving] = useState(false);
 
@@ -116,6 +120,49 @@ export default function SaleFormModal({
     return () => clearTimeout(t);
   }, [sellerQuery]);
 
+  // NUEVA: Función para calcular totales
+  const calculateTotals = () => {
+    const itemsTotal = items.reduce((sum, item) => {
+      return sum + item.subtotal;
+    }, 0);
+    
+    const paymentsTotal = payments.reduce((sum, payment) => {
+      return sum + Number(payment.amount || 0);
+    }, 0);
+    
+    return { itemsTotal, paymentsTotal };
+  };
+
+  // NUEVA: Validación actualizada
+  const validateSale = () => {
+    const { itemsTotal, paymentsTotal } = calculateTotals();
+    
+    if (paymentsTotal < 0) {
+      setPaymentWarning('Los pagos no pueden ser negativos');
+      return false;
+    }
+    
+    if (paymentsTotal > itemsTotal) {
+      setPaymentWarning(`El total pagado (${paymentsTotal.toFixed(2)}) no puede ser mayor al total de la venta (${itemsTotal.toFixed(2)})`);
+      return false;
+    }
+    
+    if (paymentsTotal < itemsTotal && !allowPartialPayment) {
+      setPaymentWarning(`El total pagado (${paymentsTotal.toFixed(2)}) es menor al total de la venta (${itemsTotal.toFixed(2)}). Active "Permitir pago parcial" si desea crear un anticipo.`);
+      return false;
+    }
+    
+    setPaymentWarning('');
+    return true;
+  };
+
+  // Efecto para validar en tiempo real
+  useEffect(() => {
+    if (items.length > 0 && payments.length > 0) {
+      validateSale();
+    }
+  }, [items, payments, allowPartialPayment]);
+
   const addProduct = (p: any) => {
     const unit = p.salePrice ?? p.sale_price ?? p.salePrice ?? 0;
     const it: Item = { productId: p.id, name: p.name, qty: 1, unitPrice: Number(unit), subtotal: Number(unit) };
@@ -131,11 +178,10 @@ export default function SaleFormModal({
 
   const removeItem = (idx: number) => setItems((s) => s.filter((_, i) => i !== idx));
 
-  const total = items.reduce((a, i) => a + i.subtotal, 0);
-  const paymentsSum = payments.reduce((a, p) => a + Number(p.amount || 0), 0);
-  const remaining = Math.max(0, Math.round((total - paymentsSum) * 100) / 100);
-  const change = Math.max(0, Math.round((paymentsSum - total) * 100) / 100);
-  const isPartial = paymentsSum < total;
+  const { itemsTotal, paymentsTotal } = calculateTotals();
+  const remaining = Math.max(0, Math.round((itemsTotal - paymentsTotal) * 100) / 100);
+  const change = Math.max(0, Math.round((paymentsTotal - itemsTotal) * 100) / 100);
+  const isPartial = paymentsTotal < itemsTotal;
 
   const searchClients = async (q: string) => {
     setClientQuery(q);
@@ -200,8 +246,11 @@ export default function SaleFormModal({
     }
     if (items.length === 0) return alert("Agrega al menos 1 producto");
     if (payments.length === 0) {
-      // permitimos venta sin pagos? preferible exigir al menos 1 pago (si usan anticipos, el pago puede ser parcial)
       return alert("Agrega al menos 1 pago (puede ser anticipo)");
+    }
+
+    if (!validateSale()) {
+      return; // La validación ya mostró el error
     }
 
     const payload: any = {
@@ -210,6 +259,7 @@ export default function SaleFormModal({
       client: { id_cliente: clientSelected.id_cliente },
       items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice })),
       payments: payments.map((p) => ({ paymentMethodId: p.paymentMethodId, amount: p.amount })),
+      allowPartialPayment: allowPartialPayment, // NUEVO: enviar flag
       cashBoxId,
     };
 
@@ -349,7 +399,7 @@ export default function SaleFormModal({
             <label className="text-sm">Buscar producto</label>
             <div className="flex gap-2 mt-1">
               <input value={queryProduct} onChange={(e) => setQueryProduct(e.target.value)} placeholder="Nombre o SKU" className="border p-2 rounded flex-1" />
-              <div className="w-36 flex-none text-right text-sm text-gray-500 pt-2">total: {total.toFixed(2)}</div>
+              <div className="w-36 flex-none text-right text-sm text-gray-500 pt-2">total: {itemsTotal.toFixed(2)}</div>
             </div>
 
             {productResults.length > 0 && (
@@ -394,23 +444,71 @@ export default function SaleFormModal({
             )}
           </div>
 
-          {/* resumen de pagos */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className={`px-3 py-2 rounded ${isPartial ? "bg-red-100 text-red-800" : "bg-green-50 text-green-800"}`}>
-                <div>Total: <b>{total.toFixed(2)}</b></div>
-                <div>Pagado: {paymentsSum.toFixed(2)} {isPartial && <span className="ml-2 text-sm"> (Anticipo)</span>}</div>
-                {change > 0 && <div>Cambio a devolver: {change.toFixed(2)}</div>}
-                {isPartial && <div className="text-sm">Venta marcada como parcial (en rojo)</div>}
+          {/* NUEVO: Resumen de totales actualizado */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Subtotal de productos:</span>
+                <span className="font-semibold">{itemsTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total a pagar:</span>
+                <span className="font-semibold">{paymentsTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className={isPartial ? 'text-red-600' : 'text-green-600'}>
+                  {isPartial ? 'Saldo pendiente:' : change > 0 ? 'Cambio:' : 'Diferencia:'}
+                </span>
+                <span className={`font-bold ${isPartial ? 'text-red-600' : change > 0 ? 'text-blue-600' : 'text-green-600'}`}>
+                  {isPartial ? remaining.toFixed(2) : change.toFixed(2)}
+                </span>
               </div>
             </div>
+          </div>
 
-            <div className="flex justify-end items-center gap-3">
-              <button type="button" onClick={onClose} className="px-3 py-1 border rounded">Cancelar</button>
-              <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded">
-                {saving ? "Guardando..." : "Guardar venta"}
-              </button>
+          {/* NUEVO: Checkbox para permitir pagos parciales */}
+          <div className="flex items-center space-x-2 mb-4">
+            <input
+              type="checkbox"
+              id="allowPartialPayment"
+              checked={allowPartialPayment}
+              onChange={(e) => setAllowPartialPayment(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="allowPartialPayment" className="text-sm text-gray-700">
+              Permitir pago parcial (anticipo)
+            </label>
+          </div>
+
+          {/* NUEVO: Warning de pagos */}
+          {paymentWarning && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">{paymentWarning}</p>
+                </div>
+              </div>
             </div>
+          )}
+
+          {/* NUEVO: Indicador visual del tipo de venta */}
+          {allowPartialPayment && isPartial && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Venta con anticipo:</strong> Se registrará un saldo pendiente de {remaining.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end items-center gap-3">
+            <button type="button" onClick={onClose} className="px-3 py-1 border rounded">Cancelar</button>
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded">
+              {saving ? "Guardando..." : "Guardar venta"}
+            </button>
           </div>
         </form>
       </div>
