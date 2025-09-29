@@ -5,22 +5,49 @@ const prisma = new PrismaClient();
 
 export const SaleRepository = {
   async create(payload: any) {
-    // payload must contain: sellerId, clientId?, total, createdBy?, items[], payments[], cashBoxId?
+    // ACTUALIZADO: Incluir los nuevos campos
     return prisma.sale.create({
       data: {
         sellerId: payload.sellerId,
         clientId: payload.clientId ?? undefined,
         total: payload.total,
+        totalPaid: payload.totalPaid ?? 0, // NUEVO
+        balance: payload.balance ?? payload.total, // NUEVO
+        paymentStatus: payload.paymentStatus ?? PaymentStatus.PENDING, // NUEVO
         createdBy: payload.createdBy ?? undefined,
         cashBoxId: payload.cashBoxId ?? undefined,
         items: { create: payload.items },
         payments: { create: payload.payments },
-        // if you have note etc:
-        //...(payload.note ? { note: payload.note } : {}),
       },
       include: {
-        items: true,
-        payments: { include: { paymentMethod: true } },
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                sku: true
+              }
+            }
+          }
+        },
+        payments: { 
+          include: { 
+            paymentMethod: {
+              select: {
+                name: true,
+                isCash: true
+              }
+            }
+          } 
+        },
+        seller: { // CORREGIDO: Incluir name
+          select: {
+            id: true,
+            name: true,
+            userCode: true
+          }
+        },
+        client: true
       },
     });
   },
@@ -41,7 +68,7 @@ export const SaleRepository = {
     if (sellerId) where.sellerId = sellerId;
     if (cashBoxId !== undefined) where.cashBoxId = Number(cashBoxId);
     if (paymentStatus) {
-      where.paymentStatus = paymentStatus; // Ya es del tipo correcto
+      where.paymentStatus = paymentStatus;
     }
     if (dateFrom || dateTo) {
       where.createdAt = {};
@@ -52,39 +79,151 @@ export const SaleRepository = {
     const skip = Math.max(0, (Math.max(1, page) - 1) * Math.max(1, limit));
     const take = Math.max(1, Math.min(limit, 100));
 
-    const [total, data] = await Promise.all([
-      prisma.sale.count({ where }),
-      prisma.sale.findMany({
-        where,
-        include: { items: { include: { product: true } }, payments: { include: { paymentMethod: true } }, seller: { select: { id: true, userCode: true } }, client: true},
-        orderBy: { createdAt: "desc" },
-        skip,
-        take,
-      }),
-    ]);
+    console.log('SaleRepository.findAll - WHERE:', JSON.stringify(where, null, 2)); // DEBUG
 
-    return { total, data };
+    try {
+      const [total, data] = await Promise.all([
+        prisma.sale.count({ where }),
+        prisma.sale.findMany({
+          where,
+          include: { 
+            items: { 
+              include: { 
+                product: {
+                  select: {
+                    name: true,
+                    sku: true,
+                    salePrice: true
+                  }
+                }
+              } 
+            }, 
+            payments: { 
+              include: { 
+                paymentMethod: {
+                  select: {
+                    name: true,
+                    isCash: true
+                  }
+                }
+              } 
+            }, 
+            seller: { // CORREGIDO: Incluir name
+              select: { 
+                id: true, 
+                name: true,
+                userCode: true 
+              } 
+            }, 
+            client: true
+          },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take,
+        }),
+      ]);
+
+      console.log(`SaleRepository.findAll - Found ${data.length} sales, total: ${total}`); // DEBUG
+      
+      return { total, data };
+    } catch (error) {
+      console.error('SaleRepository.findAll - ERROR:', error); // DEBUG
+      throw error;
+    }
   },
 
   async findById(id: string) {
-    return prisma.sale.findUnique({
-      where: { id },
-      include: {
-        items: { include: { product: true } },
-        payments: { include: { paymentMethod: true } },
-      },
-    });
+    console.log(`SaleRepository.findById - ID: ${id}`); // DEBUG
+    
+    try {
+      const sale = await prisma.sale.findUnique({
+        where: { id },
+        include: {
+          items: { 
+            include: { 
+              product: {
+                select: {
+                  name: true,
+                  sku: true,
+                  salePrice: true
+                }
+              }
+            } 
+          },
+          payments: { 
+            include: { 
+              paymentMethod: {
+                select: {
+                  name: true,
+                  isCash: true
+                }
+              }
+            } 
+          },
+          seller: { // CORREGIDO: Incluir name
+            select: {
+              id: true,
+              name: true,
+              userCode: true
+            }
+          },
+          client: true
+        },
+      });
+
+      console.log(`SaleRepository.findById - Found: ${sale ? 'YES' : 'NO'}`); // DEBUG
+      return sale;
+    } catch (error) {
+      console.error('SaleRepository.findById - ERROR:', error); // DEBUG
+      throw error;
+    }
   },
 
   async findByBox(cashBoxId: number) {
-    return prisma.sale.findMany({
-      where: { cashBoxId: cashBoxId },
-      include: {
-        items: { include: { product: true } },
-        payments: { include: { paymentMethod: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    console.log(`SaleRepository.findByBox - cashBoxId: ${cashBoxId}`); // DEBUG
+    
+    try {
+      const sales = await prisma.sale.findMany({
+        where: { cashBoxId: cashBoxId },
+        include: {
+          items: { 
+            include: { 
+              product: {
+                select: {
+                  name: true,
+                  sku: true
+                }
+              }
+            } 
+          },
+          payments: { 
+            include: { 
+              paymentMethod: {
+                select: {
+                  name: true,
+                  isCash: true
+                }
+              }
+            } 
+          },
+          seller: { // CORREGIDO: Incluir name
+            select: {
+              id: true,
+              name: true,
+              userCode: true
+            }
+          },
+          client: true
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      console.log(`SaleRepository.findByBox - Found ${sales.length} sales`); // DEBUG
+      return sales;
+    } catch (error) {
+      console.error('SaleRepository.findByBox - ERROR:', error); // DEBUG
+      throw error;
+    }
   },
 
   // NUEVO: Método específico para ventas pendientes
@@ -98,52 +237,61 @@ export const SaleRepository = {
       ]
     };
 
-    const [sales, total] = await Promise.all([
-      prisma.sale.findMany({
-        where,
-        include: {
-          client: true,
-          seller: { 
-            select: { 
-              id: true,
-              name: true, 
-              userCode: true 
-            } 
-          },
-          items: { 
-            include: { 
-              product: { 
-                select: { 
-                  name: true, 
-                  sku: true 
-                } 
-              } 
-            } 
-          },
-          payments: { 
-            include: { 
-              paymentMethod: { 
-                select: { 
-                  name: true, 
-                  isCash: true 
-                } 
-              } 
-            } 
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.sale.count({ where })
-    ]);
+    console.log('SaleRepository.findPendingSales - WHERE:', JSON.stringify(where, null, 2)); // DEBUG
 
-    return { 
-      data: sales, 
-      total, 
-      page, 
-      limit,
-      totalPages: Math.ceil(total / limit)
-    };
+    try {
+      const [sales, total] = await Promise.all([
+        prisma.sale.findMany({
+          where,
+          include: {
+            client: true,
+            seller: { 
+              select: { 
+                id: true,
+                name: true, 
+                userCode: true 
+              } 
+            },
+            items: { 
+              include: { 
+                product: { 
+                  select: { 
+                    name: true, 
+                    sku: true 
+                  } 
+                } 
+              } 
+            },
+            payments: { 
+              include: { 
+                paymentMethod: { 
+                  select: { 
+                    name: true, 
+                    isCash: true 
+                  } 
+                } 
+              } 
+            }
+          },
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.sale.count({ where })
+      ]);
+
+      console.log(`SaleRepository.findPendingSales - Found ${sales.length} pending sales`); // DEBUG
+
+      return { 
+        data: sales, 
+        total, 
+        page, 
+        limit,
+        totalPages: Math.ceil(total / limit)
+      };
+    } catch (error) {
+      console.error('SaleRepository.findPendingSales - ERROR:', error); // DEBUG
+      throw error;
+    }
   }
 };

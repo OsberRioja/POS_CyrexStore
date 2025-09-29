@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// ✅ Usa ruta relativa para aprovechar el proxy de Vite
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface CreateSalePayload {
   sellerUserCode?: number;
@@ -15,7 +16,7 @@ interface CreateSalePayload {
     paymentMethodId: number;
     amount: number;
   }>;
-  allowPartialPayment?: boolean; // NUEVO
+  allowPartialPayment?: boolean;
   cashBoxId?: number;
 }
 
@@ -45,21 +46,18 @@ class SaleServiceClass {
     page?: number;
     limit?: number;
     cashBoxId?: number;
-    paymentStatus?: string; // NUEVO: filtrar por estado
+    paymentStatus?: string;
     dateFrom?: string;
     dateTo?: string;
   } = {}) {
-    const queryParams = new URLSearchParams();
+    console.log('SaleService.list called with params:', params);
     
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        queryParams.append(key, value.toString());
-      }
-    });
-
-    const response = await axios.get(`${API_URL}/sales?${queryParams}`, {
+    const response = await axios.get(`${API_URL}/sales`, {
+      params, // Axios maneja los query params automáticamente
       headers: this.getAuthHeaders()
     });
+    
+    console.log('SaleService.list - Response:', response.data);
     return response.data;
   }
 
@@ -70,7 +68,6 @@ class SaleServiceClass {
     return response.data;
   }
 
-  // NUEVO: Completar pago de una venta
   async addPayment(saleId: string, payload: AddPaymentPayload) {
     const response = await axios.post(`${API_URL}/sales/${saleId}/payments`, payload, {
       headers: this.getAuthHeaders()
@@ -78,27 +75,30 @@ class SaleServiceClass {
     return response.data;
   }
 
-  // NUEVO: Obtener ventas pendientes
   async getPendingSales(params: { page?: number; limit?: number } = {}) {
-    const queryParams = new URLSearchParams();
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        queryParams.append(key, value.toString());
-      }
-    });
-
-    const response = await axios.get(`${API_URL}/sales/pending?${queryParams}`, {
+    const response = await axios.get(`${API_URL}/sales/pending`, {
+      params,
       headers: this.getAuthHeaders()
     });
     return response.data;
   }
 
-  async findByBox(cashBoxId: number) {
-    const response = await axios.get(`${API_URL}/sales`, {
-      params: { cashBoxId },
+  // async findByBox(cashBoxId: number) {
+  //   const response = await axios.get(`${API_URL}/sales`, {
+  //     params: { cashBoxId },
+  //     headers: this.getAuthHeaders()
+  //   });
+  //   return response.data;
+  // }
+
+  async debug() {
+    console.log('SaleService.debug - Making debug request');
+    
+    const response = await axios.get(`${API_URL}/sales/debug`, {
       headers: this.getAuthHeaders()
     });
+    
+    console.log('SaleService.debug - Response:', response.data);
     return response.data;
   }
 }

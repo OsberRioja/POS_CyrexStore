@@ -28,9 +28,10 @@ export default function CashboxPage() {
 
   async function loadSales(cashBoxId: number) {
     try {
-      const r = await saleService.listByBox(cashBoxId, _token);
+      const r = await saleService.list({cashBoxId});
       setSales(Array.isArray(r?.data) ? r.data : []);
     } catch {
+      console.error("Error loading sales for cash box", cashBoxId);
       setSales([]);
     }
   }
@@ -117,7 +118,7 @@ export default function CashboxPage() {
 
           {view === "ventas" && (
             <SalesPage
-              sales={sales}
+              sales={sales || []}
               onReload={() => loadSales(openCashbox.id)}
               openCashboxId={openCashbox.id}
               token={_token}

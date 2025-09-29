@@ -4,6 +4,10 @@ import { PaymentStatus } from '@prisma/client';
 import { SaleService } from "../services/sale.service";
 import type { CreateSaleDTO, AddPaymentDTO } from "../dtos/sale.dto";
 import { addPaymentSchema } from '../dtos/sale.dto';
+import { SaleRepository } from "../repositories/sale.repository";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Opción 1: Todo como funciones exportadas individualmente (RECOMENDADO)
 export const create = async (req: Request, res: Response) => {
@@ -178,4 +182,65 @@ export const getPendingSales = async (req: Request, res: Response) => {
       message
     });
   }
+};
+
+// Agregar temporalmente en tu sale.controller.ts
+
+export const debugSales = async (req: Request, res: Response) => {
+  console.log('=== DEBUG SALES ENDPOINT ===');
+  
+  try {
+    // 1. Verificar conexión directa a base de datos
+    const directQuery = await prisma.$queryRaw`
+      SELECT id, total, "totalPaid", balance, "paymentStatus", "createdAt" 
+      FROM "sales" 
+      ORDER BY "createdAt" DESC 
+      LIMIT 3
+    `;
+    console.log('Direct DB query result:', directQuery);
+    
+    // 2. Probar el repository directamente
+    console.log('Testing SaleRepository.findAll...');
+    const repoResult = await SaleRepository.findAll({ page: 1, limit: 10 });
+    console.log('Repository result:', {
+      total: repoResult.total,
+      dataLength: repoResult.data.length,
+      firstSale: repoResult.data[0] ? {
+        id: repoResult.data[0].id,
+        total: repoResult.data[0].total,
+        paymentStatus: (repoResult.data[0] as any).paymentStatus
+      } : null
+    });
+    
+    // 3. Probar el service
+    console.log('Testing SaleService.list...');
+    const serviceResult = await SaleService.list({ page: 1, limit: 10 });
+    console.log('Service result:', {
+      total: serviceResult.total,
+      dataLength: serviceResult.data?.length
+    });
+    
+    res.json({
+      directQuery,
+      repository: {
+        total: repoResult.total,
+        count: repoResult.data.length,
+        sample: repoResult.data.slice(0, 2)
+      },
+      service: {
+        total: serviceResult.total,
+        count: serviceResult.data?.length,
+        sample: serviceResult.data?.slice(0, 2)
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('Debug error:', error);
+    res.status(500).json({ 
+      error: error?.message || 'Error desconocido',
+      stack: error?.stack || 'No stack available'
+    });
+  }
+  
+  console.log('=== DEBUG SALES END ===');
 };

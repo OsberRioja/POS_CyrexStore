@@ -1,15 +1,24 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const BASE = import.meta.env.VITE_API_URL || "/api";
 
 export async function fetchProducts() {
-  const r = await fetch(`${BASE}/products`);
+  const token = localStorage.getItem('token');
+  const r = await fetch(`${BASE}/products`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   if (!r.ok) throw new Error("Error fetching products");
   return r.json();
 }
 
 export async function createProduct(payload: any) {
+  const token = localStorage.getItem('token');
   const r = await fetch(`${BASE}/products`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify(payload)
   });
   const data = await r.json();

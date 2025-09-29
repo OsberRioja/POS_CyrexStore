@@ -145,7 +145,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onViewSale, onAddPayment
         </tbody>
       </table>
 
-      {sales.length === 0 && (
+      {sales?.length === 0 && (
         <div className="text-center py-12 text-gray-500">
           <p className="text-lg mb-4">No hay ventas registradas</p>
         </div>

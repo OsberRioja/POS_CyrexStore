@@ -1,4 +1,3 @@
-//import React from "react";
 import { userService } from "../services/userService";
 
 export default function UserTable({

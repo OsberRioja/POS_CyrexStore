@@ -3,7 +3,6 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-//import router from './routes';
 import { errorHandler } from './middlewares/errorHandler';
 import { prisma } from './prismaClient';
 import clientRoutes from './routes/client.routes';
@@ -17,33 +16,22 @@ import cashBoxRoutes from "./routes/cashbox.routes";
 import salesRoutes from "./routes/sale.routes";
 import expenseRoutes from "./routes/expense.routes";
 
-(async () => {
-  try {
-    await PaymentMethodService.ensureDefaults();
-    console.log("Payment methods defaults ensured");
-  } catch (err) {
-    console.warn("Error ensureDefaults:", err);
-  }
-})();
-
 const app = express();
 
-app.get("/", (req, res) => {
-  res.send("Servidor funcionando 🚀");
-});
-
-app.listen(env.PORT, () => {
-  console.log(`Servidor en modo ${env.NODE_ENV} corriendo en puerto ${env.PORT}`);
-});
-
-app.use(express.json()); // <- necesario para parsear JSON
-
-// middlewares
+// ✅ 1. PRIMERO: Middlewares básicos
+app.use(express.json()); // <- DEBE estar ANTES de las rutas
 app.use(helmet());
 app.use(cors());
 app.use(morgan('dev'));
 
-// prefijo API
+// ✅ 2. SEGUNDO: Rutas
+app.get("/", (req, res) => {
+  res.send("Servidor funcionando 🚀");
+});
+
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Rutas de API
 app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
 app.use("/api/providers", providerRoutes);
@@ -52,37 +40,45 @@ app.use("/api/products", productRoutes);
 app.use("/api/payment-methods", PaymentMethodRoutes);
 app.use("/api/cashbox", cashBoxRoutes);
 app.use('/api/sales', salesRoutes);
-app.use('/api/expenses', expenseRoutes)
+app.use('/api/expenses', expenseRoutes);
 
-// healthcheck
-app.get('/health', (_req, res) => res.json({ ok: true }));
-
-// error handler (al final)
+// ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);
 
-// arrancar servidor
-const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
-  console.log(`Server listening http://localhost:${PORT}/api`);
-});
+// ✅ 4. CUARTO: Inicialización y arranque del servidor
+(async () => {
+  try {
+    await PaymentMethodService.ensureDefaults();
+    console.log("Payment methods defaults ensured");
+  } catch (err) {
+    console.warn("Error ensureDefaults:", err);
+  }
 
-// Graceful shutdown: desconectar Prisma al cerrar el proceso
-const shutdown = async () => {
-  console.log('Shutting down...');
-  await prisma.$disconnect();
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
+  // ✅ 5. QUINTO: Arrancar servidor AL FINAL
+  const PORT = env.PORT || 3000;
+  const server = app.listen(PORT, () => {
+    console.log(`Server listening http://localhost:${PORT}/api`);
+    console.log(`Modo: ${env.NODE_ENV}`);
   });
-};
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception', err);
-  shutdown();
-});
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection', reason);
-  shutdown();
-});
+  // Graceful shutdown
+  const shutdown = async () => {
+    console.log('Shutting down...');
+    await prisma.$disconnect();
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception', err);
+    shutdown();
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection', reason);
+    shutdown();
+  });
+})();
