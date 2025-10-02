@@ -13,6 +13,7 @@ export default function CashboxPage() {
   const _token = token ?? undefined;
 
   const [openCashbox, setOpenCashbox] = useState<any | null>(null);
+  const [selectedCashbox, setSelectedCashbox] = useState<any | null>(null);
   const [cashboxes, setCashboxes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState<string | null>(null);
@@ -78,6 +79,26 @@ export default function CashboxPage() {
     }
   }
 
+  const handleViewDetails = async (box: any) => {
+    setSelectedCashbox(box);
+    setView("ventas"); // Comenzar mostrando ventas
+    try {
+      await Promise.all([
+        loadSales(box.id),
+        loadExpenses(box.id)
+      ]);
+    } catch (error) {
+      console.error("Error loading cashbox details:", error);
+    }
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedCashbox(null);
+    setView(null);
+    setSales([]);
+    setExpenses([]);
+  };
+
   const handleCloseCashbox = async () => {
     if (!openCashbox?.id) return alert("No hay caja abierta.");
     if (!confirm("¿Cerrar caja ahora?")) return;
@@ -86,6 +107,92 @@ export default function CashboxPage() {
   };
 
   if (loading) return <div className="p-6">Cargando caja...</div>;
+
+  if (selectedCashbox) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold">Detalles de Caja #{selectedCashbox.id}</h1>
+            <p className="text-sm text-gray-600">Modo solo lectura</p>
+          </div>
+
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setView("ventas")} 
+              className="px-3 py-2 bg-blue-500 text-white rounded"
+            >
+              Ventas
+            </button>
+            <button 
+              onClick={() => setView("gastos")} 
+              className="px-3 py-2 bg-yellow-600 text-white rounded"
+            >
+              Gastos
+            </button>
+            <button 
+              onClick={() => setView("paymentMethods")} 
+              className="px-3 py-2 bg-indigo-600 text-white rounded"
+            >
+              Métodos de pago
+            </button>
+            <button 
+              onClick={handleCloseDetails} 
+              className="px-3 py-2 bg-gray-600 text-white rounded"
+            >
+              Volver
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-4 p-4 rounded bg-blue-50 border border-blue-200">
+          <div className="font-semibold">Caja cerrada (ID: {selectedCashbox.id})</div>
+          <div className="text-sm text-gray-700">
+            Abierta: {new Date(selectedCashbox.openedAt).toLocaleString('es-BO')}
+          </div>
+          <div className="text-sm text-gray-700">
+            Cerrada: {selectedCashbox.closedAt ? new Date(selectedCashbox.closedAt).toLocaleString('es-BO') : '-'}
+          </div>
+          <div className="text-sm text-gray-700">
+            Inicial: Bs. {selectedCashbox.initialAmount.toFixed(2)}
+          </div>
+          <div className="text-sm text-gray-700">
+            Final: {selectedCashbox.closedAmount ? `Bs. ${selectedCashbox.closedAmount.toFixed(2)}` : '-'}
+          </div>
+        </div>
+
+        {view === "ventas" && (
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">Ventas</h3>
+              {/* Sin botón de "Nuevo" porque es solo lectura */}
+            </div>
+            <SalesPage
+              sales={sales || []}
+              onViewSale={(sale: any) => console.log('Ver venta:', sale)} // Puedes implementar un modal de detalles
+              onAddPayment={() => {}} // Deshabilitado en vista histórica
+            />
+          </div>
+        )}
+
+        {view === "gastos" && (
+          <ExpensesPage
+            expenses={expenses}
+            onReload={() => loadExpenses(selectedCashbox.id)}
+            openCashboxId={null} // null = no se puede agregar gastos
+            token={_token}
+          />
+        )}
+
+        {view === "paymentMethods" && (
+          <PaymentMethodsPage
+            cashBoxId={selectedCashbox.id}
+            onBack={() => setView(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -193,7 +300,7 @@ export default function CashboxPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
-                            onClick={() => {/* TODO: Ver detalles */}}
+                            onClick={() => handleViewDetails(box)}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             Ver detalles
