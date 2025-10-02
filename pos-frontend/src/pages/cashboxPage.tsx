@@ -63,7 +63,13 @@ export default function CashboxPage() {
     }
     try {
       const rList = await cashboxService.list(_token);
-      setCashboxes(Array.isArray(rList?.data) ? rList.data : []);
+      console.log('Raw response:', rList); // DEBUG
+      console.log('Response data:', rList.data); // DEBUG
+
+      // Axios envuelve en .data, y tu backend devuelve { total, data }
+      const boxes = rList.data?.data || rList.data || [];
+      console.log('Boxes to display:', boxes); // DEBUG
+      setCashboxes(Array.isArray(boxes) ? boxes : []);
     } catch {
       setCashboxes([]);
       setWarning("Error cargando historial de cajas.");
@@ -143,7 +149,68 @@ export default function CashboxPage() {
       ) : (
         <div>
           <p className="mb-3">No hay ninguna caja abierta en este momento.</p>
-          {/* historial igual que antes */}
+          
+          {cashboxes.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-4">Historial de Cajas</h2>
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Abierta</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cerrada</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicial</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {cashboxes.map((box: any) => (
+                      <tr key={box.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{box.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {new Date(box.openedAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {box.closedAt ? new Date(box.closedAt).toLocaleString() : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {box.initialAmount.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {box.closedAmount?.toFixed(2) || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            box.status === 'OPEN' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {box.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => {/* TODO: Ver detalles */}}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Ver detalles
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {cashboxes.length === 0 && (
+            <div className="mt-6 text-center text-gray-500">
+              <p>No hay historial de cajas</p>
+            </div>
+          )}
         </div>
       )}
 

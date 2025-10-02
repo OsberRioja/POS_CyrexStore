@@ -53,9 +53,13 @@ export const CashBoxController = {
   },
 
   async list(req: Request, res: Response) {
-    try {
-      const boxes = await CashBoxService.list();
-      return res.json(boxes);
+  try {
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 50;
+    const status = req.query.status as 'OPEN' | 'CLOSED' | undefined;
+
+    const result = await CashBoxService.list({ page, limit, status });
+    return res.json(result);
     } catch (err: any) {
       console.error("GET /cashbox", err);
       return res.status(500).json({ error: "Error interno" });

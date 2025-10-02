@@ -39,9 +39,34 @@ export const CashBoxRepository = {
     return prisma.cashBox.update({ where: { id }, data });
   },
   
+  findMany: async (options: {
+    where?: any;
+    skip?: number;
+    take?: number;
+  }) => {
+    return prisma.cashBox.findMany({
+      where: options.where,
+      skip: options.skip,
+      take: options.take,
+      orderBy: { openedAt: "desc" },
+      include: {
+        openedByUser: {
+          select: { name: true, userCode: true }
+        },
+        closedByUser: {
+          select: { name: true, userCode: true }
+        }
+      }
+    });
+  },
+
+  count: async (where?: any) => {
+    return prisma.cashBox.count({ where });
+  },
+
   list: async (): Promise<CashBox[]> => {
     return prisma.cashBox.findMany({
       orderBy: { openedAt: "desc" },
     });
-  }
+  },
 };

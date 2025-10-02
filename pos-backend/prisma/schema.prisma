@@ -30,6 +30,11 @@ model User {
   createdAt DateTime  @default(now())
   products  Product[]
   Sale      Sale[]
+
+  cashBoxesOpened CashBox[] @relation("CashBoxOpenedBy")
+  cashBoxesClosed CashBox[] @relation("CashBoxClosedBy")
+  
+  @@map("User")
 }
 
 model Cliente {
@@ -102,8 +107,12 @@ model CashBox {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  openedByUser  User?  @relation("CashBoxOpenedBy", fields: [openedBy], references: [id])
+  closedByUser  User?  @relation("CashBoxClosedBy", fields: [closedBy], references: [id])
+
   sales    Sale[]    @relation("box_sales")
   expenses Expense[]
+
 }
 
 enum CashBoxStatus {

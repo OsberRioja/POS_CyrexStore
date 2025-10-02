@@ -92,8 +92,23 @@ export const CashBoxService = {
     return { box, sales, expenses };
   },
 
-  async list() {
-    const boxes = await CashBoxRepository.list();
-    return boxes;
-  } 
+  async list(params?: { page?: number; limit?: number; status?: 'OPEN' | 'CLOSED' }) {
+    const page = params?.page || 1;
+    const limit = params?.limit || 50;
+    const skip = (page - 1) * limit;
+
+    const where = params?.status ? { status: params.status } : {};
+
+    const [boxes, total] = await Promise.all([
+      CashBoxRepository.findMany({ where, skip, take: limit }),
+      CashBoxRepository.count(where)
+    ]);
+
+    return {
+      total,
+      data: boxes,
+      page,
+      limit
+    };
+  }
 };
