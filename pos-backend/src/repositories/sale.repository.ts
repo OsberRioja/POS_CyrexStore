@@ -63,6 +63,8 @@ export const SaleRepository = {
     paymentStatus?: PaymentStatus;
   }) {
     const { page = 1, limit = 20, sellerId, cashBoxId, dateFrom, dateTo, paymentStatus } = opts;
+    //const limit = opts.limit || 20;
+    //const skip=(page - 1) * limit;
     const where: any = {};
 
     if (sellerId) where.sellerId = sellerId;

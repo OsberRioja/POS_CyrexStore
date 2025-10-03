@@ -16,7 +16,7 @@ export default function SaleFormModal({
   onClose,
   onSuccess,
 }: {
-  cashBoxId: number;
+  cashBoxId?: number;
   token?: string;
   onClose: () => void;
   onSuccess: () => void;
