@@ -15,7 +15,7 @@ interface Sale {
 interface SalesTableProps {
   sales: Sale[];
   onViewSale: (sale: Sale) => void;
-  onAddPayment: (sale: Sale) => void;
+  onAddPayment?: (sale: Sale) => void;
 }
 
 const SalesTable: React.FC<SalesTableProps> = ({ sales, onViewSale, onAddPayment }) => {
@@ -129,7 +129,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onViewSale, onAddPayment
                   >
                     <Eye size={16} />
                   </button>
-                  {sale.paymentStatus !== 'PAID' && (
+                  {sale.paymentStatus !== 'PAID' && onAddPayment &&(
                     <button
                       onClick={() => onAddPayment(sale)}
                       className="text-green-600 hover:text-green-900 p-1 rounded"
