@@ -169,8 +169,9 @@ export default function CashboxPage() {
             </div>
             <SalesPage
               sales={sales || []}
-              onViewSale={(sale: any) => console.log('Ver venta:', sale)} // Puedes implementar un modal de detalles
-              onAddPayment={() => {}} // Deshabilitado en vista histórica
+              onReload={() => loadSales(selectedCashbox.id)}
+              openCashboxId={undefined} // null = no se puede agregar ventas
+              token={_token}
             />
           </div>
         )}
