@@ -19,7 +19,7 @@ export default function CashboxPage() {
   const [warning, setWarning] = useState<string | null>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
-  const [view, setView] = useState<"ventas" | "gastos" | "paymentMethods" | null>(null);
+  const [view, setView] = useState<"ventas" | "gastos" | "paymentMethods" | "history" | null>(null);
 
   const [showOpenModal, setShowOpenModal] = useState(false);
 
@@ -107,6 +107,84 @@ export default function CashboxPage() {
   };
 
   if (loading) return <div className="p-6">Cargando caja...</div>;
+
+
+  // Vista de historial de cajas
+  if (view === "history") {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Historial de Cajas</h1>
+          <button 
+            onClick={() => setView(null)} 
+            className="px-3 py-2 bg-gray-600 text-white rounded"
+          >
+            Volver
+          </button>
+        </div>
+
+        {cashboxes.length > 0 ? (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Abierta</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cerrada</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicial</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {cashboxes.map((box: any) => (
+                  <tr key={box.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">#{box.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {new Date(box.openedAt).toLocaleString('es-BO')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {box.closedAt ? new Date(box.closedAt).toLocaleString('es-BO') : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      Bs. {box.initialAmount.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {box.closedAmount ? `Bs. ${box.closedAmount.toFixed(2)}` : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        box.status === 'OPEN' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {box.status === 'OPEN' ? 'Abierta' : 'Cerrada'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => {
+                          handleViewDetails(box);
+                        }}
+                        className="text-blue-600 hover:text-blue-900 font-medium"
+                      >
+                        Ver detalles
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            <p>No hay historial de cajas</p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (selectedCashbox) {
     return (
@@ -217,6 +295,12 @@ export default function CashboxPage() {
               <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-600 text-white rounded">Cerrar</button>
             </>
           )}
+          <button 
+            onClick={() => setView("history")} 
+            className="px-3 py-2 bg-purple-600 text-white rounded"
+          >
+            📋 Historial
+          </button>
         </div>
       </div>
 
@@ -260,7 +344,15 @@ export default function CashboxPage() {
           
           {cashboxes.length > 0 && (
             <div className="mt-6">
+              <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold mb-4">Historial de Cajas</h2>
+              <button 
+                  onClick={() => setView("history")} 
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Ver todas →
+                </button>
+              </div>
               <div className="bg-white rounded-lg shadow overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-50">
