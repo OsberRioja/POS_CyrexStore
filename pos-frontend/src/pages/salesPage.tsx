@@ -2,6 +2,7 @@ import { useState } from "react";
 import SalesTable from "../components/salesTable";
 import SaleFormModal from "../components/SaleModal";
 import SaleDetailsModal from "../components/SaleDetailModal";
+import AddPaymentModal from "../components/AddPaymentModal";
 
 interface SalesPageProps {
   sales: any[];
@@ -32,6 +33,12 @@ export default function SalesPage({ sales, onReload, openCashboxId, token }: Sal
     setShowPaymentModal(true);
   };
 
+  const handlePaymentSuccess = async () => {
+    setShowPaymentModal(false);
+    setSelectedSale(null);
+    await onReload();
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
@@ -49,7 +56,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token }: Sal
       <SalesTable
        sales={sales || []}
        onViewSale={handleViewSale}
-       onAddPayment={openCashboxId ? handleAddPayment : undefined}
+       onAddPayment={handleAddPayment}
       />
 
       {showModal &&   openCashboxId &&(
@@ -68,6 +75,18 @@ export default function SalesPage({ sales, onReload, openCashboxId, token }: Sal
             setShowDetailsModal(false);
             setSelectedSale(null);
           }}
+        />
+      )}
+
+      {showPaymentModal && selectedSale && (
+        <AddPaymentModal
+          sale={selectedSale}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedSale(null);
+          }}
+          onSuccess={handlePaymentSuccess}
+          token={token}
         />
       )}
     </div>

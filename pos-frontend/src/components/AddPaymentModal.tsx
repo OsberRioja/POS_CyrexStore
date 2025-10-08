@@ -22,9 +22,11 @@ interface AddPaymentModalProps {
   sale: Sale;
   onClose: () => void;
   onSuccess: () => void;
+  token?: string;
+  currentCashBoxId?: number; // ID de la caja actual, si está abierta. puede ser undefined si la caja está cerrada
 }
 
-const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ sale, onClose, onSuccess }) => {
+const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ sale, onClose, onSuccess, currentCashBoxId }) => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [selectedMethodId, setSelectedMethodId] = useState<number>(0);
   const [amount, setAmount] = useState<string>('');
@@ -78,13 +80,15 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ sale, onClose, onSucc
     try {
       await saleService.addPayment(sale.id, {
         paymentMethodId: selectedMethodId,
-        amount: paymentAmount
+        amount: paymentAmount,
+        cashBoxId: (selectedMethod?.isCash && currentCashBoxId) ? currentCashBoxId : undefined,
       });
 
       onSuccess();
+      onClose();
     } catch (error: any) {
       console.error('Error adding payment:', error);
-      const errorMessage = error?.response?.data?.message || error.message || 'Error al procesar el pago';
+      const errorMessage = error?.response?.data?.message || error.message || 'Error al registrar el pago';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -120,7 +124,15 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ sale, onClose, onSucc
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
+          <div>
           <h3 className="text-lg font-semibold text-gray-900">Completar Pago</h3>
+          <p className="text-sm text-gray-600">Venta #{sale.id.substring(0, 8)}...</p>
+            {!currentCashBoxId && (
+              <p className="text-xs text-orange-600 mt-1">
+                ⚠️ No hay caja abierta - Solo métodos de pago electrónicos
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500 p-1"
@@ -169,8 +181,9 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ sale, onClose, onSucc
               >
                 <option value={0}>Seleccionar método...</option>
                 {paymentMethods.map((method) => (
-                  <option key={method.id} value={method.id}>
-                    {method.name} {method.isCash ? '(Efectivo)' : '(No efectivo)'}
+                  <option key={method.id} value={method.id} disabled={method.isCash && !currentCashBoxId}> 
+                    {method.name} {method.isCash ? '(Efectivo)' : ''}
+                    {method.isCash && !currentCashBoxId ? ' - No disponible sin caja abierta' : ''}
                   </option>
                 ))}
               </select>
