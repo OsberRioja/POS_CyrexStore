@@ -71,7 +71,7 @@ export default function PaymentMethodsPage({ cashBoxId, onBack }: { cashBoxId?: 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Métodos de pago</h2>
         <div className="flex gap-2">
-          <button onClick={handleCreate} className="px-3 py-1 bg-green-600 text-white rounded">+ Nuevo</button>
+          <button onClick={handleCreate} className="px-3 py-1 bg-blue-500 text-white rounded">+ Nuevo</button>
           {onBack && <button onClick={onBack} className="px-3 py-1 bg-gray-300 rounded">Volver</button>}
         </div>
       </div>

@@ -17,7 +17,7 @@ export default function ExpensesPage({ expenses, onReload, openCashboxId, token 
         {openCashboxId && (
           <button
             onClick={() => setShowModal(true)}
-            className="px-3 py-1 bg-yellow-500 text-white rounded"
+            className="px-3 py-1 bg-blue-500 text-white rounded"
           >
             + Nuevo
           </button>
