@@ -4,4 +4,5 @@ export interface CreatePaymentMethodDTO {
 }
 export interface UpdatePaymentMethodDTO {
   name?: string;
+  isCash?: boolean;
 }

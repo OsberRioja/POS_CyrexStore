@@ -5,7 +5,7 @@ import PaymentMethodForm from "../components/paymentMethodForm";
 import { paymentMethodService } from "../services/paymentMethodService";
 import { useAuth } from "../context/authContext";
 
-export default function PaymentMethodsPage({ cashBoxId, onBack }: { cashBoxId?: number | null; onBack?: () => void }) {
+export default function PaymentMethodsPage({ cashBoxId}: { cashBoxId?: number | null; onBack?: () => void }) {
   const { token } = useAuth();
   const _token = token ?? undefined;
 
@@ -72,7 +72,7 @@ export default function PaymentMethodsPage({ cashBoxId, onBack }: { cashBoxId?: 
         <h2 className="text-xl font-semibold">Métodos de pago</h2>
         <div className="flex gap-2">
           <button onClick={handleCreate} className="px-3 py-1 bg-blue-500 text-white rounded">+ Nuevo</button>
-          {onBack && <button onClick={onBack} className="px-3 py-1 bg-gray-300 rounded">Volver</button>}
+          {/* {onBack && <button onClick={onBack} className="px-3 py-1 bg-gray-300 rounded">Volver</button>} */}
         </div>
       </div>
 

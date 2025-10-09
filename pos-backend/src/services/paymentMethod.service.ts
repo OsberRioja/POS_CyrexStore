@@ -28,7 +28,7 @@ export const PaymentMethodService = {
   async create(dto: CreatePaymentMethodDTO) {
     if (!dto?.name || !dto.name.trim()) throw { status: 400, message: "name es requerido" };
     try {
-      const created = await PaymentMethodRepository.create({ name: dto.name.trim() });
+      const created = await PaymentMethodRepository.create({ name: dto.name.trim(), iscash: dto.isCash ?? false});
       return created;
     } catch (err: any) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -46,7 +46,15 @@ export const PaymentMethodService = {
     if (dto.name && !dto.name.trim()) throw { status: 400, message: "name vacío" };
 
     try {
-      const updated = await PaymentMethodRepository.update(id, { name: dto.name?.trim() });
+      const dataToUpdate: any = {};
+      if (dto.name !== undefined) {
+        dataToUpdate.name = dto.name.trim();
+      }
+      if (dto.isCash !== undefined) { // ✅ Incluir isCash
+        dataToUpdate.isCash = dto.isCash;
+      }
+
+      const updated = await PaymentMethodRepository.update(id, dataToUpdate);
       return updated;
     } catch (err: any) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {

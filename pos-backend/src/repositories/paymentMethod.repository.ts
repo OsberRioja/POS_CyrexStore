@@ -21,11 +21,15 @@ export const PaymentMethodRepository = {
     return prisma.paymentMethod.findUnique({ where: { name } });
   },
 
-  create: async (data: { name: string }): Promise<PaymentMethod> => {
-    return prisma.paymentMethod.create({ data });
+  create: async (data: { name: string; iscash?: boolean }): Promise<PaymentMethod> => {
+    return prisma.paymentMethod.create({ data:{
+      name: data.name,
+      isCash: data.iscash ?? false
+      } 
+    });
   },
 
-  update: async (id: number, data: { name?: string }): Promise<PaymentMethod> => {
+  update: async (id: number, data: { name?: string; iscash?: boolean}): Promise<PaymentMethod> => {
     return prisma.paymentMethod.update({ where: { id }, data });
   },
 
