@@ -87,6 +87,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token }: Sal
           }}
           onSuccess={handlePaymentSuccess}
           token={token}
+          currentCashBoxId={openCashboxId} // ← Pasar la caja actual (puede ser undefined)
         />
       )}
     </div>

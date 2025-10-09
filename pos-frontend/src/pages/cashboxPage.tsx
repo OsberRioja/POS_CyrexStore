@@ -204,19 +204,19 @@ export default function CashboxPage() {
             </button>
             <button 
               onClick={() => setView("gastos")} 
-              className="px-3 py-2 bg-yellow-600 text-white rounded"
+              className="px-3 py-2 bg-blue-500 text-white rounded"
             >
               Gastos
             </button>
             <button 
               onClick={() => setView("paymentMethods")} 
-              className="px-3 py-2 bg-indigo-600 text-white rounded"
+              className="px-3 py-2 bg-blue-500 text-white rounded"
             >
               Métodos de pago
             </button>
             <button 
               onClick={handleCloseDetails} 
-              className="px-3 py-2 bg-gray-600 text-white rounded"
+              className="px-3 py-2 bg-gray-500 text-white rounded"
             >
               Volver
             </button>
@@ -290,9 +290,9 @@ export default function CashboxPage() {
           {openCashbox && (
             <>
               <button onClick={() => setView("ventas")} className="px-3 py-2 bg-blue-500 text-white rounded">Ventas</button>
-              <button onClick={() => setView("gastos")} className="px-3 py-2 bg-yellow-600 text-white rounded">Gastos</button>
-              <button onClick={() => setView("paymentMethods")} className="px-3 py-2 bg-indigo-600 text-white rounded">Métodos de pago</button>
-              <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-600 text-white rounded">Cerrar</button>
+              <button onClick={() => setView("gastos")} className="px-3 py-2 bg-blue-500 text-white rounded">Gastos</button>
+              <button onClick={() => setView("paymentMethods")} className="px-3 py-2 bg-blue-500 text-white rounded">Métodos de pago</button>
+              <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-500 text-white rounded">Cerrar</button>
             </>
           )}
           <button 
