@@ -7,6 +7,7 @@ import { useAuth } from "../context/authContext";
 import SalesPage from "./salesPage";
 import ExpensesPage from "./expensesPage";
 import PaymentMethodsPage from "./paymentMethodPage";
+import CloseCashModal from "../components/CloseCashModal";
 
 export default function CashboxPage() {
   const { token } = useAuth();
@@ -22,6 +23,7 @@ export default function CashboxPage() {
   const [view, setView] = useState<"ventas" | "gastos" | "paymentMethods" | "history" | null>(null);
 
   const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -102,8 +104,18 @@ export default function CashboxPage() {
   const handleCloseCashbox = async () => {
     if (!openCashbox?.id) return alert("No hay caja abierta.");
     if (!confirm("¿Cerrar caja ahora?")) return;
-    await cashboxService.close(openCashbox.id, undefined, _token);
-    await loadAll();
+    setShowCloseModal(true);
+  };
+
+  const handleConfirmClose = async (data: { cashCount: any; notes?: string }) => {
+    try {
+      await cashboxService.close(openCashbox.id, data, _token);
+      setShowCloseModal(false);
+      await loadAll();
+    } catch (error) {
+      console.error('Error closing cashbox:', error);
+      throw error;
+    }
   };
 
   if (loading) return <div className="p-6">Cargando caja...</div>;
@@ -419,6 +431,14 @@ export default function CashboxPage() {
           onClose={() => setShowOpenModal(false)}
           onSuccess={loadAll}
           token={_token}
+        />
+      )}
+
+      {showCloseModal && openCashbox && (
+        <CloseCashModal
+          cashbox={openCashbox}
+          onClose={() => setShowCloseModal(false)}
+          onConfirm={handleConfirmClose}
         />
       )}
     </div>

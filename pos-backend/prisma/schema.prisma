@@ -106,6 +106,8 @@ model CashBox {
   status        CashBoxStatus @default(OPEN)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  cashCount     Json?
+  nostes        String?
 
   openedByUser  User?  @relation("CashBoxOpenedBy", fields: [openedBy], references: [id])
   closedByUser  User?  @relation("CashBoxClosedBy", fields: [closedBy], references: [id])

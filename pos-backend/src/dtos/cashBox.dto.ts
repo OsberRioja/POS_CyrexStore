@@ -4,5 +4,12 @@ export interface OpenCashBoxDTO {
 }
 export interface CloseCashBoxDTO {
   closedBy: string;
-  cashCount?: Record<string, number>; // e.g. { "200": 1, "100": 0, ... }
+  cashCount?: {
+    denominations: { [key: number]: number };
+    total: number;
+    expectedTotal: number;
+    difference: number;
+    timestamp: string;
+  };
+  notes?: string;
 }
