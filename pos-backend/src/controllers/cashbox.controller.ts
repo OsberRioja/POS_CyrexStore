@@ -64,5 +64,17 @@ export const CashBoxController = {
       console.error("GET /cashbox", err);
       return res.status(500).json({ error: "Error interno" });
     }
-  }
+  },
+
+  async getClosePreview(req: Request, res: Response) {
+    try {
+      const boxId = Number(req.params.id);
+      const preview = await CashBoxService.getClosePreview(boxId);
+      return res.json(preview);
+    } catch (err: any) {
+      console.error("GET /cashbox/:id/close-preview", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
+
 };

@@ -10,6 +10,8 @@ router.get("/", authMiddleware, CashBoxController.list);
 router.post("/open", authMiddleware, CashBoxController.open);
 router.get("/open", authMiddleware, CashBoxController.getOpen);
 
+router.get("/:id/close-preview", authMiddleware, CashBoxController.getClosePreview); // ← NUEVO (ANTES de /:id)
+
 router.post("/:id/close", authMiddleware, CashBoxController.close);
 router.get("/:id", authMiddleware, CashBoxController.getById);
 

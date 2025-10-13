@@ -110,5 +110,39 @@ export const CashBoxService = {
       page,
       limit
     };
-  }
+  },
+
+  async getClosePreview(boxId: number) {
+    const box = await CashBoxRepository.findById(boxId);
+    if (!box) throw { status: 404, message: "Caja no encontrada" };
+    if (box.status !== "OPEN") throw { status: 400, message: "La caja ya está cerrada" };
+
+    // Calcular totales (igual que en close pero sin actualizar)
+    const paymentsSum = await prisma.salePayment.aggregate({
+      _sum: { amount: true },
+      where: { cashBoxId: boxId },
+    });
+    const totalCashSales = paymentsSum._sum.amount ?? 0;
+
+    const expensesSum = await prisma.expense.aggregate({
+      _sum: { amount: true },
+      where: {
+        cashBoxId: boxId,
+        paymentMethod: { isCash: true },
+      },
+    });
+    const totalCashExpenses = expensesSum._sum.amount ?? 0;
+
+    const expectedClosedAmount = Number(box.initialAmount) + Number(totalCashSales) - Number(totalCashExpenses);
+
+    return {
+      box,
+      report: {
+        initialAmount: box.initialAmount,
+        totalCashSales,
+        totalCashExpenses,
+        expectedClosedAmount, // ← Este es el valor que necesitas
+      },
+    };
+  },
 };

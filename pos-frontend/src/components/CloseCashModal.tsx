@@ -3,6 +3,7 @@ import { X, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface CloseCashboxModalProps {
   cashbox: any;
+  closePreview: any;
   onClose: () => void;
   onConfirm: (data: { cashCount: any; notes?: string }) => Promise<void>;
 }
@@ -23,10 +24,13 @@ const DENOMINATIONS = [
 ];
 
 const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({ 
-  cashbox, 
+  cashbox,
+  closePreview, 
   onClose, 
   onConfirm 
 }) => {
+  console.log('🔍 Modal - cashbox:', cashbox); // ← LOG
+  console.log('🔍 Modal - closePreview:', closePreview); // ← LOG
   const [step, setStep] = useState<'count' | 'summary'>('count');
   const [counts, setCounts] = useState<{ [key: number]: number }>(
     DENOMINATIONS.reduce((acc, d) => ({ ...acc, [d.value]: 0 }), {})
@@ -40,7 +44,9 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
     0
   );
 
-  const expectedCash = cashbox.closedAmount || 0;
+ const expectedCash = closePreview?.report?.expectedClosedAmount || 0;
+  console.log('🔍 Modal - expectedCash value:', expectedCash);
+  console.log('🔍 Modal - closePreview structure:', closePreview);
   const difference = countedTotal - expectedCash;
   const tolerance = 0.5; // Tolerancia de 0.50 Bs
 

@@ -24,6 +24,7 @@ export default function CashboxPage() {
 
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeData, setCloseData] = useState<any>(null);
 
   useEffect(() => {
     loadAll();
@@ -104,13 +105,26 @@ export default function CashboxPage() {
   const handleCloseCashbox = async () => {
     if (!openCashbox?.id) return alert("No hay caja abierta.");
     if (!confirm("¿Cerrar caja ahora?")) return;
+    try {
+    setLoading(true);
+    const response = await cashboxService.getClosePreview(openCashbox.id, _token);
+    console.log('🔍 Close Preview Response:', response); // ← LOG
+    console.log('🔍 Close Preview Data:', response.data); // ← LOG
+    setCloseData(response.data);
     setShowCloseModal(true);
+  } catch (error) {
+    console.error('Error getting close preview:', error);
+    alert('Error al obtener datos de cierre');
+  } finally {
+    setLoading(false);
+  }
   };
 
   const handleConfirmClose = async (data: { cashCount: any; notes?: string }) => {
     try {
       await cashboxService.close(openCashbox.id, data, _token);
       setShowCloseModal(false);
+      setCloseData(null);
       await loadAll();
     } catch (error) {
       console.error('Error closing cashbox:', error);
@@ -434,11 +448,23 @@ export default function CashboxPage() {
         />
       )}
 
-      {showCloseModal && openCashbox && (
+      {/* {showCloseModal && openCashbox && (
         <CloseCashModal
           cashbox={openCashbox}
           onClose={() => setShowCloseModal(false)}
           onConfirm={handleConfirmClose}
+        />
+      )} */}
+
+      {showCloseModal && openCashbox && closeData && (
+        <CloseCashModal
+        cashbox={openCashbox}
+        closePreview={closeData} // ← Pasar los datos calculados
+        onClose={() => {
+          setShowCloseModal(false);
+          setCloseData(null);
+        }}
+        onConfirm={handleConfirmClose}
         />
       )}
     </div>
