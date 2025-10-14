@@ -33,6 +33,9 @@ model User {
 
   cashBoxesOpened CashBox[] @relation("CashBoxOpenedBy")
   cashBoxesClosed CashBox[] @relation("CashBoxClosedBy")
+
+  stockMovements StockMovement[]
+  priceHistory   PriceHistory[]
   
   @@map("User")
 }
@@ -61,6 +64,7 @@ model Provider {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   Product     Product[]
+  stockMovements StockMovement[]
 }
 
 model Product {
@@ -82,6 +86,8 @@ model Product {
   provider   Provider? @relation(fields: [providerId], references: [id_provider])
 
   saleItems SaleItem[]
+  stockMovements StockMovement[]
+  priceHistory   PriceHistory[]
 }
 
 model PaymentMethod {
@@ -139,6 +145,8 @@ model Sale {
   payments      SalePayment[]
   createdBy     String? // quien registró la venta (si difiere del seller)
 
+  stockMovements StockMovement[]
+
   @@map("sales")
 }
 
@@ -187,4 +195,59 @@ model Expense {
   paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
   createdAt       DateTime      @default(now())
   createdBy       String? // user id
+}
+
+enum MovementType {
+  PURCHASE        // Compra de stock
+  SALE           // Venta (ya lo tienes con SaleItem)
+  REPAIR_OUT     // Envío a reparación
+  DEMO_OUT       // Envío a demo
+  RETURN_IN      // Devolución de venta
+  ADJUSTMENT     // Ajuste manual
+}
+
+model StockMovement {
+  id              Int          @id @default(autoincrement())
+  productId       String       // Producto afectado
+  product         Product      @relation(fields: [productId], references: [id])
+  
+  movementType    MovementType
+  quantity        Int          // Cantidad (positivo = entrada, negativo = salida)
+  previousStock   Int          // Stock antes del movimiento
+  newStock        Int          // Stock después del movimiento
+  
+  // Información adicional según el tipo
+  unitCost        Float?       // Para compras
+  providerId      Int?         // Para compras
+  provider        Provider?    @relation(fields: [providerId], references: [id_provider])
+  
+  saleId          String?      // Para ventas y devoluciones
+  sale            Sale?        @relation(fields: [saleId], references: [id])
+  
+  notes           String?      // Notas adicionales
+  reason          String?      // Razón del movimiento (reparación, demo, etc)
+  
+  createdBy       String       // Usuario que realizó el movimiento
+  user            User         @relation(fields: [createdBy], references: [id])
+  createdAt       DateTime     @default(now())
+  
+  @@map("stock_movements")
+}
+
+model PriceHistory {
+  id          Int      @id @default(autoincrement())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  oldPrice    Float
+  newPrice    Float
+  priceType   String   // "cost" o "sale"
+  
+  changedBy   String
+  user        User     @relation(fields: [changedBy], references: [id])
+  changedAt   DateTime @default(now())
+  
+  notes       String?
+  
+  @@map("price_history")
 }
