@@ -15,6 +15,7 @@ import { PaymentMethodService } from "./services/paymentMethod.service";
 import cashBoxRoutes from "./routes/cashbox.routes";
 import salesRoutes from "./routes/sale.routes";
 import expenseRoutes from "./routes/expense.routes";
+import stockRoutes from "./routes/stock.routes";
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/payment-methods", PaymentMethodRoutes);
 app.use("/api/cashbox", cashBoxRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/stock', stockRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);

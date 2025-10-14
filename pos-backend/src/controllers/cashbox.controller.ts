@@ -69,7 +69,9 @@ export const CashBoxController = {
   async getClosePreview(req: Request, res: Response) {
     try {
       const boxId = Number(req.params.id);
+      console.log('🔍 Getting close preview for box:', boxId); // ← LOG
       const preview = await CashBoxService.getClosePreview(boxId);
+      console.log('🔍 Preview calculated:', preview);
       return res.json(preview);
     } catch (err: any) {
       console.error("GET /cashbox/:id/close-preview", err);

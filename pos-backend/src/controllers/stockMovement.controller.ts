@@ -1,0 +1,263 @@
+import { Request, Response } from "express";
+import { StockMovementService } from "../services/stockMovement.service";
+import { MovementType } from "@prisma/client";
+import { prisma } from "../prismaClient";
+
+export const StockMovementController = {
+  /**
+   * Registrar una compra de stock
+   */
+  async registerPurchase(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { productId, quantity, unitCost, providerId, notes } = req.body;
+
+      if (!productId || !quantity || !unitCost) {
+        return res.status(400).json({ 
+          error: "productId, quantity y unitCost son requeridos" 
+        });
+      }
+
+      const movement = await StockMovementService.registerPurchase(
+        { productId, quantity, unitCost, providerId, notes },
+        userId
+      );
+
+      return res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/purchase:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  /**
+   * Registrar envío a reparación
+   */
+  async registerRepairOut(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { productId, quantity, reason, notes } = req.body;
+
+      if (!productId || !quantity || !reason) {
+        return res.status(400).json({ 
+          error: "productId, quantity y reason son requeridos" 
+        });
+      }
+
+      const movement = await StockMovementService.registerOutbound(
+        { productId, quantity, movementType: 'REPAIR_OUT', reason, notes },
+        userId
+      );
+
+      return res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/repair-out:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  /**
+   * Registrar envío a demo
+   */
+  async registerDemoOut(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { productId, quantity, reason, notes } = req.body;
+
+      if (!productId || !quantity || !reason) {
+        return res.status(400).json({ 
+          error: "productId, quantity y reason son requeridos" 
+        });
+      }
+
+      const movement = await StockMovementService.registerOutbound(
+        { productId, quantity, movementType: 'DEMO_OUT', reason, notes },
+        userId
+      );
+
+      return res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/demo-out:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  /**
+   * Registrar devolución de venta
+   */
+  async registerReturn(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { saleId, items, notes } = req.body;
+
+      if (!saleId || !items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ 
+          error: "saleId y items son requeridos" 
+        });
+      }
+
+      const movements = await StockMovementService.registerReturn(
+        { saleId, items, notes },
+        userId
+      );
+
+      return res.status(201).json(movements);
+    } catch (err: any) {
+      console.error("POST /stock/return:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  /**
+   * Listar movimientos con filtros
+   */
+  async list(req: Request, res: Response) {
+    try {
+      const { productId, movementType, dateFrom, dateTo, page, limit } = req.query;
+
+      const filters: any = {};
+      if (productId) filters.productId = String(productId);
+      if (movementType) filters.movementType = movementType as MovementType;
+      if (dateFrom) filters.dateFrom = String(dateFrom);
+      if (dateTo) filters.dateTo = String(dateTo);
+      if (page) filters.page = Number(page);
+      if (limit) filters.limit = Number(limit);
+
+      const result = await StockMovementService.list(filters);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("GET /stock/movements:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+  /**
+   * Obtener historial de un producto específico
+   */
+  async getProductHistory(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+
+      if (!productId) {
+        return res.status(400).json({ error: "productId es requerido" });
+      }
+
+      const history = await StockMovementService.getProductHistory(productId);
+      return res.json(history);
+    } catch (err: any) {
+      console.error("GET /stock/product/:productId/history:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+  /**
+   * Actualizar precios de un producto
+   */
+  async updatePrices(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { productId } = req.params;
+      const { costPrice, salePrice, notes } = req.body;
+
+      if (!productId) {
+        return res.status(400).json({ error: "productId es requerido" });
+      }
+
+      if (costPrice === undefined && salePrice === undefined) {
+        return res.status(400).json({ 
+          error: "Debe proporcionar al menos costPrice o salePrice" 
+        });
+      }
+
+      const updatedProduct = await StockMovementService.updatePrices(
+        productId,
+        { costPrice, salePrice, notes },
+        userId
+      );
+
+      return res.json(updatedProduct);
+    } catch (err: any) {
+      console.error("PUT /stock/product/:productId/prices:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  /**
+   * Obtener historial de cambios de precio
+   */
+  async getPriceHistory(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+
+      if (!productId) {
+        return res.status(400).json({ error: "productId es requerido" });
+      }
+
+      const history = await StockMovementService.getPriceHistory(productId);
+      return res.json(history);
+    } catch (err: any) {
+      console.error("GET /stock/product/:productId/price-history:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+  /**
+   * Obtener resumen de inventario
+   */
+  async getInventorySummary(req: Request, res: Response) {
+    try {
+      // Productos con bajo stock
+      const lowStockProducts = await prisma.product.findMany({
+        where: {
+          stock: { lte: 5 } // Stock menor o igual a 5
+        },
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          stock: true,
+          salePrice: true
+        },
+        orderBy: { stock: 'asc' }
+      });
+
+      // Productos sin stock
+      const outOfStockProducts = await prisma.product.count({
+        where: { stock: 0 }
+      });
+
+      // Total de productos
+      const totalProducts = await prisma.product.count();
+
+      // Valor total del inventario
+      const inventoryValue = await prisma.product.aggregate({
+        _sum: {
+          costPrice: true
+        }
+      });
+
+      return res.json({
+        summary: {
+          totalProducts,
+          outOfStockCount: outOfStockProducts,
+          lowStockCount: lowStockProducts.length,
+          totalInventoryValue: inventoryValue._sum.costPrice || 0
+        },
+        lowStockProducts
+      });
+    } catch (err: any) {
+      console.error("GET /stock/summary:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  }
+};

@@ -231,6 +231,27 @@ export const SaleService = {
         });
       }
 
+      // ✅ NUEVO: Registrar movimientos de stock por cada item vendido
+      for (const item of itemsData) {
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId }
+        });
+      
+        if (product) {
+          await prisma.stockMovement.create({
+            data: {
+              productId: item.productId,
+              movementType: 'SALE',
+              quantity: -item.quantity, // Negativo porque es una salida
+              previousStock: product.stock + item.quantity, // El stock antes de vender
+              newStock: product.stock, // El stock actual (ya se decrementó)
+              saleId: created.id,
+              createdBy: actorUserId
+            }
+          });
+        }
+      }
+
       return created;
     });
   },
