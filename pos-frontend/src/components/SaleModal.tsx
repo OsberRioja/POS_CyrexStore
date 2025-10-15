@@ -143,8 +143,8 @@ export default function SaleFormModal({
     }
     
     if (paymentsTotal > itemsTotal) {
-      setPaymentWarning(`El total pagado (${paymentsTotal.toFixed(2)}) no puede ser mayor al total de la venta (${itemsTotal.toFixed(2)})`);
-      return false;
+      setPaymentWarning(`Se debe dar cambio de  (${(paymentsTotal-itemsTotal).toFixed(2)}`);
+      return true;
     }
     
     if (paymentsTotal < itemsTotal && !allowPartialPayment) {

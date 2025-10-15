@@ -8,6 +8,7 @@ import ProvidersPage from "./pages/providersPage";
 import HomePage from "./pages/homePage";
 import ProductsPage from "./pages/productPage";
 import CashboxPage from "./pages/cashboxPage";
+import StockPage from "./pages/stockPage";
 
 // Componente principal que maneja la lógica de autenticación
 function MainApp() {
@@ -57,6 +58,7 @@ function MainApp() {
       <main className="flex-1 p-6">
         <div className="bg-white rounded-3xl shadow-sm min-h-[80vh] p-6 border border-gray-200">
           {page === "caja" && <CashboxPage/>}
+          {page === "stock" && <StockPage />}
           {page === "usuarios" && <UsersPage />}
           {page === "clientes" && <ClientsPage />}
           {page === "proveedores" && <ProvidersPage />}

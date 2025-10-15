@@ -29,6 +29,15 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         </button>
 
         <button
+          onClick={() => onSelect("stock")}
+          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            selected === "stock" ? "bg-blue-600" : "bg-gray-500/90"
+          }`}
+        >
+          STOCK
+        </button>
+
+        <button
           onClick={() => onSelect("usuarios")}
           className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
             selected === "usuarios" ? "bg-blue-600" : "bg-gray-500/90"

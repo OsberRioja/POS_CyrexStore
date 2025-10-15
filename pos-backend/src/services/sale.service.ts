@@ -4,6 +4,7 @@ import { SaleRepository } from "../repositories/sale.repository";
 import type { CreateSaleDTO, SaleItemDTO, SalePaymentDTO, AddPaymentDTO } from "../dtos/sale.dto";
 import { CashBoxRepository } from "../repositories/cashBox.repository";
 import { PaymentMethodRepository } from "../repositories/paymentMethod.repository";
+import { METHODS } from "http";
 
 const prisma = new PrismaClient();
 
@@ -96,12 +97,14 @@ export const SaleService = {
         const exists = await tx.cliente.findUnique({ where: { id_cliente: clientId } });
         if (!exists) throw { status: 400, message: `Cliente ${clientId} no existe` };
       } else if (typeof dto.client === "object") {
+
         // Si trae id_cliente en el objeto, usarlo
         if (dto.client.id_cliente || dto.client.id) {
           clientId = Number(dto.client.id_cliente ?? dto.client.id);
           const exists = await tx.cliente.findUnique({ where: { id_cliente: clientId } });
           if (!exists) throw { status: 400, message: `Cliente ${clientId} no existe` };
         } else {
+
           // objeto sin id -> crear solo si trae nombre válido
           const nombre = typeof dto.client.nombre === "string" ? dto.client.nombre.trim() : "";
           if (!nombre) {
@@ -146,10 +149,25 @@ export const SaleService = {
           subtotal,
         });
       }
+      
+      let adjustedPayments = [...paymentsDto];
+      let netCashAmount = totalPaid;
 
-      // NUEVA LÓGICA: Validar pagos vs total calculado
       if (totalPaid > calculatedTotal) {
-        throw { status: 400, message: `El monto pagado (${totalPaid}) no puede ser mayor al total (${calculatedTotal})` };
+        const change = totalPaid - calculatedTotal;
+        netCashAmount = calculatedTotal; // solo se considera hasta el total de la venta
+
+        //buscar pagos en efectivo para ajustarlos
+        const cashPaymentIndex = adjustedPayments.findIndex(async (p) => {
+          const method = await PaymentMethodRepository.findById(p.paymentMethodId);
+          return method && (method as any).isCash;
+        });
+        
+        if (cashPaymentIndex >= 0) {
+          // ajustar el pago en efectivo al monto neto
+          adjustedPayments[cashPaymentIndex].amount = netCashAmount;
+        }
+        
       }
 
       // Si el pago es menor al total, validar que se permita pago parcial
@@ -160,14 +178,11 @@ export const SaleService = {
         };
       }
 
-      // Calcular saldo y estado
-      const balance = calculatedTotal - totalPaid;
-      const paymentStatus = this.calculatePaymentStatus(calculatedTotal, totalPaid);
 
 
       // 2) preparar paymentsData (y verificar métodos)
       const paymentsData: any[] = [];
-      for (const p of paymentsDto) {
+      for (const p of adjustedPayments) {
         const pm = await tx.paymentMethod.findUnique({ where: { id: p.paymentMethodId } });
         if (!pm) throw { status: 404, message: `Método de pago ${p.paymentMethodId} no encontrado` };
         const isCash = !!(pm as any).isCash;
@@ -177,6 +192,9 @@ export const SaleService = {
           cashBoxId: isCash ? openBox.id : undefined,
         });
       }
+      // Calcular saldo y estado
+      const balance = Math.max(0, calculatedTotal - netCashAmount);
+      const paymentStatus = this.calculatePaymentStatus(calculatedTotal, netCashAmount);
 
       // 3) crear venta con nested items y payments
       const created = await tx.sale.create({
@@ -223,35 +241,40 @@ export const SaleService = {
         },
       });
 
-      // 4) decrementar stock
-      for (const it of itemsToCreate) {
-        await tx.product.update({
-          where: { id: it.productId },
-          data: { stock: { decrement: Number(it.quantity) } },
-        });
-      }
-
-      // ✅ NUEVO: Registrar movimientos de stock por cada item vendido
-      for (const item of itemsData) {
-        const product = await prisma.product.findUnique({
-          where: { id: item.productId }
+      // 4) Decrementar stock y registrar movimientos
+      for (const item of itemsToCreate) {
+        // Obtener el stock ANTES de decrementar
+        const productBefore = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true }
         });
       
-        if (product) {
-          await prisma.stockMovement.create({
-            data: {
-              productId: item.productId,
-              movementType: 'SALE',
-              quantity: -item.quantity, // Negativo porque es una salida
-              previousStock: product.stock + item.quantity, // El stock antes de vender
-              newStock: product.stock, // El stock actual (ya se decrementó)
-              saleId: created.id,
-              createdBy: actorUserId
-            }
-          });
+        if (!productBefore) {
+          throw { status: 404, message: `Producto ${item.productId} no encontrado` };
         }
+      
+        const previousStock = productBefore.stock;
+        const newStock = previousStock - item.quantity;
+      
+        // Decrementar el stock
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: Number(item.quantity) } },
+        });
+      
+        // Registrar el movimiento con los valores correctos
+        await tx.stockMovement.create({
+          data: {
+            productId: item.productId,
+            movementType: 'SALE',
+            quantity: -item.quantity, // Negativo porque es una salida
+            previousStock: previousStock,
+            newStock: newStock,
+            saleId: created.id,
+            createdBy: actorUserId
+          }
+        });
       }
-
       return created;
     });
   },

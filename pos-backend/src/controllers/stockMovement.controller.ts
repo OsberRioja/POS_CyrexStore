@@ -219,39 +219,46 @@ export const StockMovementController = {
       // Productos con bajo stock
       const lowStockProducts = await prisma.product.findMany({
         where: {
-          stock: { lte: 5 } // Stock menor o igual a 5
+          stock: { lte: 5 }
         },
         select: {
           id: true,
           sku: true,
           name: true,
           stock: true,
-          salePrice: true
+          salePrice: true,
+          costPrice: true
         },
         orderBy: { stock: 'asc' }
       });
-
+    
       // Productos sin stock
       const outOfStockProducts = await prisma.product.count({
         where: { stock: 0 }
       });
-
+    
       // Total de productos
       const totalProducts = await prisma.product.count();
-
-      // Valor total del inventario
-      const inventoryValue = await prisma.product.aggregate({
-        _sum: {
+    
+      // ✅ Valor total del inventario (stock * costPrice)
+      const allProducts = await prisma.product.findMany({
+        select: {
+          stock: true,
           costPrice: true
         }
       });
-
+    
+      const totalInventoryValue = allProducts.reduce(
+        (sum, product) => sum + (product.stock * product.costPrice),
+        0
+      );
+    
       return res.json({
         summary: {
           totalProducts,
           outOfStockCount: outOfStockProducts,
           lowStockCount: lowStockProducts.length,
-          totalInventoryValue: inventoryValue._sum.costPrice || 0
+          totalInventoryValue
         },
         lowStockProducts
       });
@@ -259,5 +266,5 @@ export const StockMovementController = {
       console.error("GET /stock/summary:", err);
       return res.status(500).json({ error: "Error interno" });
     }
-  }
+  }      
 };

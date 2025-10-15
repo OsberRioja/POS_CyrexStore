@@ -129,7 +129,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onViewSale, onAddPayment
                   >
                     <Eye size={16} />
                   </button>
-                  {sale.paymentStatus !== 'PAID' && onAddPayment &&(
+                  {sale.paymentStatus === 'PENDING' && onAddPayment &&(
                     <button
                       onClick={() => onAddPayment(sale)}
                       className="text-green-600 hover:text-green-900 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
