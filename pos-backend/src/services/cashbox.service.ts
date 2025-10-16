@@ -40,10 +40,9 @@ export const CashBoxService = {
     if (box.status !== "OPEN") throw { status: 400, message: "Caja ya está cerrada" };
 
     // 1) calcular total pagos en efectivo en esta caja
-    // asumimos que SalePayment tiene cashBoxId cuando es efectivo
     const paymentsSum = await prisma.salePayment.aggregate({
       _sum: { amount: true },
-      where: { cashBoxId: boxId },
+      where: { cashBoxId: boxId, paymentMethod: { isCash: true } }, // solo efectivo
     });
     const totalCashSales = paymentsSum._sum.amount ?? 0;
 
@@ -112,37 +111,37 @@ export const CashBoxService = {
     };
   },
 
-  async getClosePreview(boxId: number) {
-    const box = await CashBoxRepository.findById(boxId);
-    if (!box) throw { status: 404, message: "Caja no encontrada" };
-    if (box.status !== "OPEN") throw { status: 400, message: "La caja ya está cerrada" };
+    async getClosePreview(boxId: number) {
+      const box = await CashBoxRepository.findById(boxId);
+      if (!box) throw { status: 404, message: "Caja no encontrada" };
+      if (box.status !== "OPEN") throw { status: 400, message: "La caja ya está cerrada" };
 
-    // Calcular totales (igual que en close pero sin actualizar)
-    const paymentsSum = await prisma.salePayment.aggregate({
-      _sum: { amount: true },
-      where: { cashBoxId: boxId },
-    });
-    const totalCashSales = paymentsSum._sum.amount ?? 0;
+      // Calcular totales - solo efectivo
+      const paymentsSum = await prisma.salePayment.aggregate({
+        _sum: { amount: true },
+        where: { cashBoxId: boxId, paymentMethod: { isCash: true  } }, // solo efectivo
+      });
+      const totalCashSales = paymentsSum._sum.amount ?? 0;
 
-    const expensesSum = await prisma.expense.aggregate({
-      _sum: { amount: true },
-      where: {
-        cashBoxId: boxId,
-        paymentMethod: { isCash: true },
-      },
-    });
-    const totalCashExpenses = expensesSum._sum.amount ?? 0;
+      const expensesSum = await prisma.expense.aggregate({
+        _sum: { amount: true },
+        where: {
+          cashBoxId: boxId,
+          paymentMethod: { isCash: true },
+        },
+      });
+      const totalCashExpenses = expensesSum._sum.amount ?? 0;
 
-    const expectedClosedAmount = Number(box.initialAmount) + Number(totalCashSales) - Number(totalCashExpenses);
+      const expectedClosedAmount = Number(box.initialAmount) + Number(totalCashSales) - Number(totalCashExpenses);
 
-    return {
-      box,
-      report: {
-        initialAmount: box.initialAmount,
-        totalCashSales,
-        totalCashExpenses,
-        expectedClosedAmount, // ← Este es el valor que necesitas
-      },
-    };
-  },
+      return {
+        box,
+        report: {
+          initialAmount: box.initialAmount,
+          totalCashSales,
+          totalCashExpenses,
+          expectedClosedAmount, // ← Este es el valor que necesitas
+        },
+      };
+    },
 };
