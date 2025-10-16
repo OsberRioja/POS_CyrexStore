@@ -6,13 +6,14 @@ import { userService } from "../services/userService";
 import { paymentMethodService } from "../services/paymentMethodService";
 import { saleService } from "../services/saleService";
 import ClientForm from "./ClientForm"; // usamos el formulario completo de cliente
+//import { title } from "process";
 
 type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number };
 type Payment = { paymentMethodId: number; amount: number };
 
 export default function SaleFormModal({
   cashBoxId,
-  token,
+  //token,
   onClose,
   onSuccess,
 }: {
@@ -46,6 +47,9 @@ export default function SaleFormModal({
 
   // UI
   const [saving, setSaving] = useState(false);
+
+  const [showSellerResults, setShowSellerResults] = useState(false);
+  const [showClientResults, setShowClientResults] = useState(false);
 
   // cargar métodos de pago
   useEffect(() => {
@@ -84,6 +88,16 @@ export default function SaleFormModal({
       const q = clientQuery.trim();
       if (!q) {
         setClientsResults([]);
+        setShowClientResults(false);
+        return;
+      }
+
+      // Solo evitar busqueda si el query actual coincide con el cliente seleccionado
+      //Permitir busqueda incluso si hay cliente seleccionado
+      const selectedClientName = clientSelected?.nombre ?? clientSelected?.name ?? "";
+      if (clientSelected && q===selectedClientName) {
+        setClientsResults([]);
+        setShowClientResults(false);
         return;
       }
       try {
@@ -91,9 +105,11 @@ export default function SaleFormModal({
         // backend devuelve { data, total } o array
         const data = Array.isArray(r.data) ? r.data : r.data?.data ?? r.data ?? [];
         setClientsResults(data);
+        setShowClientResults(true);
       } catch (err) {
         console.error(err);
         setClientsResults([]);
+        setShowClientResults(false);
       }
     }, 250);
     return () => clearTimeout(t);
@@ -105,16 +121,28 @@ export default function SaleFormModal({
       const q = sellerQuery.trim();
       if (!q) {
         setSellerResults([]);
+        setShowSellerResults(false);
         return;
       }
+
+      //Permitir busqueda incluso si hay vendedor seleccionado
+      const selectedSellerName = sellerSelected?.name || sellerSelected?.username || '';
+      if (sellerSelected && q === selectedSellerName) {
+        setSellerResults([]);
+        setShowSellerResults(false);
+        return;
+      }
+
       try {
         // userService.getUsers acepta q opcional (ya lo tienes implementado)
         const r = await userService.getUsers(q);
         const data = Array.isArray(r.data) ? r.data : r.data?.data ?? r.data ?? [];
         setSellerResults(data);
+        setShowSellerResults(true);
       } catch (err) {
         console.error("buscar vendedores:", err);
         setSellerResults([]);
+        setShowSellerResults(false);
       }
     }, 250);
     return () => clearTimeout(t);
@@ -163,6 +191,29 @@ export default function SaleFormModal({
     }
   }, [items, payments, allowPartialPayment]);
 
+  //cerrar resultados al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Solo cerrar No fue en:
+      // - input de busqueda
+      // - resultados de busqueda
+      // - botones de limpieza
+      if (!target.closest('input') &&
+          !target.closest('.search-results') &&
+          !target.closest('.clear-button')) {
+      setShowSellerResults(false);
+      setShowClientResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const addProduct = (p: any) => {
     const unit = p.salePrice ?? p.sale_price ?? p.salePrice ?? 0;
     const it: Item = { productId: p.id, name: p.name, qty: 1, unitPrice: Number(unit), subtotal: Number(unit) };
@@ -183,6 +234,20 @@ export default function SaleFormModal({
   const change = Math.max(0, Math.round((paymentsTotal - itemsTotal) * 100) / 100);
   const isPartial = paymentsTotal < itemsTotal;
 
+  // Función para limpiar selección de cliente
+  const clearClientSelection = () => {
+    setClientSelected(null);
+    setClientQuery("");
+    setShowClientResults(false);
+  };
+
+  // Función para limpiar selección de vendedor
+  const clearSellerSelection = () => {
+    setSellerSelected(null);
+    setSellerQuery("");
+    setShowSellerResults(false);
+  };
+
   const searchClients = async (q: string) => {
     setClientQuery(q);
   };
@@ -190,12 +255,14 @@ export default function SaleFormModal({
   const handleClientSelect = (c: any) => {
     setClientSelected(c);
     setClientsResults([]);
+    setShowClientResults(false);
     setClientQuery(c.nombre ?? c.name ?? "");
   };
 
   const handleSellerSelect = (u: any) => {
     setSellerSelected(u);
     setSellerResults([]);
+    setShowSellerResults(false);
     setSellerQuery(u.name ?? u.username ?? `${u.name} (${u.userCode ?? ""})`);
   };
 
@@ -204,6 +271,7 @@ export default function SaleFormModal({
     setClientSelected(createdClient);
     setClientQuery(createdClient.nombre ?? createdClient.name ?? "");
     setShowClientForm(false);
+    setShowClientResults(false);
   };
 
   const handleCreateClientNow = async () => {
@@ -292,20 +360,31 @@ export default function SaleFormModal({
             <div>
               <label className="text-sm">Vendedor (nombre o código)</label>
               <div className="flex gap-2">
-                <input
-                  placeholder="Buscar vendedor por nombre o código"
-                  value={sellerQuery}
-                  onChange={(e) => setSellerQuery(e.target.value)}
-                  className="border p-2 rounded flex-1"
-                />
-                <button type="button" onClick={handleSellerByCode} className="px-3 py-2 bg-gray-800 text-white rounded">
-                  Buscar
-                </button>
+                <div className="flex gap-2 items-center flex-1">
+                  <input
+                    placeholder="Buscar vendedor por nombre o código"
+                    value={sellerQuery}
+                    onChange={(e) => setSellerQuery(e.target.value)}
+                    onFocus={() => clientQuery.trim() && !clientSelected && setShowClientResults(true)}
+                    className="border p-2 rounded flex-1"
+                  />
+                  {sellerSelected && (
+                    <button 
+                      type="button" 
+                      onClick={clearSellerSelection} 
+                      className="px-2 py-1 bg-red-500 text-white rounded text-sm clear-button"
+                      title="Cambiar Vendedor"
+                    >
+                      X
+                    </button>
+                  )}
+                </div>
+                
               </div>
 
-              {/* lista de resultados por nombre */}
-              {sellerResults.length > 0 && (
-                <div className="border rounded mt-1 max-h-32 overflow-auto bg-white z-50">
+              {/* lista de resultados por nombre - solo mostrar cuando showSellerResults es true*/}
+              {showSellerResults && sellerResults.length > 0 && (
+                <div className="border rounded mt-1 max-h-32 overflow-auto bg-white z-50 search-results">
                   {sellerResults.map((u) => (
                     <div
                       key={u.id}
@@ -324,14 +403,24 @@ export default function SaleFormModal({
             {/* CLIENTE */}
             <div>
               <label className="text-sm">Cliente</label>
-              <input
-                placeholder="Buscar cliente..."
-                value={clientQuery}
-                onChange={(e) => searchClients(e.target.value)}
-                className="border p-2 rounded w-full"
-              />
-              {clientsResults.length > 0 && (
-                <div className="border rounded mt-1 max-h-32 overflow-auto bg-white z-50">
+              <div className="flex gap-2 items-center flex-1">
+                <input
+                  placeholder="Buscar clientes"
+                  value={clientQuery}
+                  onChange={(e) => searchClients(e.target.value)}
+                  onFocus={() => clientQuery.trim() && !clientSelected && setShowClientResults(true)}
+                  className="border p-2 rounded flex-1"
+                />
+                {clientSelected && (
+                  <button type="button" onClick={clearClientSelection} className="px-2 py-1 bg-red-500 text-white rounded text-sm clear-button"
+                    title="Cambiar Cliente">
+                    X
+                  </button>
+                )}
+              </div>
+              
+              {showClientResults && clientsResults.length > 0 && (
+                <div className="border rounded mt-1 max-h-32 overflow-auto bg-white z-50 search-results">
                   {clientsResults.map((c: any) => (
                     <div
                       key={c.id_cliente}
