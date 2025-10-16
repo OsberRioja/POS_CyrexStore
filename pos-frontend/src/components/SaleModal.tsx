@@ -279,26 +279,6 @@ export default function SaleFormModal({
     setShowClientForm(true);
   };
 
-  const handleSellerByCode = async () => {
-    if (!sellerQuery) return;
-    // si el usuario escribió sólo el código, buscar por usercode
-    const maybeNum = Number(sellerQuery);
-    if (!Number.isNaN(maybeNum)) {
-      try {
-        const r = await userService.getByUsercode(maybeNum);
-        if (r?.data) {
-          handleSellerSelect(r.data);
-        } else {
-          alert("Vendedor no encontrado por código");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Vendedor no encontrado por código");
-      }
-    } else {
-      // si escribió texto, dejamos que la búsqueda por nombre la haga el efecto
-    }
-  };
 
   const addPayment = (pmId: number, amount: number) => {
     if (!pmId || Number.isNaN(amount) || amount <= 0) return alert("Monto inválido");
