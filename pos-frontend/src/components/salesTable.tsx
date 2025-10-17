@@ -1,7 +1,8 @@
-import React, { useState } from 'react'; // Agregar useState
-import { Eye, Plus, RefreshCw } from 'lucide-react'; // Agregar RefreshCw
+import React, { useEffect, useState } from 'react';
+import { Eye, Plus, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/authContext'; // Importar useAuth para obtener el usuario
-import ReturnModal from './ReturnModal'; // Importar el modal de devolución
+import ReturnModal from './ReturnModal';
+import { returnService } from '../services/returnService';
 
 interface Sale {
   id: string;
@@ -12,6 +13,7 @@ interface Sale {
   createdAt: string;
   seller: { name: string; userCode: number };
   client?: { nombre: string; telefono: string };
+  hasReturn?: boolean;
 }
 
 interface SalesTableProps {
@@ -32,6 +34,45 @@ const SalesTable: React.FC<SalesTableProps> = ({
   // Estados para el modal de devolución
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<any>(null);
+  const [salesWithReturns, setSalesWithReturns] = useState<Set<string>>(new Set());
+
+  //verificar qué ventas tienen devoluciones
+  useEffect(() => {
+    const checkReturs = async () => {
+      const returnsMap = new Set<string>();
+
+      //solo verificar para ventas que no tienen el campo hasReturn como true
+      const salesToCheck = sales.filter(sale => sale.hasReturn === undefined);
+      for (const sale of salesToCheck) {
+        try {
+          const returns = await returnService.list({ saleId: sale.id });
+          if (returns.data && returns.data.length > 0) {
+             const validReturn = returns.data.find((r: any) => 
+              r.status !== 'REJECTED'
+            );
+            if (validReturn) {
+              returnsMap.add(sale.id);
+            }
+          }
+        }catch (error) {
+          console.error(`Error checking returns for sale ${sale.id}:`, error);
+        }
+      }
+      setSalesWithReturns(returnsMap);
+    };
+    if (sales && sales.length > 0) {
+      checkReturs();
+    }
+  }, [sales]);
+
+  //Determinar si una venta puede tener devolución
+  const canReturnSale = (sale: Sale) => {
+    //Si la venta ya tiene el campo hasReturn usarlo
+    if (sale.hasReturn === true) return false;
+
+    //si no, verificar en nuestro estado local
+    return !salesWithReturns.has(sale.id);
+  };
 
   const handleReturn = (sale: any) => {
     setSelectedSaleForReturn(sale);
@@ -161,7 +202,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     )}
 
                     {/* Botón de devolución - solo para ADMIN y SUPERVISOR */}
-                    {(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
+                    {(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') &&  canReturnSale(sale) &&(
                       <button
                         onClick={() => handleReturn(sale)}
                         className="text-orange-600 hover:text-orange-900 p-1 rounded"
@@ -169,6 +210,15 @@ const SalesTable: React.FC<SalesTableProps> = ({
                       >
                         <RefreshCw size={16} />
                       </button>
+                    )}
+                    {/* Indicador de que ya tiene devolución */}
+                    {(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && !canReturnSale(sale) && (
+                      <span 
+                        className="text-gray-400 p-1 cursor-not-allowed"
+                        title="Esta venta ya tiene una devolución registrada"
+                      >
+                        <RefreshCw size={16} />
+                      </span>
                     )}
                   </div>
                 </td>
@@ -193,6 +243,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
             setSelectedSaleForReturn(null);
           }}
           onSuccess={() => {
+            setSalesWithReturns(prev => new Set(prev.add(selectedSaleForReturn.id)));
             // Recargar datos si es necesario
             if (onReload) onReload();
             setShowReturnModal(false);

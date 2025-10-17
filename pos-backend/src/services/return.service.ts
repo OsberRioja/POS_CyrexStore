@@ -23,6 +23,22 @@ export const ReturnService = {
       throw { status: 404, message: "Venta no encontrada" };
     }
 
+    //Verificar si ya existe una devolución para esta venta
+    const existingReturn = await prisma.return.findFirst({
+      where: {
+        saleId: dto.saleId,
+        status: {
+          in: ['PENDING', 'APPROVED', 'COMPLETED'] // no se incluye REJECTED
+        }
+      }
+    });
+
+    if (existingReturn) {
+      throw {
+        status: 400,
+        message: "Esta venta ya tiene una devolución registrada (ID: ${existingReturn.id}). No se permiten múltiples devoluciones por venta." };
+    }
+
     // Validar política de días
     const saleDate = new Date(sale.createdAt);
     const now = new Date();
