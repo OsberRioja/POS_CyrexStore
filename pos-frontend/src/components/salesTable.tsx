@@ -1,5 +1,7 @@
-import React from 'react';
-import { Eye, Plus } from 'lucide-react';
+import React, { useState } from 'react'; // Agregar useState
+import { Eye, Plus, RefreshCw } from 'lucide-react'; // Agregar RefreshCw
+import { useAuth } from '../context/authContext'; // Importar useAuth para obtener el usuario
+import ReturnModal from './ReturnModal'; // Importar el modal de devolución
 
 interface Sale {
   id: string;
@@ -16,9 +18,26 @@ interface SalesTableProps {
   sales: Sale[];
   onViewSale: (sale: Sale) => void;
   onAddPayment?: (sale: Sale) => void;
+  onReload?: () => void; // Agregar onReload para recargar después de una devolución
 }
 
-const SalesTable: React.FC<SalesTableProps> = ({ sales, onViewSale, onAddPayment }) => {
+const SalesTable: React.FC<SalesTableProps> = ({ 
+  sales, 
+  onViewSale, 
+  onAddPayment, 
+  onReload // Recibir onReload como prop
+}) => {
+  const { user } = useAuth(); // Obtener el usuario del contexto de autenticación
+
+  // Estados para el modal de devolución
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<any>(null);
+
+  const handleReturn = (sale: any) => {
+    setSelectedSaleForReturn(sale);
+    setShowReturnModal(true);
+  };
+
   const getPaymentStatusBadge = (status: string) => {
     const badges = {
       PAID: <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Pagado</span>,
@@ -49,109 +68,139 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onViewSale, onAddPayment
   };
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <table className="w-full">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Fecha
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Cliente
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Total
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Pagado
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Saldo
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Estado
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Vendedor
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Acciones
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {sales.map((sale) => (
-            <tr 
-              key={sale.id} 
-              className={`hover:bg-gray-50 ${
-                sale.paymentStatus !== 'PAID' ? 'bg-red-25 border-l-4 border-red-400' : ''
-              }`}
-            >
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {formatDate(sale.createdAt)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div>
-                  <div className="font-medium">{sale.client?.nombre || 'Cliente General'}</div>
-                  {sale.client?.telefono && (
-                    <div className="text-gray-500 text-xs">{sale.client.telefono}</div>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                {formatCurrency(sale.total)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <span className={sale.totalPaid < sale.total ? 'text-orange-600' : 'text-green-600'}>
-                  {formatCurrency(sale.totalPaid)}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                <span className={`font-semibold ${sale.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatCurrency(sale.balance)}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {getPaymentStatusBadge(sale.paymentStatus)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <div>
-                  <div className="font-medium">{sale.seller?.name}</div>
-                  <div className="text-gray-500 text-xs">#{sale.seller?.userCode}</div>
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onViewSale(sale)}
-                    className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                    title="Ver detalles"
-                  >
-                    <Eye size={16} />
-                  </button>
-                  {sale.paymentStatus === 'PARTIAL' && onAddPayment &&(
-                    <button
-                      onClick={() => onAddPayment(sale)}
-                      className="text-green-600 hover:text-green-900 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={!onAddPayment}
-                      title="Completar pago"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  )}
-                </div>
-              </td>
+    <>
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fecha
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Cliente
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Pagado
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Saldo
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Estado
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Vendedor
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Acciones
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {sales.map((sale) => (
+              <tr 
+                key={sale.id} 
+                className={`hover:bg-gray-50 ${
+                  sale.paymentStatus !== 'PAID' ? 'bg-red-25 border-l-4 border-red-400' : ''
+                }`}
+              >
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {formatDate(sale.createdAt)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <div>
+                    <div className="font-medium">{sale.client?.nombre || 'Cliente General'}</div>
+                    {sale.client?.telefono && (
+                      <div className="text-gray-500 text-xs">{sale.client.telefono}</div>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                  {formatCurrency(sale.total)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span className={sale.totalPaid < sale.total ? 'text-orange-600' : 'text-green-600'}>
+                    {formatCurrency(sale.totalPaid)}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span className={`font-semibold ${sale.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(sale.balance)}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {getPaymentStatusBadge(sale.paymentStatus)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <div>
+                    <div className="font-medium">{sale.seller?.name}</div>
+                    <div className="text-gray-500 text-xs">#{sale.seller?.userCode}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onViewSale(sale)}
+                      className="text-blue-600 hover:text-blue-900 p-1 rounded"
+                      title="Ver detalles"
+                    >
+                      <Eye size={16} />
+                    </button>
+                    {sale.paymentStatus === 'PARTIAL' && onAddPayment &&(
+                      <button
+                        onClick={() => onAddPayment(sale)}
+                        className="text-green-600 hover:text-green-900 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!onAddPayment}
+                        title="Completar pago"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    )}
 
-      {sales?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <p className="text-lg mb-4">No hay ventas registradas</p>
-        </div>
+                    {/* Botón de devolución - solo para ADMIN y SUPERVISOR */}
+                    {(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
+                      <button
+                        onClick={() => handleReturn(sale)}
+                        className="text-orange-600 hover:text-orange-900 p-1 rounded"
+                        title="Devolución"
+                      >
+                        <RefreshCw size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {sales?.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg mb-4">No hay ventas registradas</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Devolución - Colocado fuera de la tabla pero dentro del componente */}
+      {showReturnModal && selectedSaleForReturn && (
+        <ReturnModal
+          saleId={selectedSaleForReturn.id}
+          onClose={() => {
+            setShowReturnModal(false);
+            setSelectedSaleForReturn(null);
+          }}
+          onSuccess={() => {
+            // Recargar datos si es necesario
+            if (onReload) onReload();
+            setShowReturnModal(false);
+            setSelectedSaleForReturn(null);
+          }}
+        />
       )}
-    </div>
+    </>
   );
 };
 
