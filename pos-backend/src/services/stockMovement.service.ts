@@ -202,7 +202,10 @@ export const StockMovementService = {
    * Historial de un producto específico
    */
   async getProductHistory(productId: string) {
-    return StockMovementRepository.getProductHistory(productId);
+    console.log(`🔍 Buscando historial para producto: ${productId}`);
+    const movements = await StockMovementRepository.getProductHistory(productId);
+    console.log(`📦 Movimientos encontrados: ${movements.length}`);
+    return { data: movements }; // ← Asegurar que devuelve { data: [...] }
   },
 
   /**

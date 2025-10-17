@@ -144,17 +144,18 @@ export const StockMovementController = {
    */
   async getProductHistory(req: Request, res: Response) {
     try {
-      const { productId } = req.params;
-
-      if (!productId) {
-        return res.status(400).json({ error: "productId es requerido" });
-      }
-
+      const productId = req.params.productId;
       const history = await StockMovementService.getProductHistory(productId);
-      return res.json(history);
+      res.json(history);
+
+      // if (!productId) {
+      //   return res.status(400).json({ error: "productId es requerido" });
+      // }
+
+      
     } catch (err: any) {
       console.error("GET /stock/product/:productId/history:", err);
-      return res.status(500).json({ error: "Error interno" });
+      res.status(500).json({ error: "Error interno" });
     }
   },
 

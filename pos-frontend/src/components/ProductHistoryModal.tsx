@@ -25,8 +25,12 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
         stockService.getProductHistory(product.id),
         stockService.getPriceHistory(product.id)
       ]);
-      setMovements(movementsRes.data || []);
-      setPriceHistory(pricesRes.data || []);
+
+      console.log('📊 Respuesta movimientos:', movementsRes);
+      console.log('💰 Respuesta precios:', pricesRes);
+
+      setMovements(movementsRes.data?.data || []);
+      setPriceHistory(pricesRes.data?.data || []);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {

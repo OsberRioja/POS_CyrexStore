@@ -89,8 +89,21 @@ export const StockMovementRepository = {
         },
         user: {
           select: { name: true, userCode: true }
+        },
+        sale: {
+          select: { id: true,
+          client: {
+            select: { nombre: true }
+          }
+        }
+      },
+      return: {
+        select: {
+          id: true,
+          reason: true
         }
       }
+    }
     });
   }
 };
