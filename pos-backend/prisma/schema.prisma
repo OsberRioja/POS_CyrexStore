@@ -23,6 +23,7 @@ model User {
   approvedReturns Return[]        @relation("ApprovedReturns")
   Sale            Sale[]
   stockMovements  StockMovement[]
+  preference UserPreference?
 
   @@map("User")
 }
@@ -269,4 +270,38 @@ enum ReturnStatus {
   APPROVED
   REJECTED
   COMPLETED
+}
+
+model ExchangeRate {
+  id            Int      @id @default(autoincrement())
+  fromCurrency  String   // "USD", "BOB", "CNY"
+  toCurrency    String   // "BOB", "USD", "CNY"
+  
+  rate          Float    // Tasa actual a usar
+  source        String   // "API" | "MANUAL" | "PARALLEL"
+  
+  apiRate       Float?   // Tasa de la API (oficial)
+  manualRate    Float?   // Tasa manual (paralelo)
+  useManual     Boolean  @default(false)
+  
+  lastUpdated   DateTime @default(now())
+  updatedBy     String?  // Usuario que actualizó manualmente
+  
+  notes         String?
+  
+  @@unique([fromCurrency, toCurrency])
+  @@map("exchange_rates")
+}
+
+model UserPreference {
+  id                Int      @id @default(autoincrement())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  
+  preferredCurrency String   @default("BOB") // BOB, USD, CNY
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("user_preferences")
 }
