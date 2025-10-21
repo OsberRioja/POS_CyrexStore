@@ -17,6 +17,9 @@ import salesRoutes from "./routes/sale.routes";
 import expenseRoutes from "./routes/expense.routes";
 import stockRoutes from "./routes/stock.routes";
 import returnRoutes from "./routes/return.routes";
+import exchangeRateRoutes from './routes/exchangeRate.routes';
+import userPreferenceRoutes from './routes/userPreference.routes';
+import { startExchangeRateCron, initializeExchangeRates } from './jobs/updateExchangeRates';
 
 const app = express();
 
@@ -45,6 +48,8 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/returns', returnRoutes);
+app.use('/api/exchange-rates', exchangeRateRoutes);
+app.use('/api/user-preferences', userPreferenceRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);
@@ -54,8 +59,10 @@ app.use(errorHandler);
   try {
     await PaymentMethodService.ensureDefaults();
     console.log("Payment methods defaults ensured");
+    await initializeExchangeRates();
+    startExchangeRateCron();
   } catch (err) {
-    console.warn("Error ensureDefaults:", err);
+    console.warn("Error en Inicializacion:", err);
   }
 
   // ✅ 5. QUINTO: Arrancar servidor AL FINAL
