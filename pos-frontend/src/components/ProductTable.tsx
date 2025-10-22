@@ -1,5 +1,6 @@
 // src/components/ProductTable.tsx
 import { productService } from "../services/productService";
+import FormattedPrice from "./FormattedPrice";
 
 export default function ProductTable({
   products,
@@ -49,8 +50,22 @@ export default function ProductTable({
               <td className="p-3 border">{p.sku}</td>
               <td className="p-3 border">{p.name}</td>
               <td className="p-3 border">{p.description}</td>
-              <td className="p-3 border">{p.salePrice} Bs</td>
-              <td className="p-3 border">{p.costPrice} Bs</td>
+              <td className="px-6 py-4 text-right">
+                <FormattedPrice
+                  amount={p.salePrice}
+                  fromCurrency="BOB"
+                  className="font-semibold"
+                  showOriginal={true}
+                />
+              </td>
+              <td className="px-6 py-4 text-right">
+                <FormattedPrice
+                  amount={p.costPrice}
+                  fromCurrency="BOB"
+                  className="font-semibold"
+                  showOriginal={true}
+                />
+              </td>
               <td className="p-3 border">{p.stock}</td>
               <td className="p-3 border">{p.user?.name ?? p.user?.email ?? "-"}</td>
               <td className="p-3 border">{p.provider?.name ?? "-"}</td>

@@ -3,6 +3,7 @@ import { Eye, Plus, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/authContext'; // Importar useAuth para obtener el usuario
 import ReturnModal from './ReturnModal';
 import { returnService } from '../services/returnService';
+import FormattedPrice from './FormattedPrice';
 
 interface Sale {
   id: string;
@@ -159,8 +160,12 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                  {formatCurrency(sale.total)}
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <FormattedPrice
+                    amount={sale.total}
+                    fromCurrency="BOB"
+                    className="font-semibold text-gray-900"
+                  />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <span className={sale.totalPaid < sale.total ? 'text-orange-600' : 'text-green-600'}>

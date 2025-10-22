@@ -7,6 +7,7 @@ import { paymentMethodService } from "../services/paymentMethodService";
 import { saleService } from "../services/saleService";
 import ClientForm from "./ClientForm"; // usamos el formulario completo de cliente
 //import { title } from "process";
+import { useCurrency } from "../context/currencyContext";
 
 type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number };
 type Payment = { paymentMethodId: number; amount: number };
@@ -22,6 +23,8 @@ export default function SaleFormModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { formatCurrency } = useCurrency(); // ← NUEVO
+  //const [total, setTotal] = useState(0);
   const [queryProduct, setQueryProduct] = useState("");
   const [productResults, setProductResults] = useState<any[]>([]);
   const [items, setItems] = useState<Item[]>([]);

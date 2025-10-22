@@ -17,6 +17,7 @@ import PurchaseStockModal from '../components/PurchaseStockModal';
 import OutboundStockModal from '../components/OutboundStockModal';
 import UpdatePricesModal from '../components/UpdatePricesModal';
 import ProductHistoryModal from '../components/ProductHistoryModal';
+import FormattedPrice from '../components/FormattedPrice';
 import axios from 'axios';
 
 type ViewType = 'movements' | 'products';
@@ -205,9 +206,11 @@ export default function StockPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Valor Inventario</p>
-                <p className="text-2xl font-bold text-green-600">
-                  Bs. {summary.summary.totalInventoryValue.toFixed(2)}
-                </p>
+                <FormattedPrice 
+                  amount={summary.summary.totalInventoryValue} 
+                  fromCurrency="BOB"
+                  className="text-2xl font-bold text-green-600"
+                />
               </div>
               <DollarSign size={40} className="text-green-500" />
             </div>
