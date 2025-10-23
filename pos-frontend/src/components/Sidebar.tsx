@@ -108,7 +108,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
       </div>
 
       {/* línea vertical separadora */}
-      <div className="absolute left-40 top-6 bottom-6 w-px bg-gray-300" />
+      <div className="absolute left-40 inset-y-0 my-auto h-3/4 w-px bg-gray-300" />
     </aside>
   );
 }
