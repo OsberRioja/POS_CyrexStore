@@ -267,5 +267,77 @@ export const StockMovementController = {
       console.error("GET /stock/summary:", err);
       return res.status(500).json({ error: "Error interno" });
     }
-  }      
+  },
+  
+  /**
+    * Obtener reparaciones activas
+  */
+  async getActiveRepairs(req: Request, res: Response) {
+    try {
+      const repairs = await StockMovementService.getActiveRepairs();
+      res.json(repairs);
+    } catch (err: any) {
+      console.error("GET /stock/active-repairs:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+  /**
+    * Obtener demos activas
+  */
+  async getActiveDemos(req: Request, res: Response) {
+    try {
+      const demos = await StockMovementService.getActiveDemos();
+      res.json(demos);
+    } catch (err: any) {
+      console.error("GET /stock/active-demos:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+  /**
+    * Finalizar reparación
+  */
+
+  async completeRepair(req: Request, res: Response) {
+    try {
+      const { movementId } = req.params;
+      const { notes, resolution } = req.body;
+      const userId = (req as any).userId;
+      const movement = await StockMovementService.completeRepair(
+        parseInt(movementId),
+        { notes, resolution },
+        userId
+      );
+      res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/complete-repair/:movementId:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  /**
+    * Finalizar demo
+  */
+
+  async completeDemo(req: Request, res: Response) {
+    try {
+      const { movementId } = req.params;
+      const { notes, resolution } = req.body;
+      const userId = (req as any).userId;
+      const movement = await StockMovementService.completeDemo(
+        parseInt(movementId),
+        { notes, resolution },
+        userId
+      );
+      res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/complete-demo/:movementId:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  }
 };

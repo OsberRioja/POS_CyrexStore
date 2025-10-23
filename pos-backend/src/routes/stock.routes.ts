@@ -41,4 +41,18 @@ router.get('/product/:productId/price-history', StockMovementController.getPrice
 // Obtener resumen general del inventario
 router.get('/summary', StockMovementController.getInventorySummary);
 
+// ========== REPARACIONES Y DEMOS ACTIVAS ==========
+
+// Obtener reparaciones activas
+router.get('/active-repairs', StockMovementController.getActiveRepairs);
+
+// Obtener demos activas  
+router.get('/active-demos', StockMovementController.getActiveDemos);
+
+// Finalizar reparación
+router.post('/repair/:movementId/complete', StockMovementController.completeRepair);
+
+// Finalizar demo
+router.post('/demo/:movementId/complete', StockMovementController.completeDemo);
+
 export default router;

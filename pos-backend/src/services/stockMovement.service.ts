@@ -275,5 +275,180 @@ export const StockMovementService = {
    */
   async getPriceHistory(productId: string) {
     return PriceHistoryRepository.findByProduct(productId);
+  },
+
+  /**
+    * Obtener reparaciones activas
+    */
+  async getActiveRepairs() {
+    const repairReturns = await prisma.stockMovement.findMany({
+      where: { movementType: 'REPAIR_RETURN' },
+      select: { id: true }
+    });
+
+    const repairReturnsIds = repairReturns.map(r => r.id);
+
+    return prisma.stockMovement.findMany({
+      where: {
+        movementType: 'REPAIR_OUT',
+        ...(repairReturnsIds.length > 0 &&{
+          NOT: {
+            id: { in: repairReturnsIds }
+          }
+        })
+      },
+      include: {
+        product: {
+          select: { id: true, name: true, sku: true, stock: true }
+        },
+        user: {
+          select: { name: true, userCode: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  },
+
+  /**
+    * Obtener demos activas
+  */
+  async getActiveDemos() {
+    const demoReturns = await prisma.stockMovement.findMany({
+      where: { movementType: 'DEMO_RETURN' },
+      select: { id: true }
+    });
+
+    const demoReturnsIds = demoReturns.map(r => r.id);
+
+    return prisma.stockMovement.findMany({
+      where: {
+        movementType: 'DEMO_OUT',
+        ...(demoReturnsIds.length > 0 && {
+          NOT: {
+            id: { in: demoReturnsIds }
+          }
+        })
+      },
+      include: {
+        product: {
+          select: { id: true, name: true, sku: true, stock: true }
+        },
+        user: {
+          select: { name: true, userCode: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  },
+
+  /**
+    * Finalizar reparación - Retornar producto al stock
+  */
+  async completeRepair(repairMovementId: number, data: {
+    notes?: string;
+    resolution?: string;
+    }, userId: string) {
+    return prisma.$transaction(async (tx) => {
+      // Obtener el movimiento de reparación original
+      const repairMovement = await tx.stockMovement.findUnique({
+        where: { id: repairMovementId },
+        include: { product: true }
+      });
+
+      if (!repairMovement) {
+        throw { status: 404, message: "Movimiento de reparación no encontrado" };
+      }
+
+      if (repairMovement.movementType !== 'REPAIR_OUT') {
+        throw { status: 400, message: "El movimiento no es de tipo REPAIR_OUT" };
+      }
+
+      const product = repairMovement.product;
+      const quantity = Math.abs(repairMovement.quantity); // La cantidad es negativa en REPAIR_OUT
+
+      const previousStock = product.stock;
+      const newStock = previousStock + quantity;
+
+      // Actualizar stock del producto
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stock: newStock }
+      });
+
+      // Registrar el movimiento de retorno
+      const returnMovement = await tx.stockMovement.create({
+        data: {
+          productId: product.id,
+          movementType: 'REPAIR_RETURN',
+          quantity: quantity, // Positivo para retorno
+          previousStock,
+          newStock,
+          notes: data.notes,
+          reason: data.resolution || 'Reparación completada',
+          createdBy: userId
+        },
+        include: {
+          product: { select: { name: true, sku: true } },
+          user: { select: { name: true } }
+        }
+      });
+
+      return returnMovement;
+    });
+  },
+  /**
+    * Finalizar demo - Retornar producto al stock
+  */
+  async completeDemo(demoMovementId: number, data: {
+    notes?: string;
+    resolution?: string;
+  }, userId: string) {
+    return prisma.$transaction(async (tx) => {
+      // Obtener el movimiento de demo original
+      const demoMovement = await tx.stockMovement.findUnique({
+        where: { id: demoMovementId },
+        include: { product: true }
+      });
+
+      if (!demoMovement) {
+        throw { status: 404, message: "Movimiento de demo no encontrado" };
+      }
+
+      if (demoMovement.movementType !== 'DEMO_OUT') {
+        throw { status: 400, message: "El movimiento no es de tipo DEMO_OUT" };
+      }
+
+      const product = demoMovement.product;
+      const quantity = Math.abs(demoMovement.quantity);
+
+      const previousStock = product.stock;
+      const newStock = previousStock + quantity;
+
+      // Actualizar stock del producto
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stock: newStock }
+      });
+
+      // Registrar el movimiento de retorno
+      const returnMovement = await tx.stockMovement.create({
+        data: {
+          productId: product.id,
+          movementType: 'DEMO_RETURN',
+          quantity: quantity,
+          previousStock,
+          newStock,
+          notes: data.notes,
+          reason: data.resolution || 'Demo completada',
+          createdBy: userId
+        },
+        include: {
+          product: { select: { name: true, sku: true } },
+          user: { select: { name: true } }
+        }
+      });
+
+      return returnMovement;
+    });
   }
 };
