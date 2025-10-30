@@ -281,22 +281,10 @@ export const StockMovementService = {
     * Obtener reparaciones activas
     */
   async getActiveRepairs() {
-    console.log('🔧 Buscando reparaciones activas...');
     return prisma.stockMovement.findMany({
       where: {
         movementType: 'REPAIR_OUT',
-        // Buscar REPAIR_OUT que no tienen un REPAIR_RETURN relacionado para el mismo producto
-        NOT: {
-          product: {
-            stockMovements: {
-              some: {
-                movementType: 'REPAIR_RETURN',
-                // Aquí asumimos que el REPAIR_RETURN tiene el mismo productId
-                // y fue creado después del REPAIR_OUT
-              }
-            }
-          }
-        }
+        isCompleted: false // ← Solo reparaciones no completadas
       },
       include: {
         product: {
@@ -316,17 +304,8 @@ export const StockMovementService = {
   async getActiveDemos() {
     return prisma.stockMovement.findMany({
       where: {
-        movementType: 'DEMO_OUT',
-        // Buscar DEMO_OUT que no tienen un DEMO_RETURN relacionado para el mismo producto
-        NOT: {
-          product: {
-            stockMovements: {
-              some: {
-                movementType: 'DEMO_RETURN'
-              }
-            }
-          }
-        }
+        movementType: 'DEMO_OUT', 
+        isCompleted: false // ← Solo demos no completadas
       },
       include: {
         product: {
@@ -346,25 +325,35 @@ export const StockMovementService = {
   async completeRepair(repairMovementId: number, data: {
     notes?: string;
     resolution?: string;
-    }, userId: string) {
+  }, userId: string) {
     return prisma.$transaction(async (tx) => {
       // Obtener el movimiento de reparación original
       const repairMovement = await tx.stockMovement.findUnique({
-        where: { id: repairMovementId },
-        include: { product: true }
+        where: { id: repairMovementId }
       });
 
       if (!repairMovement) {
         throw { status: 404, message: "Movimiento de reparación no encontrado" };
       }
 
+      // ← NUEVO: Verificar si ya está completado
+      if (repairMovement.isCompleted) {
+        throw { status: 400, message: "Esta reparación ya fue completada" };
+      }
+
       if (repairMovement.movementType !== 'REPAIR_OUT') {
         throw { status: 400, message: "El movimiento no es de tipo REPAIR_OUT" };
       }
 
-      const product = repairMovement.product;
-      const quantity = Math.abs(repairMovement.quantity); // La cantidad es negativa en REPAIR_OUT
+      const product = await tx.product.findUnique({
+        where: { id: repairMovement.productId }
+      });
 
+      if (!product) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+
+      const quantity = Math.abs(repairMovement.quantity);
       const previousStock = product.stock;
       const newStock = previousStock + quantity;
 
@@ -374,17 +363,28 @@ export const StockMovementService = {
         data: { stock: newStock }
       });
 
+      // ← NUEVO: Marcar el movimiento original como completado
+      await tx.stockMovement.update({
+        where: { id: repairMovementId },
+        data: {
+          isCompleted: true,
+          completedAt: new Date(),
+          completedBy: userId
+        }
+      });
+
       // Registrar el movimiento de retorno
       const returnMovement = await tx.stockMovement.create({
         data: {
           productId: product.id,
           movementType: 'REPAIR_RETURN',
-          quantity: quantity, // Positivo para retorno
+          quantity: quantity,
           previousStock,
           newStock,
           notes: data.notes,
           reason: data.resolution || 'Reparación completada',
-          createdBy: userId
+          createdBy: userId,
+          isCompleted: true // ← El retorno se marca como completado inmediatamente
         },
         include: {
           product: { select: { name: true, sku: true } },
@@ -403,32 +403,52 @@ export const StockMovementService = {
     resolution?: string;
   }, userId: string) {
     return prisma.$transaction(async (tx) => {
-      // Obtener el movimiento de demo original
+      // Obtener el movimiento de reparación original
       const demoMovement = await tx.stockMovement.findUnique({
-        where: { id: demoMovementId },
-        include: { product: true }
+        where: { id: demoMovementId }
       });
-
+    
       if (!demoMovement) {
-        throw { status: 404, message: "Movimiento de demo no encontrado" };
+        throw { status: 404, message: "Movimiento de reparación no encontrado" };
       }
-
+    
+      // ← NUEVO: Verificar si ya está completado
+      if (demoMovement.isCompleted) {
+        throw { status: 400, message: "Esta reparación ya fue completada" };
+      }
+    
       if (demoMovement.movementType !== 'DEMO_OUT') {
         throw { status: 400, message: "El movimiento no es de tipo DEMO_OUT" };
       }
-
-      const product = demoMovement.product;
+    
+      const product = await tx.product.findUnique({
+        where: { id: demoMovement.productId }
+      });
+    
+      if (!product) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+    
       const quantity = Math.abs(demoMovement.quantity);
-
       const previousStock = product.stock;
       const newStock = previousStock + quantity;
-
+    
       // Actualizar stock del producto
       await tx.product.update({
         where: { id: product.id },
         data: { stock: newStock }
       });
-
+    
+      // ← NUEVO: Marcar el movimiento original como completado
+      await tx.stockMovement.update({
+        where: { id: demoMovementId },
+        data: {
+          isCompleted: true,
+          completedAt: new Date(),
+          completedBy: userId
+        }
+      });
+    
       // Registrar el movimiento de retorno
       const returnMovement = await tx.stockMovement.create({
         data: {
@@ -438,16 +458,17 @@ export const StockMovementService = {
           previousStock,
           newStock,
           notes: data.notes,
-          reason: data.resolution || 'Demo completada',
-          createdBy: userId
+          reason: data.resolution || 'Reparación completada',
+          createdBy: userId,
+          isCompleted: true // ← El retorno se marca como completado inmediatamente
         },
         include: {
           product: { select: { name: true, sku: true } },
           user: { select: { name: true } }
         }
       });
-
+    
       return returnMovement;
     });
-  }
+  },
 };

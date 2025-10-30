@@ -370,13 +370,13 @@ export default function StockPage() {
               <MonitorPlay size={20} className="text-purple-600" />
               <h2 className="text-lg font-semibold text-purple-800">Demos Activas</h2>
             </div>
-              <p className="text-sm text-purple-700 mt-1">
-                Productos enviados a demo que aún no han retornado al stock
-              </p>
+            <p className="text-sm text-purple-700 mt-1">
+              Productos enviados a demo que aún no han retornado al stock
+            </p>
           </div>
           <ActiveDemosTable 
             demos={activeDemos} 
-              onComplete={() => {
+            onComplete={() => {
               loadActiveDemos();
               loadAll(); // Recargar datos generales
             }}

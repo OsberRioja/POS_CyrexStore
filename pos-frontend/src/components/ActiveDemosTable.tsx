@@ -1,88 +1,189 @@
 // src/components/ActiveDemosTable.tsx
-import { MonitorPlay, CheckCircle } from 'lucide-react';
-import { stockService } from '../services/stockService';
+import React, { useState } from 'react';
+import { MonitorPlay, CheckCircle, Clock, Search } from 'lucide-react';
+import CompleteDemoModal from './CompleteDemoModal';
 
-export default function ActiveDemosTable({ 
-  demos, 
-  onComplete 
-}: { 
-  demos: any[];
+interface ActiveDemo {
+  id: number;
+  quantity: number;
+  reason: string;
+  notes?: string;
+  createdAt: string;
+  product: {
+    id: string;
+    name: string;
+    sku: string;
+    stock: number;
+  };
+  user: {
+    name: string;
+    userCode: number;
+  };
+}
+
+interface ActiveDemosTableProps {
+  demos: ActiveDemo[];
   onComplete: () => void;
-}) {
-  const handleCompleteDemo = async (movementId: number) => {
-    const notes = prompt('Notas de finalización:');
-    const resolution = prompt('Resolución:');
-    
-    if (notes === null || resolution === null) return;
-    
-    try {
-      await stockService.completeDemo(movementId, { notes, resolution });
-      alert('Demo finalizada exitosamente');
-      onComplete();
-    } catch (error: any) {
-      console.error('Error completing demo:', error);
-      alert('Error al finalizar demo: ' + (error.response?.data?.error || error.message));
-    }
+}
+
+const ActiveDemosTable: React.FC<ActiveDemosTableProps> = ({ demos, onComplete }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDemo, setSelectedDemo] = useState<ActiveDemo | null>(null);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+
+  const filteredDemos = demos.filter(demo =>
+    demo.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    demo.product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    demo.reason.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleComplete = (demo: ActiveDemo) => {
+    setSelectedDemo(demo);
+    setShowCompleteModal(true);
   };
 
-  if (!demos.length) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-BO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const getDaysInDemo = (createdAt: string) => {
+    const created = new Date(createdAt);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - created.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  if (demos.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="bg-white rounded-lg shadow p-8 text-center">
         <MonitorPlay size={48} className="mx-auto mb-4 text-gray-400" />
-        <p>No hay demos activas</p>
+        <h3 className="text-lg font-semibold text-gray-900">No hay demos activas</h3>
+        <p className="text-gray-600 mt-1">Todas las demos han sido completadas</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cantidad</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Envío</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Razón</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {demos.map((demo) => (
-            <tr key={demo.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4">
-                <div>
-                  <div className="font-medium text-gray-900">{demo.product.name}</div>
-                  <div className="text-sm text-gray-500">SKU: {demo.product.sku}</div>
-                  <div className="text-sm text-gray-500">Stock actual: {demo.product.stock}</div>
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="text-sm text-gray-900">{demo.user.name}</div>
-                <div className="text-sm text-gray-500">Código: {demo.user.userCode}</div>
-              </td>
-              <td className="px-6 py-4 text-sm text-gray-900">
-                {Math.abs(demo.quantity)}
-              </td>
-              <td className="px-6 py-4 text-sm text-gray-500">
-                {new Date(demo.createdAt).toLocaleDateString()}
-              </td>
-              <td className="px-6 py-4 text-sm text-gray-500">
-                {demo.reason}
-              </td>
-              <td className="px-6 py-4">
-                <button
-                  onClick={() => handleCompleteDemo(demo.id)}
-                  className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                >
-                  <CheckCircle size={16} />
-                  Completar Demo
-                </button>
-              </td>
+    <div className="space-y-4">
+      {/* Buscador */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <div className="flex items-center gap-3">
+          <Search size={20} className="text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por producto, SKU o razón..."
+            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* Tabla de demos */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cantidad</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Razón</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enviado por</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Días</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredDemos.map((demo) => {
+              const daysInDemo = getDaysInDemo(demo.createdAt);
+              
+              return (
+                <tr key={demo.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div>
+                      <div className="font-medium text-gray-900">{demo.product.name}</div>
+                      <div className="text-xs text-gray-500">SKU: {demo.product.sku}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="inline-flex px-3 py-1 text-sm font-semibold text-purple-800 bg-purple-100 rounded-full">
+                      {Math.abs(demo.quantity)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="max-w-xs">
+                      <p className="text-sm text-gray-900">{demo.reason}</p>
+                      {demo.notes && (
+                        <p className="text-xs text-gray-500 mt-1">{demo.notes}</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    <div>
+                      <div>{demo.user.name}</div>
+                      <div className="text-xs text-gray-500">#{demo.user.userCode}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {formatDate(demo.createdAt)}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Clock size={16} className="text-gray-400" />
+                      <span className={`text-sm font-semibold ${
+                        daysInDemo > 30 ? 'text-red-600' : 
+                        daysInDemo > 15 ? 'text-orange-600' : 'text-green-600'
+                      }`}>
+                        {daysInDemo}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => handleComplete(demo)}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                      >
+                        <CheckCircle size={16} />
+                        Finalizar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {filteredDemos.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            <Search size={48} className="mx-auto mb-4 text-gray-400" />
+            <p>No se encontraron demos</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal para finalizar demo */}
+      {showCompleteModal && selectedDemo && (
+        <CompleteDemoModal
+          demo={selectedDemo}
+          onClose={() => {
+            setShowCompleteModal(false);
+            setSelectedDemo(null);
+          }}
+          onSuccess={() => {
+            setShowCompleteModal(false);
+            setSelectedDemo(null);
+            onComplete();
+          }}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default ActiveDemosTable;
