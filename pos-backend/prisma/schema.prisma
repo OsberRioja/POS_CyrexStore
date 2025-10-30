@@ -175,6 +175,9 @@ model StockMovement {
   createdBy     String
   createdAt     DateTime     @default(now())
   returnId      Int?
+  isCompleted   Boolean      @default(false)
+  completedAt   DateTime?
+  completedBy   String?
   user          User         @relation(fields: [createdBy], references: [id])
   product       Product      @relation(fields: [productId], references: [id])
   provider      Provider?    @relation(fields: [providerId], references: [id_provider])
@@ -260,7 +263,9 @@ enum MovementType {
   PURCHASE
   SALE
   REPAIR_OUT
+  REPAIR_RETURN
   DEMO_OUT
+  DEMO_RETURN
   RETURN_IN
   ADJUSTMENT
 }

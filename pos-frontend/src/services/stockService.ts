@@ -86,6 +86,49 @@ export const stockService = {
     });
   },
 
+  /**
+    * Obtener reparaciones activas
+  */
+  getActiveRepairs: () => {
+    return axios.get(`${API_URL}/stock/active-repairs`, {
+      headers: getAuthHeaders()
+    });
+  },
+
+  /**
+    * Obtener demos activas
+  */
+  getActiveDemos: () => {
+    return axios.get(`${API_URL}/stock/active-demos`, {
+      headers: getAuthHeaders()
+    });
+  },
+
+  /**
+    * Finalizar reparación
+  */
+  completeRepair: (movementId: number, data: {
+    notes?: string;
+    resolution?: string;
+  }) => {
+    return axios.post(`${API_URL}/stock/repair/${movementId}/complete`, data, {
+      headers: getAuthHeaders()
+    });
+  },
+
+  /**
+    * Finalizar demo
+  */
+  completeDemo: (movementId: number, data: {
+    notes?: string;
+    resolution?: string;
+  }) => {
+    return axios.post(`${API_URL}/stock/demo/${movementId}/complete`, data, {
+      headers: getAuthHeaders()
+    });
+  },
+
+
   // ========== PRODUCTOS ==========
 
   /**

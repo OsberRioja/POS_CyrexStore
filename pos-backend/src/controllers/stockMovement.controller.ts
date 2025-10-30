@@ -267,5 +267,80 @@ export const StockMovementController = {
       console.error("GET /stock/summary:", err);
       return res.status(500).json({ error: "Error interno" });
     }
-  }      
+  },
+  
+  /**
+    * Obtener reparaciones activas
+  */
+  async getActiveRepairs(req: Request, res: Response) {
+    try {
+      console.log('🔧 GET /api/stock/active-repairs - Iniciando...');
+      const repairs = await StockMovementService.getActiveRepairs();
+      console.log(`🔧 GET /api/stock/active-repairs - Encontradas: ${repairs.length} reparaciones`);
+      res.json(repairs);
+    } catch (err: any) {
+      console.error("❌ GET /stock/active-repairs - ERROR:", err);
+      console.error("❌ Stack trace:", err.stack);
+      return res.status(500).json({ error: "Error interno", message: err?.message, details: process.env.NODE_ENV === 'development' ? err.stack : undefined });
+    }
+  },
+
+  /**
+    * Obtener demos activas
+  */
+  async getActiveDemos(req: Request, res: Response) {
+    try {
+      const demos = await StockMovementService.getActiveDemos();
+      res.json(demos);
+    } catch (err: any) {
+      console.error("GET /stock/active-demos:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+  /**
+    * Finalizar reparación
+  */
+
+  async completeRepair(req: Request, res: Response) {
+    try {
+      const { movementId } = req.params;
+      const { notes, resolution } = req.body;
+      const userId = (req as any).userId;
+      const movement = await StockMovementService.completeRepair(
+        parseInt(movementId),
+        { notes, resolution },
+        userId
+      );
+      res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/complete-repair/:movementId:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  /**
+    * Finalizar demo
+  */
+
+  async completeDemo(req: Request, res: Response) {
+    try {
+      const { movementId } = req.params;
+      const { notes, resolution } = req.body;
+      const userId = (req as any).userId;
+      const movement = await StockMovementService.completeDemo(
+        parseInt(movementId),
+        { notes, resolution },
+        userId
+      );
+      res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/complete-demo/:movementId:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  }
 };

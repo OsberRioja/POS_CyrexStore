@@ -275,5 +275,200 @@ export const StockMovementService = {
    */
   async getPriceHistory(productId: string) {
     return PriceHistoryRepository.findByProduct(productId);
-  }
+  },
+
+  /**
+    * Obtener reparaciones activas
+    */
+  async getActiveRepairs() {
+    return prisma.stockMovement.findMany({
+      where: {
+        movementType: 'REPAIR_OUT',
+        isCompleted: false // ← Solo reparaciones no completadas
+      },
+      include: {
+        product: {
+          select: { id: true, name: true, sku: true, stock: true }
+        },
+        user: {
+          select: { name: true, userCode: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  },
+
+  /**
+    * Obtener demos activas
+  */
+  async getActiveDemos() {
+    return prisma.stockMovement.findMany({
+      where: {
+        movementType: 'DEMO_OUT', 
+        isCompleted: false // ← Solo demos no completadas
+      },
+      include: {
+        product: {
+          select: { id: true, name: true, sku: true, stock: true }
+        },
+        user: {
+          select: { name: true, userCode: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  },
+
+  /**
+    * Finalizar reparación - Retornar producto al stock
+  */
+  async completeRepair(repairMovementId: number, data: {
+    notes?: string;
+    resolution?: string;
+  }, userId: string) {
+    return prisma.$transaction(async (tx) => {
+      // Obtener el movimiento de reparación original
+      const repairMovement = await tx.stockMovement.findUnique({
+        where: { id: repairMovementId }
+      });
+
+      if (!repairMovement) {
+        throw { status: 404, message: "Movimiento de reparación no encontrado" };
+      }
+
+      // ← NUEVO: Verificar si ya está completado
+      if (repairMovement.isCompleted) {
+        throw { status: 400, message: "Esta reparación ya fue completada" };
+      }
+
+      if (repairMovement.movementType !== 'REPAIR_OUT') {
+        throw { status: 400, message: "El movimiento no es de tipo REPAIR_OUT" };
+      }
+
+      const product = await tx.product.findUnique({
+        where: { id: repairMovement.productId }
+      });
+
+      if (!product) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+
+      const quantity = Math.abs(repairMovement.quantity);
+      const previousStock = product.stock;
+      const newStock = previousStock + quantity;
+
+      // Actualizar stock del producto
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stock: newStock }
+      });
+
+      // ← NUEVO: Marcar el movimiento original como completado
+      await tx.stockMovement.update({
+        where: { id: repairMovementId },
+        data: {
+          isCompleted: true,
+          completedAt: new Date(),
+          completedBy: userId
+        }
+      });
+
+      // Registrar el movimiento de retorno
+      const returnMovement = await tx.stockMovement.create({
+        data: {
+          productId: product.id,
+          movementType: 'REPAIR_RETURN',
+          quantity: quantity,
+          previousStock,
+          newStock,
+          notes: data.notes,
+          reason: data.resolution || 'Reparación completada',
+          createdBy: userId,
+          isCompleted: true // ← El retorno se marca como completado inmediatamente
+        },
+        include: {
+          product: { select: { name: true, sku: true } },
+          user: { select: { name: true } }
+        }
+      });
+
+      return returnMovement;
+    });
+  },
+  /**
+    * Finalizar demo - Retornar producto al stock
+  */
+  async completeDemo(demoMovementId: number, data: {
+    notes?: string;
+    resolution?: string;
+  }, userId: string) {
+    return prisma.$transaction(async (tx) => {
+      // Obtener el movimiento de reparación original
+      const demoMovement = await tx.stockMovement.findUnique({
+        where: { id: demoMovementId }
+      });
+    
+      if (!demoMovement) {
+        throw { status: 404, message: "Movimiento de reparación no encontrado" };
+      }
+    
+      // ← NUEVO: Verificar si ya está completado
+      if (demoMovement.isCompleted) {
+        throw { status: 400, message: "Esta reparación ya fue completada" };
+      }
+    
+      if (demoMovement.movementType !== 'DEMO_OUT') {
+        throw { status: 400, message: "El movimiento no es de tipo DEMO_OUT" };
+      }
+    
+      const product = await tx.product.findUnique({
+        where: { id: demoMovement.productId }
+      });
+    
+      if (!product) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+    
+      const quantity = Math.abs(demoMovement.quantity);
+      const previousStock = product.stock;
+      const newStock = previousStock + quantity;
+    
+      // Actualizar stock del producto
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stock: newStock }
+      });
+    
+      // ← NUEVO: Marcar el movimiento original como completado
+      await tx.stockMovement.update({
+        where: { id: demoMovementId },
+        data: {
+          isCompleted: true,
+          completedAt: new Date(),
+          completedBy: userId
+        }
+      });
+    
+      // Registrar el movimiento de retorno
+      const returnMovement = await tx.stockMovement.create({
+        data: {
+          productId: product.id,
+          movementType: 'DEMO_RETURN',
+          quantity: quantity,
+          previousStock,
+          newStock,
+          notes: data.notes,
+          reason: data.resolution || 'Reparación completada',
+          createdBy: userId,
+          isCompleted: true // ← El retorno se marca como completado inmediatamente
+        },
+        include: {
+          product: { select: { name: true, sku: true } },
+          user: { select: { name: true } }
+        }
+      });
+    
+      return returnMovement;
+    });
+  },
 };

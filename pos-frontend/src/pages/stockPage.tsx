@@ -17,9 +17,11 @@ import PurchaseStockModal from '../components/PurchaseStockModal';
 import OutboundStockModal from '../components/OutboundStockModal';
 import UpdatePricesModal from '../components/UpdatePricesModal';
 import ProductHistoryModal from '../components/ProductHistoryModal';
+import ActiveRepairsTable from '../components/ActiveRepairsTable';
+import ActiveDemosTable from '../components/ActiveDemosTable';
 import axios from 'axios';
 
-type ViewType = 'movements' | 'products';
+type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos';
 type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN';
 
 export default function StockPage() {
@@ -32,6 +34,9 @@ export default function StockPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [movementTypeFilter, setMovementTypeFilter] = useState<MovementTypeFilter>('ALL');
   const [loading, setLoading] = useState(true);
+  const [activeRepairs, setActiveRepairs] = useState<any[]>([]);
+  const [activeDemos, setActiveDemos] = useState<any[]>([]);
+
   
   // Modales
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -48,6 +53,14 @@ export default function StockPage() {
   useEffect(() => {
     filterProducts();
   }, [searchTerm, products]);
+
+  useEffect(() => {
+    if (view === 'active-repairs') {
+      loadActiveRepairs();
+    } else if (view === 'active-demos') {
+      loadActiveDemos();
+    }
+  }, [view]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -92,6 +105,26 @@ export default function StockPage() {
       setMovements(response.data?.data || []);
     } catch (error) {
       console.error('Error loading movements:', error);
+    }
+  };
+
+  //cargar reparaciones activas
+  const loadActiveRepairs = async () => {
+    try {
+      const response = await stockService.getActiveRepairs();
+      setActiveRepairs(response.data || []);
+    } catch (error) {
+      console.error('Error loading active repairs:', error);
+    }
+  };
+
+  //cargar demos activas
+  const loadActiveDemos = async () => {
+    try {
+      const response = await stockService.getActiveDemos();
+      setActiveDemos(response.data || []);
+    } catch (error) {
+      console.error('Error loading active demos:', error);
     }
   };
 
@@ -268,6 +301,22 @@ export default function StockPage() {
         >
           📦 Productos
         </button>
+        <button 
+          onClick={() => setView('active-repairs')}
+          className={`px-4 py-2 rounded-lg font-medium ${
+            view === 'active-repairs' 
+              ? 'bg-orange-600 text-white' 
+              : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+          🔧 Reparaciones
+        </button>
+        <button
+          onClick={() => setView('active-demos')} 
+            className={`px-4 py-2 rounded-lg font-medium ${
+              view === 'active-demos' 
+                ? 'bg-purple-600 text-white' 
+                : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+          🎮 Demos
+        </button>
       </div>
 
       {/* Vista de Movimientos */}
@@ -290,6 +339,48 @@ export default function StockPage() {
           </div>
 
           <StockMovementsTable movements={movements} />
+        </div>
+      )}
+
+      {view === 'active-repairs' && (
+        <div className="space-y-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Wrench size={20} className="text-orange-600" />
+              <h2 className="text-lg font-semibold text-orange-800">Reparaciones Activas</h2>
+            </div>
+            <p className="text-sm text-orange-700 mt-1">
+              Productos enviados a reparación que aún no han retornado al stock
+            </p>
+          </div>
+          <ActiveRepairsTable 
+            repairs={activeRepairs} 
+            onComplete={() => {
+              loadActiveRepairs();
+              loadAll(); // Recargar datos generales
+            }}
+          />
+        </div>
+      )}
+
+      {view === 'active-demos' && (
+        <div className="space-y-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <MonitorPlay size={20} className="text-purple-600" />
+              <h2 className="text-lg font-semibold text-purple-800">Demos Activas</h2>
+            </div>
+            <p className="text-sm text-purple-700 mt-1">
+              Productos enviados a demo que aún no han retornado al stock
+            </p>
+          </div>
+          <ActiveDemosTable 
+            demos={activeDemos} 
+            onComplete={() => {
+              loadActiveDemos();
+              loadAll(); // Recargar datos generales
+            }}
+          />
         </div>
       )}
 
