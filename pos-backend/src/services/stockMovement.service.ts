@@ -281,21 +281,22 @@ export const StockMovementService = {
     * Obtener reparaciones activas
     */
   async getActiveRepairs() {
-    const repairReturns = await prisma.stockMovement.findMany({
-      where: { movementType: 'REPAIR_RETURN' },
-      select: { id: true }
-    });
-
-    const repairReturnsIds = repairReturns.map(r => r.id);
-
+    console.log('🔧 Buscando reparaciones activas...');
     return prisma.stockMovement.findMany({
       where: {
         movementType: 'REPAIR_OUT',
-        ...(repairReturnsIds.length > 0 &&{
-          NOT: {
-            id: { in: repairReturnsIds }
+        // Buscar REPAIR_OUT que no tienen un REPAIR_RETURN relacionado para el mismo producto
+        NOT: {
+          product: {
+            stockMovements: {
+              some: {
+                movementType: 'REPAIR_RETURN',
+                // Aquí asumimos que el REPAIR_RETURN tiene el mismo productId
+                // y fue creado después del REPAIR_OUT
+              }
+            }
           }
-        })
+        }
       },
       include: {
         product: {
@@ -313,21 +314,19 @@ export const StockMovementService = {
     * Obtener demos activas
   */
   async getActiveDemos() {
-    const demoReturns = await prisma.stockMovement.findMany({
-      where: { movementType: 'DEMO_RETURN' },
-      select: { id: true }
-    });
-
-    const demoReturnsIds = demoReturns.map(r => r.id);
-
     return prisma.stockMovement.findMany({
       where: {
         movementType: 'DEMO_OUT',
-        ...(demoReturnsIds.length > 0 && {
-          NOT: {
-            id: { in: demoReturnsIds }
+        // Buscar DEMO_OUT que no tienen un DEMO_RETURN relacionado para el mismo producto
+        NOT: {
+          product: {
+            stockMovements: {
+              some: {
+                movementType: 'DEMO_RETURN'
+              }
+            }
           }
-        })
+        }
       },
       include: {
         product: {

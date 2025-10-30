@@ -1,8 +1,12 @@
 // src/prismaClient.ts
 import { PrismaClient } from "@prisma/client";
-//import bcrypt from "bcryptjs";
 
-export const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'],
+  errorFormat: 'pretty',
+});
+
+export { prisma };
 
 // middleware para hashear password (User create/update)
 // prisma.$use(async (params, next) => {

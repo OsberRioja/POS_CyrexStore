@@ -274,11 +274,14 @@ export const StockMovementController = {
   */
   async getActiveRepairs(req: Request, res: Response) {
     try {
+      console.log('🔧 GET /api/stock/active-repairs - Iniciando...');
       const repairs = await StockMovementService.getActiveRepairs();
+      console.log(`🔧 GET /api/stock/active-repairs - Encontradas: ${repairs.length} reparaciones`);
       res.json(repairs);
     } catch (err: any) {
-      console.error("GET /stock/active-repairs:", err);
-      return res.status(500).json({ error: "Error interno" });
+      console.error("❌ GET /stock/active-repairs - ERROR:", err);
+      console.error("❌ Stack trace:", err.stack);
+      return res.status(500).json({ error: "Error interno", message: err?.message, details: process.env.NODE_ENV === 'development' ? err.stack : undefined });
     }
   },
 
