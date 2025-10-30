@@ -25,7 +25,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             selected === "caja" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
-          CAJA
+          💰 CAJA
         </button>
 
         <button
@@ -34,7 +34,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             selected === "stock" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
-          STOCK
+          📊 STOCK
         </button>
 
         <button
@@ -43,7 +43,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             selected === "usuarios" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
-          USUARIOS
+          👥 USUARIOS
         </button>
 
         <button
@@ -52,7 +52,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             selected === "clientes" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
-          CLIENTES
+          👥 CLIENTES
         </button>
 
         <button
@@ -61,7 +61,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             selected === "proveedores" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
-          PROVEEDORES
+          🏢 PROVEEDORES
         </button>
 
         <button
@@ -70,8 +70,32 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             selected === "productos" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
-          PRODUCTOS
+          📦 PRODUCTOS
         </button>
+
+        {/* NUEVA SECCIÓN DE CONFIGURACIÓN SOLO PARA ADMIN */}
+        {user?.role === 'ADMIN' && (
+          <>
+            {/* Línea separadora */}
+            <div className="w-full border-t border-gray-300 my-2" />
+            
+            {/* Título de la sección */}
+            <div className="w-30 text-xs font-semibold px-3 py-1 text-gray-500 uppercase">
+              Configuración
+            </div>
+
+            {/* Botón de Divisas/Tasas de Cambio */}
+            <button
+              onClick={() => { console.log('Sidebar click: divisas'); onSelect('divisas'); }}
+              className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+                selected === "divisas" ? "bg-blue-600" : "bg-gray-500/90"
+              }`}
+            >
+              💱 DIVISAS
+            </button>
+          </>
+        )}
+
 
         <button
           onClick={() => { console.log('Sidebar click: salir'); onSelect('salir'); }}
@@ -79,12 +103,12 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             selected === "salir" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
-          SALIR
+          🚪 SALIR
         </button>
       </div>
 
       {/* línea vertical separadora */}
-      <div className="absolute left-40 top-6 bottom-6 w-px bg-gray-300" />
+      <div className="absolute left-40 inset-y-0 my-auto h-3/4 w-px bg-gray-300" />
     </aside>
   );
 }

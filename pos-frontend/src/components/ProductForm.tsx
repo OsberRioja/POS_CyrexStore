@@ -1,8 +1,9 @@
-// src/components/ProductForm.tsx
 import React, { useEffect, useState } from "react";
 import { productService, type ProductPayload } from "../services/productService";
 import { supplierService, type Supplier } from "../services/supplierService";
 import { useAuth } from "../context/authContext";
+import { DollarSign, CheckSquare, Square } from "lucide-react";
+//import { useCurrency } from "../context/currencyContext";
 
 type FormState = {
   sku: string;
@@ -10,6 +11,7 @@ type FormState = {
   description?: string;
   costPrice: string; // string en el form mientras el usuario escribe
   salePrice: string;
+  priceCurrency: string;
   stock: string;
   category?: string;
   brand?: string;
@@ -18,6 +20,7 @@ type FormState = {
 
 export default function ProductForm({ product, onClose, onSaved } : { product?: any | null; onClose: () => void; onSaved?: () => void }) {
   const { token: _token } = useAuth();
+  //const { currency: userCurrency } = useCurrency();
   const [saving, setSaving] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -29,6 +32,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     description: product?.description ?? "",
     costPrice: product?.costPrice != null ? String(product.costPrice) : "",
     salePrice: product?.salePrice != null ? String(product.salePrice) : "",
+    priceCurrency: product?.priceCurrency ?? "BOB",
     stock: product?.stock != null ? String(product.stock) : "",
     category: product?.category ?? "",
     brand: product?.brand ?? "",
@@ -47,6 +51,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       description: product?.description ?? "",
       costPrice: product?.costPrice != null ? String(product.costPrice) : "",
       salePrice: product?.salePrice != null ? String(product.salePrice) : "",
+      priceCurrency: product?.priceCurrency ?? "BOB",
       stock: product?.stock != null ? String(product.stock) : "",
       category: product?.category ?? "",
       brand: product?.brand ?? "",
@@ -92,6 +97,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
         description: form.description?.trim() || undefined,
         costPrice: cost,
         salePrice: sale,
+        priceCurrency: form.priceCurrency,
         stock: Math.floor(stockNum),
         category: form.category?.trim() || undefined,
         brand: form.brand?.trim() || undefined,
@@ -134,20 +140,118 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white w-[720px] rounded shadow p-6">
         <h3 className="text-xl font-semibold mb-4">{product ? "Editar producto" : "Nuevo producto"}</h3>
+
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+
           <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" className="border p-2 rounded col-span-2" required />
           <input name="name" value={form.name} onChange={handleChange} placeholder="Nombre" className="border p-2 rounded col-span-2" required />
           <textarea name="description" value={form.description} onChange={(e) => setForm({...form, description: e.target.value })} placeholder="Descripción" className="border p-2 rounded col-span-2" />
           <input name="category" value={form.category} onChange={handleChange} placeholder="Categoría" className="border p-2 rounded" />
           <input name="brand" value={form.brand} onChange={handleChange} placeholder="Marca" className="border p-2 rounded" />
-          {/* mostrar solo en modo creacion */}
-          {!product && (
-            <>
-            <input name="costPrice" type="text" inputMode="decimal" pattern="[0-9]*([.,][0-9]+)?" value={form.costPrice} onChange={handleChange} placeholder="Precio costo" className="border p-2 rounded" required/>
-            <input name="salePrice" type="text" inputMode="decimal" pattern="[0-9]*([.,][0-9]+)?" value={form.salePrice} onChange={handleChange} placeholder="Precio venta" className="border p-2 rounded" required/>
-            <input name="stock" type="text" inputMode="decimal" pattern="[0-9]*" value={form.stock} onChange={handleChange} placeholder="Stock" className="border p-2 rounded" required/>
-            </>
-          )} 
+          {/* ✅ NUEVO: Selector de Moneda de Precio */}
+          {!isEditing && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign size={20} className="text-blue-600" />
+                  <span className="font-semibold text-gray-800">Moneda del Precio</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {['BOB', 'USD', 'CNY'].map((curr) => (
+                  <button
+                    key={curr}
+                    type="button"
+                    onClick={() => setForm({ ...form, priceCurrency: curr })}
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                      form.priceCurrency === curr
+                        ? 'border-blue-600 bg-blue-100 text-blue-800 font-semibold'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    {form.priceCurrency === curr ? (
+                      <CheckSquare size={18} />
+                    ) : (
+                      <Square size={18} />
+                    )}
+                    <span>{curr === 'BOB' ? '🇧🇴 Bs.' : curr === 'USD' ? '🇺🇸 $' : '🇨🇳 ¥'}</span>
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-xs text-blue-700 mt-2">
+                {form.priceCurrency === 'USD' && (
+                  <>
+                    💡 <strong>Precio anclado a dólar:</strong> El precio se ajustará automáticamente según el tipo de cambio.
+                  </>
+                )}
+                {form.priceCurrency === 'BOB' && (
+                  <>
+                    Los precios son fijos en bolivianos.
+                  </>
+                )}
+                {form.priceCurrency === 'CNY' && (
+                  <>
+                    💡 <strong>Precio anclado a yuan:</strong> El precio se ajustará automáticamente según el tipo de cambio.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+          {/* Precios y Stock - solo en creación */}
+          {!isEditing && (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Precio Costo ({form.priceCurrency === 'BOB' ? 'Bs.' : form.priceCurrency === 'USD' ? '$' : '¥'})
+                </label>
+                <input 
+                  name="costPrice" 
+                  type="text" 
+                  inputMode="decimal" 
+                  pattern="[0-9]*([.,][0-9]+)?" 
+                  value={form.costPrice} 
+                  onChange={handleChange} 
+                  placeholder="0.00" 
+                  className="w-full border p-2 rounded" 
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Precio Venta ({form.priceCurrency === 'BOB' ? 'Bs.' : form.priceCurrency === 'USD' ? '$' : '¥'})
+                </label>
+                <input 
+                  name="salePrice" 
+                  type="text" 
+                  inputMode="decimal" 
+                  pattern="[0-9]*([.,][0-9]+)?" 
+                  value={form.salePrice} 
+                  onChange={handleChange} 
+                  placeholder="0.00" 
+                  className="w-full border p-2 rounded" 
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock Inicial
+                </label>
+                <input 
+                  name="stock" 
+                  type="text" 
+                  inputMode="decimal" 
+                  pattern="[0-9]*" 
+                  value={form.stock} 
+                  onChange={handleChange} 
+                  placeholder="0" 
+                  className="w-full border p-2 rounded" 
+                  required
+                />
+              </div>
+            </div>
+          )}
           {/* proveedor select + boton nuevo */}
           <div className="col-span-2 flex items-center gap-2">
             <select

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import ProductTable from "../components/ProductTable";
 import ProductForm from "../components/ProductForm";
 import { productService } from "../services/productService";
+//import productPrice from "../services/ProductPrice";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);

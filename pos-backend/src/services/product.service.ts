@@ -9,6 +9,14 @@ export const productService = {
     if (!dto.sku || !dto.name || dto.salePrice == null || dto.costPrice == null) {
       throw { status: 400, message: "sku, name, costPrice y salePrice son requeridos" };
     }
+
+    // Validar moneda
+    const validCurrencies = ['BOB', 'USD', 'CNY'];
+    const priceCurrency = dto.priceCurrency?.toUpperCase() || 'BOB';
+    
+    if (!validCurrencies.includes(priceCurrency)) {
+      throw { status: 400, message: "priceCurrency debe ser BOB, USD o CNY" };
+    }
     
     // ✅ Usar transacción para crear producto y registrar movimiento
     return prisma.$transaction(async (tx) => {
@@ -20,6 +28,7 @@ export const productService = {
           description: dto.description?.trim(),
           costPrice: dto.costPrice,
           salePrice: dto.salePrice,
+          priceCurrency: dto.priceCurrency,
           stock: dto.stock || 0,
           category: dto.category?.trim(),
           brand: dto.brand?.trim(),

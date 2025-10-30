@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, AlertCircle, CheckCircle } from 'lucide-react';
+import { useCurrency } from '../context/currencyContext';
 
 interface CloseCashboxModalProps {
   cashbox: any;
@@ -29,14 +30,17 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
   onClose, 
   onConfirm 
 }) => {
-  console.log('🔍 Modal - cashbox:', cashbox); // ← LOG
-  console.log('🔍 Modal - closePreview:', closePreview); // ← LOG
+  console.log('🔍 Modal - cashbox:', cashbox);
+  console.log('🔍 Modal - closePreview:', closePreview);
   const [step, setStep] = useState<'count' | 'summary'>('count');
   const [counts, setCounts] = useState<{ [key: number]: number }>(
     DENOMINATIONS.reduce((acc, d) => ({ ...acc, [d.value]: 0 }), {})
   );
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // NUEVO: Usar el hook de divisas
+  const { formatCurrency } = useCurrency();
 
   // Calcular totales
   const countedTotal = DENOMINATIONS.reduce(
@@ -44,12 +48,14 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
     0
   );
 
- const expectedCash = closePreview?.report?.expectedClosedAmount || 0;
+  const expectedCash = closePreview?.report?.expectedClosedAmount || 0;
   console.log('🔍 Modal - expectedCash value:', expectedCash);
   console.log('🔍 Modal - closePreview structure:', closePreview);
   const difference = countedTotal - expectedCash;
   const tolerance = 0.5; // Tolerancia de 0.50 Bs
 
+  // ELIMINADO: La función formatCurrency local ya no es necesaria
+  /*
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-BO', {
       style: 'currency',
@@ -57,6 +63,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
       minimumFractionDigits: 2,
     }).format(amount);
   };
+  */
 
   const handleCountChange = (value: number, count: number) => {
     setCounts(prev => ({ ...prev, [value]: Math.max(0, count) }));
@@ -130,7 +137,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Total Contado:</span>
                   <span className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(countedTotal)}
+                    {formatCurrency(countedTotal)} {/* CAMBIADO: usar formatCurrency del contexto */}
                   </span>
                 </div>
               </div>
@@ -154,7 +161,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold text-lg">{denom.label}</span>
                           <span className="text-sm text-gray-600">
-                            = {formatCurrency(subtotal)}
+                            = {formatCurrency(subtotal)} {/* CAMBIADO */}
                           </span>
                         </div>
                         <div className="flex gap-2">
@@ -198,7 +205,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold">{denom.label}</span>
                           <span className="text-sm text-gray-600">
-                            = {formatCurrency(subtotal)}
+                            = {formatCurrency(subtotal)} {/* CAMBIADO */}
                           </span>
                         </div>
                         <div className="flex gap-2">
@@ -275,13 +282,13 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                   <div className="bg-white p-4 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Efectivo Esperado</p>
                     <p className="text-2xl font-bold text-gray-800">
-                      {formatCurrency(expectedCash)}
+                      {formatCurrency(expectedCash)} {/* CAMBIADO */}
                     </p>
                   </div>
                   <div className="bg-white p-4 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">Efectivo Contado</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(countedTotal)}
+                      {formatCurrency(countedTotal)} {/* CAMBIADO */}
                     </p>
                   </div>
                   <div className="bg-white p-4 rounded-lg">
@@ -293,7 +300,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                           ? 'text-orange-600' 
                           : 'text-red-600'
                     }`}>
-                      {difference > 0 ? '+' : ''}{formatCurrency(difference)}
+                      {difference > 0 ? '+' : ''}{formatCurrency(difference)} {/* CAMBIADO */}
                     </p>
                   </div>
                 </div>
@@ -307,7 +314,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                     <div key={denom.value} className="bg-white p-3 rounded border">
                       <p className="text-xs text-gray-600">{denom.label}</p>
                       <p className="font-semibold">
-                        {counts[denom.value]} × {denom.label} = {formatCurrency(counts[denom.value] * denom.value)}
+                        {counts[denom.value]} × {denom.label} = {formatCurrency(counts[denom.value] * denom.value)} {/* CAMBIADO */}
                       </p>
                     </div>
                   ))}

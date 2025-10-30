@@ -7,8 +7,10 @@ import { paymentMethodService } from "../services/paymentMethodService";
 import { saleService } from "../services/saleService";
 import ClientForm from "./ClientForm"; // usamos el formulario completo de cliente
 //import { title } from "process";
+//import { useCurrency } from "../context/currencyContext";
+import { exchangeRateService } from "../services/exchangeRateService";
 
-type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number };
+type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number; originalPrice?: number; originalCurrency?: string; conversionRate?: number };
 type Payment = { paymentMethodId: number; amount: number };
 
 export default function SaleFormModal({
@@ -22,6 +24,8 @@ export default function SaleFormModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  //const { formatCurrency } = useCurrency();
+  //const [total, setTotal] = useState(0);
   const [queryProduct, setQueryProduct] = useState("");
   const [productResults, setProductResults] = useState<any[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -50,6 +54,8 @@ export default function SaleFormModal({
 
   const [showSellerResults, setShowSellerResults] = useState(false);
   const [showClientResults, setShowClientResults] = useState(false);
+
+  //const { currency } = useCurrency();
 
   // cargar métodos de pago
   useEffect(() => {
@@ -214,9 +220,56 @@ export default function SaleFormModal({
     };
   }, []);
 
-  const addProduct = (p: any) => {
-    const unit = p.salePrice ?? p.sale_price ?? p.salePrice ?? 0;
-    const it: Item = { productId: p.id, name: p.name, qty: 1, unitPrice: Number(unit), subtotal: Number(unit) };
+  const convertPriceToBOB = async (price: number, fromCurrency: string): Promise<{ convertedPrice: number; rate: number }> => {
+    if (fromCurrency === 'BOB') {
+      return { convertedPrice: price, rate: 1 };
+    }
+
+    try {
+      const response = await exchangeRateService.convert(price, fromCurrency, 'BOB');
+      return {
+        convertedPrice: response.data.converted,
+        rate: response.data.rate
+      };
+    } catch (error) {
+      console.error('Error converting price:', error);
+      // En caso de error, usar el precio original (aunque esté en otra moneda)
+      return { convertedPrice: price, rate: 1 };
+    }
+  };
+
+  const addProduct = async (p: any) => {
+    const productCurrency = p.priceCurrency || 'BOB';
+    const originalPrice = p.salePrice ?? p.sale_price ?? 0;
+    
+    let finalPrice = originalPrice;
+    let conversionRate = 1;
+
+    // Si el producto está en otra moneda, convertir a BOB
+    if (productCurrency !== 'BOB') {
+      try {
+        const conversion = await convertPriceToBOB(originalPrice, productCurrency);
+        finalPrice = conversion.convertedPrice;
+        conversionRate = conversion.rate;
+      } catch (error) {
+        console.error('Error converting product price:', error);
+        // Si falla la conversión, usar precio original pero mostrar advertencia
+        alert(`Advertencia: No se pudo convertir el precio de ${p.name}. Se usará el precio en ${productCurrency}.`);
+      }
+    };
+
+
+    const it: Item = { 
+      productId: p.id, 
+      name: p.name, 
+      qty: 1, 
+      unitPrice: Number(finalPrice), 
+      subtotal: Number(finalPrice),
+      originalPrice: Number(originalPrice),        // ← Guardar precio original
+      originalCurrency: productCurrency,           // ← Guardar moneda original
+      conversionRate: conversionRate               // ← Guardar tasa de cambio
+    };
+    
     setItems((s) => [...s, it]);
     setQueryProduct("");
     setProductResults([]);
@@ -473,11 +526,34 @@ export default function SaleFormModal({
 
             {productResults.length > 0 && (
               <div className="border rounded mt-1 max-h-40 overflow-auto bg-white">
-                {productResults.map((p) => (
-                  <div key={p.id} className="p-2 hover:bg-gray-100 cursor-pointer" onClick={() => addProduct(p)}>
-                    {p.name} — {Number(p.salePrice ?? p.sale_price ?? 0).toFixed(2)}
-                  </div>
-                ))}
+                {productResults.map((p) => {
+                  const productCurrency = p.priceCurrency || 'BOB';
+                  const needsConversion = productCurrency !== 'BOB';
+                  
+                  return (
+                    <div key={p.id} className="p-2 hover:bg-gray-100 cursor-pointer" onClick={() => addProduct(p)}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-medium">{p.name}</div>
+                          <div className="text-xs text-gray-500">SKU: {p.sku} • Stock: {p.stock}</div>
+                          {needsConversion && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              💰 Precio en {productCurrency}: {Number(p.salePrice).toFixed(2)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold">
+                            Bs. {Number(p.salePrice).toFixed(2)}
+                            {needsConversion && (
+                              <div className="text-xs text-gray-500">(convertido)</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -488,6 +564,7 @@ export default function SaleFormModal({
                     <tr>
                       <th className="p-2">Producto</th>
                       <th className="p-2">Cant.</th>
+                      <th className="p-2 text-right">Precio Unit.</th>
                       <th className="p-2 text-right">Subtotal</th>
                       <th></th>
                     </tr>
@@ -495,13 +572,43 @@ export default function SaleFormModal({
                   <tbody>
                     {items.map((it, idx) => (
                       <tr key={idx} className="border-b">
-                        <td className="p-2">{it.name}</td>
                         <td className="p-2">
-                          <input type="number" value={it.qty} min={1} onChange={(e) => changeQty(idx, Number(e.target.value))} className="w-20 border p-1 rounded" />
+                          <div>
+                            <div className="font-medium">{it.name}</div>
+                            {/* ← Información de conversión directa */}
+                            {it.originalCurrency && it.originalCurrency !== 'BOB' && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Original: {it.originalCurrency} {it.originalPrice?.toFixed(2)}
+                                {it.conversionRate && it.conversionRate !== 1 && (
+                                  <span className="ml-1">
+                                    (1 {it.originalCurrency} = {it.conversionRate.toFixed(4)} BOB)
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </td>
-                        <td className="p-2 text-right">{it.subtotal.toFixed(2)}</td>
                         <td className="p-2">
-                          <button type="button" onClick={() => removeItem(idx)} className="px-2 py-1 bg-red-500 text-white rounded">
+                          <input 
+                            type="number" 
+                            value={it.qty} 
+                            min={1} 
+                            onChange={(e) => changeQty(idx, Number(e.target.value))} 
+                            className="w-20 border p-1 rounded" 
+                          />
+                        </td>
+                        <td className="p-2 text-right">
+                          <div className="font-semibold">Bs. {it.unitPrice.toFixed(2)}</div>
+                        </td>
+                        <td className="p-2 text-right">
+                          <div className="font-semibold">Bs. {it.subtotal.toFixed(2)}</div>
+                        </td>
+                        <td className="p-2">
+                          <button 
+                            type="button" 
+                            onClick={() => removeItem(idx)} 
+                            className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                          >
                             X
                           </button>
                         </td>
@@ -534,6 +641,36 @@ export default function SaleFormModal({
               </div>
             </div>
           </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Subtotal de productos:</span>
+                <span className="font-semibold">Bs. {itemsTotal.toFixed(2)}</span>
+              </div>
+
+              {/* ← NUEVO: Mostrar si hay productos en otras monedas */}
+              {items.some(item => item.originalCurrency && item.originalCurrency !== 'BOB') && (
+                <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                  💱 Incluye productos convertidos de otras monedas
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <span>Total a pagar:</span>
+                <span className="font-semibold">Bs. {paymentsTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className={isPartial ? 'text-red-600' : 'text-green-600'}>
+                  {isPartial ? 'Saldo pendiente:' : change > 0 ? 'Cambio:' : 'Diferencia:'}
+                </span>
+                <span className={`font-bold ${isPartial ? 'text-red-600' : change > 0 ? 'text-blue-600' : 'text-green-600'}`}>
+                  Bs. {isPartial ? remaining.toFixed(2) : change.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+          
 
           {/* NUEVO: Checkbox para permitir pagos parciales */}
           <div className="flex items-center space-x-2 mb-4">

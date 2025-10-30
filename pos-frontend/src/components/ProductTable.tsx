@@ -1,5 +1,7 @@
 // src/components/ProductTable.tsx
 import { productService } from "../services/productService";
+//import FormattedPrice from "./FormattedPrice";
+import ProductPrice from "../services/ProductPrice";
 
 export default function ProductTable({
   products,
@@ -34,8 +36,8 @@ export default function ProductTable({
             <th className="p-3 border text-left">SKU</th>
             <th className="p-3 border text-left">Nombre</th>
             <th className="p-3 border text-left">Descripción</th>
-            <th className="p-3 border text-left">Precio Venta</th>
-            <th className="p-3 border text-left">Precio Costo</th>
+            <th className="p-3 border text-left">Precios</th>
+            
             <th className="p-3 border text-left">Stock</th>
             <th className="p-3 border text-left">Creado por</th>
             <th className="p-3 border text-left">Proveedor</th>
@@ -45,13 +47,38 @@ export default function ProductTable({
         </thead>
         <tbody>
           {products.map((p) => (
-            <tr key={p.id}>
+            <tr key={p.id} className="hover:bg-gray-50">
               <td className="p-3 border">{p.sku}</td>
-              <td className="p-3 border">{p.name}</td>
+              <td className="p-3 border">
+                <div>
+                  <div className="font-medium text-gray-900">{p.name}</div>
+                  {/* ← NUEVO: Badge de moneda */}
+                  {p.priceCurrency && p.priceCurrency !== 'BOB' && (
+                    <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                      {p.priceCurrency === 'USD' ? '🇺🇸 Precio en Dólares' : '🇨🇳 Precio en Yuanes'}
+                    </span>
+                  )}
+                </div>
+              </td>
               <td className="p-3 border">{p.description}</td>
-              <td className="p-3 border">{p.salePrice} Bs</td>
-              <td className="p-3 border">{p.costPrice} Bs</td>
-              <td className="p-3 border">{p.stock}</td>
+              {/* ← NUEVO: Columna unificada de precios usando ProductPrice */}
+              <td className="p-3 border">
+                <ProductPrice 
+                  product={{
+                    salePrice: p.salePrice,
+                    costPrice: p.costPrice,
+                    priceCurrency: p.priceCurrency || 'BOB' // Valor por defecto
+                  }}
+                  showCost={true}
+                  showOriginal={true}
+                  className="text-sm"
+                />
+              </td>
+              <td className="p-3 border text-center">
+                <span className={`font-semibold ${p.stock < 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                  {p.stock}
+                </span>
+              </td>
               <td className="p-3 border">{p.user?.name ?? p.user?.email ?? "-"}</td>
               <td className="p-3 border">{p.provider?.name ?? "-"}</td>
               <td className="p-3 border">{p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}</td>

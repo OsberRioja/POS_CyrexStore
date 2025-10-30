@@ -17,6 +17,8 @@ import PurchaseStockModal from '../components/PurchaseStockModal';
 import OutboundStockModal from '../components/OutboundStockModal';
 import UpdatePricesModal from '../components/UpdatePricesModal';
 import ProductHistoryModal from '../components/ProductHistoryModal';
+import FormattedPrice from '../components/FormattedPrice';
+import ProductPrice from '../services/ProductPrice';
 import ActiveRepairsTable from '../components/ActiveRepairsTable';
 import ActiveDemosTable from '../components/ActiveDemosTable';
 import axios from 'axios';
@@ -238,9 +240,11 @@ export default function StockPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Valor Inventario</p>
-                <p className="text-2xl font-bold text-green-600">
-                  Bs. {summary.summary.totalInventoryValue.toFixed(2)}
-                </p>
+                <FormattedPrice 
+                  amount={summary.summary.totalInventoryValue} 
+                  fromCurrency="BOB"
+                  className="text-2xl font-bold text-green-600"
+                />
               </div>
               <DollarSign size={40} className="text-green-500" />
             </div>
@@ -416,9 +420,10 @@ export default function StockPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredProducts.map((product) => {
-                  const margin = ((product.salePrice - product.costPrice) / product.costPrice * 100).toFixed(0);
+                  const margin = product.costPrice ? 
+                    ((product.salePrice - product.costPrice) / product.costPrice * 100).toFixed(0) : 'N/A';
                   const stockStatus = product.stock === 0 ? 'out' : product.stock <= 5 ? 'low' : 'ok';
-                  
+
                   return (
                     <tr key={product.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
@@ -428,6 +433,12 @@ export default function StockPage() {
                           {product.category && (
                             <span className="inline-block mt-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
                               {product.category}
+                            </span>
+                          )}
+                          {/* ← NUEVO: Badge de moneda */}
+                          {product.priceCurrency && product.priceCurrency !== 'BOB' && (
+                            <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                              {product.priceCurrency === 'USD' ? '🇺🇸 Dólares' : '🇨🇳 Yuanes'}
                             </span>
                           )}
                         </div>
@@ -441,50 +452,85 @@ export default function StockPage() {
                           {product.stock}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right text-gray-700">
-                        Bs. {product.costPrice.toFixed(2)}
+                      
+                      {/* ← CORREGIDO: Columna de Costo */}
+                      <td className="px-6 py-4 text-right">
+                        {product.costPrice ? (
+                          <ProductPrice
+                            product={{
+                              salePrice: product.costPrice, // Usamos salePrice para mostrar costo
+                              costPrice: product.costPrice,
+                              priceCurrency: product.priceCurrency || 'BOB'
+                            }}
+                            showCost={false}
+                            showOriginal={true}
+                            className="text-sm text-gray-600"
+                          />
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                        Bs. {product.salePrice.toFixed(2)}
+                      
+                      {/* ← CORREGIDO: Columna de Precio Venta */}
+                      <td className="px-6 py-4 text-right">
+                        <ProductPrice
+                          product={{
+                            salePrice: product.salePrice,
+                            costPrice: product.costPrice,
+                            priceCurrency: product.priceCurrency || 'BOB'
+                          }}
+                          showCost={false}
+                          showOriginal={true}
+                          className="text-sm font-semibold text-gray-900"
+                        />
                       </td>
+                        
                       <td className="px-6 py-4 text-center">
-                        <span className="font-semibold text-green-600">
-                          {margin}%
-                        </span>
+                        {product.costPrice ? (
+                          <span className={`font-semibold ${
+                            parseFloat(margin) > 30 ? 'text-green-600' : 
+                            parseFloat(margin) > 15 ? 'text-orange-600' : 'text-red-600'
+                          }`}>
+                            {margin}%
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
                       </td>
+                      
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handlePurchase(product)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
                             title="Comprar stock"
                           >
                             <ShoppingCart size={18} />
                           </button>
                           <button
                             onClick={() => handleRepair(product)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded"
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
                             title="Enviar a reparación"
                           >
                             <Wrench size={18} />
                           </button>
                           <button
                             onClick={() => handleDemo(product)}
-                            className="p-2 text-purple-600 hover:bg-purple-50 rounded"
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors"
                             title="Enviar a demo"
                           >
                             <MonitorPlay size={18} />
                           </button>
                           <button
                             onClick={() => handleUpdatePrices(product)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                             title="Actualizar precios"
                           >
                             <DollarSign size={18} />
                           </button>
                           <button
                             onClick={() => handleViewHistory(product)}
-                            className="p-2 text-gray-600 hover:bg-gray-50 rounded"
+                            className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                             title="Ver historial"
                           >
                             <History size={18} />
