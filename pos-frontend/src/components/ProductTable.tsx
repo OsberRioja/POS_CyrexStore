@@ -52,12 +52,21 @@ export default function ProductTable({
         </thead>
         <tbody>
           {products.map((p) => (
-            <tr key={p.id} className="hover:bg-gray-50">
+            <tr key={p.id} className={`hover:bg-gray-50 ${!p.isActive ? 'bg-gray-100 opacity-70' : ''}`}>
+              <td className="p-3 border">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  p.isActive 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                  }`}>
+                  {p.isActive ? 'Activo' : 'Inactivo'}
+                </span>
+              </td>
               <td className="p-3 border">{p.sku}</td>
               <td className="p-3 border">
                 <div>
                   <div className="font-medium text-gray-900">{p.name}</div>
-                  {/* ← NUEVO: Badge de moneda */}
+                  {/* Badge de moneda */}
                   {p.priceCurrency && p.priceCurrency !== 'BOB' && (
                     <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
                       {p.priceCurrency === 'USD' ? '🇺🇸 Precio en Dólares' : '🇨🇳 Precio en Yuanes'}

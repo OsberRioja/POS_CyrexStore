@@ -62,8 +62,8 @@ export const productService = {
     });
   },
 
-  async getAllProducts() {
-    return await productRepository.findAll();
+  async getAllProducts(includeInactive = true) {
+    return await productRepository.findAll(includeInactive);
   },
 
   async getProducts() {

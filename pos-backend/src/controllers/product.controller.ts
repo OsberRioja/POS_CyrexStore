@@ -18,10 +18,26 @@ export const productController = {
 
   async getAll(req: Request, res: Response) {
     try {
-      const onlyActive = req.query.onlyActive === 'true';
-      const products = onlyActive 
-        ? await productService.getProducts() // Solo activos
-        : await productService.getAllProducts(); // Todos incluyendo inactivos
+      const { q, onlyActive } = req.query;
+      
+      let products;
+      if (onlyActive === 'true') {
+        // Solo productos activos
+        products = await productService.getProducts();
+      } else {
+        // Todos los productos (incluyendo inactivos)
+        products = await productService.getAllProducts();
+      }
+      
+      // Si hay query de búsqueda, filtrar adicionalmente
+      if (q) {
+        const searchTerm = q.toString().toLowerCase();
+        products = products.filter((p: any) =>
+          p.name.toLowerCase().includes(searchTerm) ||
+          p.sku.toLowerCase().includes(searchTerm)
+        );
+      }
+      
       res.json(products);
     } catch (error: any) {
       console.error("GET /products error:", error);

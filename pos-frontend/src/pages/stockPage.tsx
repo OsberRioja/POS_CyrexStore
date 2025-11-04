@@ -21,7 +21,7 @@ import FormattedPrice from '../components/FormattedPrice';
 import ProductPrice from '../services/ProductPrice';
 import ActiveRepairsTable from '../components/ActiveRepairsTable';
 import ActiveDemosTable from '../components/ActiveDemosTable';
-import axios from 'axios';
+import { productService } from '../services/productService';
 
 type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos';
 type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN';
@@ -85,10 +85,8 @@ export default function StockPage() {
 
   const loadProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/products', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Cambiar esta llamada directa por axios a usar productService con onlyActive
+      const response = await productService.search({ onlyActive: true });
       return response.data || [];
     } catch (error) {
       console.error('Error loading products:', error);

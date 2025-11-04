@@ -10,6 +10,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<any | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -27,7 +28,13 @@ export default function ProductsPage() {
   useEffect(() => { loadProducts(); }, []);
 
   const openNew = () => { setSelected(null); setShowForm(true); };
-  const openEdit = (p: any) => { setSelected(p); setShowForm(true); };
+  const openEdit = (p: any) => { 
+    if (!p.isActive) {
+      if (!confirm("Este producto está desactivado. ¿Deseas editarlo?")) return;
+    }
+    setSelected(p); 
+    setShowForm(true); 
+  };
 
   const handleDeactivate = async (productId: string) => {
     if (!confirm("¿Desactivar este producto? No estará disponible para ventas.")) return;
@@ -52,16 +59,28 @@ export default function ProductsPage() {
     }
   };
 
+  const filteredProducts = showInactive ? products : products.filter(p => p.isActive);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-700">Productos</h2>
-        <div>
+        <div className="flex items-center gap-4">
+          {/* Toggle para mostrar/ocultar inactivos */}
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Mostrar productos desactivados
+          </label>
           <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
         </div>
       </div>
 
-      <ProductTable products={products} loading={loading} onEdit={openEdit} onDelete={loadProducts} onDeactivate={handleDeactivate} onActivate={handleActivate} />
+      <ProductTable products={filteredProducts} loading={loading} onEdit={openEdit} onDelete={loadProducts} onDeactivate={handleDeactivate} onActivate={handleActivate} />
 
       {showForm && (
         <ProductForm
