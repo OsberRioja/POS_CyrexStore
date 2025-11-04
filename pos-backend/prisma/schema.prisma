@@ -63,6 +63,11 @@ model Product {
   stock          Int
   createdBy      String
   providerId     Int?
+
+  isActive      Boolean  @default(true)
+  deactivatedAt DateTime?
+  deactivatedBy String?
+
   priceCurrency  String          @default("BOB")
   user           User            @relation(fields: [createdBy], references: [id])
   provider       Provider?       @relation(fields: [providerId], references: [id_provider])

@@ -29,6 +29,29 @@ export default function ProductsPage() {
   const openNew = () => { setSelected(null); setShowForm(true); };
   const openEdit = (p: any) => { setSelected(p); setShowForm(true); };
 
+  const handleDeactivate = async (productId: string) => {
+    if (!confirm("¿Desactivar este producto? No estará disponible para ventas.")) return;
+    try {
+      await productService.deactivate(productId);
+      loadProducts();
+      alert('Producto desactivado');
+    } catch (err) {
+      console.error(err);
+      alert("Error al desactivar producto");
+    }
+  };
+
+  const handleActivate = async (productId: string) => {
+    try {
+      await productService.activate(productId);
+      loadProducts();
+      alert('Producto activado');
+    } catch (err) {
+      console.error(err);
+      alert("Error al activar producto");
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -38,7 +61,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <ProductTable products={products} loading={loading} onEdit={openEdit} onDelete={loadProducts} />
+      <ProductTable products={products} loading={loading} onEdit={openEdit} onDelete={loadProducts} onDeactivate={handleDeactivate} onActivate={handleActivate} />
 
       {showForm && (
         <ProductForm

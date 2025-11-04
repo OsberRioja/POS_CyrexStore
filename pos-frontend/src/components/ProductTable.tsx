@@ -2,17 +2,22 @@
 import { productService } from "../services/productService";
 //import FormattedPrice from "./FormattedPrice";
 import ProductPrice from "../services/ProductPrice";
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function ProductTable({
   products,
   loading,
   onEdit,
   onDelete,
+  onDeactivate,
+  onActivate,
 }: {    
   products: any[];
   loading: boolean;
   onEdit: (p: any) => void;
   onDelete: () => void;
+  onDeactivate: (productId: string) => void;
+  onActivate: (productId: string) => void;
 }) {
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar producto?")) return;
@@ -84,6 +89,18 @@ export default function ProductTable({
               <td className="p-3 border">{p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}</td>
               <td className="p-3 border flex gap-2">
                 <button onClick={() => onEdit(p)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
+                <button 
+                  onClick={() => p.isActive ? onDeactivate(p.id) : onActivate(p.id)}
+                  className={`px-2 py-1 rounded text-sm flex items-center gap-1 ${
+                    p.isActive 
+                      ? 'bg-orange-500 text-white' 
+                      : 'bg-green-500 text-white'
+                  }`}
+                  title={p.isActive ? 'Desactivar producto' : 'Activar producto'}
+                  >
+                  {p.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {p.isActive ? 'Desactivar' : 'Activar'}
+                </button>
                 <button onClick={() => handleDelete(p.id)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
               </td>
             </tr>

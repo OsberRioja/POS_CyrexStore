@@ -62,8 +62,12 @@ export const productService = {
     });
   },
 
-  async getProducts() {
+  async getAllProducts() {
     return await productRepository.findAll();
+  },
+
+  async getProducts() {
+    return await productRepository.findAllActive();
   },
 
   async getProductById(id: string) {
@@ -78,5 +82,27 @@ export const productService = {
 
   async deleteProduct(id: string) {
     return await productRepository.delete(id);
+  },
+
+  async deactivateProduct(productId: string, userId: string) {
+    return prisma.product.update({
+      where: { id: productId },
+      data: {
+        isActive: false,
+        deactivatedAt: new Date(),
+        deactivatedBy: userId
+      }
+    });
+  },
+  
+  async activateProduct(productId: string, userId: string) {
+    return prisma.product.update({
+      where: { id: productId },
+      data: {
+        isActive: true,
+        deactivatedAt: null,
+        deactivatedBy: null
+      }
+    });
   },
 };

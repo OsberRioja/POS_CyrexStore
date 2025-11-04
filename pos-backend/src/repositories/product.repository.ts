@@ -24,10 +24,25 @@ export const productRepository = {
     });
   },
 
-  async findAll() {
-    return await prisma.product.findMany({
-      include: { user: true, provider: true },
-      orderBy: { createdAt: "desc" },
+  findAll(includeInactive = false) {
+    return prisma.product.findMany({
+      where: includeInactive ? undefined : { isActive: true },
+      include: {
+        user: { select: { name: true, userCode: true } },
+        provider: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  },
+
+  findAllActive() {
+    return prisma.product.findMany({
+      where: { isActive: true },
+      include: {
+        user: { select: { name: true, userCode: true } },
+        provider: true
+      },
+      orderBy: { createdAt: 'desc' }
     });
   },
 

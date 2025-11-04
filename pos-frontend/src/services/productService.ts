@@ -22,12 +22,24 @@ export type ProductPayload = {
   providerId?: number | null;
 };
 
+export type ProductSearchParams = {
+  q?: string;
+  onlyActive?: boolean;
+};
 export const productService = {
   getAll: () => axios.get(`${BASE}/products`, { headers: { ...authHeader() } }),
   getById: (id: string) => axios.get(`${BASE}/products/${id}`, { headers: { ...authHeader() } }),
   create: (payload: ProductPayload) => axios.post(`${BASE}/products`, payload, { headers: { ...authHeader() } }),
   update: (id: string, payload: Partial<ProductPayload>) => axios.put(`${BASE}/products/${id}`, payload, { headers: { ...authHeader() } }),
   remove: (id: string) => axios.delete(`${BASE}/products/${id}`, { headers: { ...authHeader() } }),
-  search: (params?: { q?: string }) =>
-    axios.get(`${BASE}/products`, { params: params ?? {}, headers: { ...authHeader() } }),
+ search: (params?: ProductSearchParams) =>
+    axios.get(`${BASE}/products`, { 
+      params: params ?? {}, 
+      headers: { ...authHeader() } 
+  }),
+
+  deactivate: (id: string) => 
+    axios.patch(`${BASE}/products/${id}/deactivate`, {}, { headers: { ...authHeader() } }),
+  activate: (id: string) => 
+    axios.patch(`${BASE}/products/${id}/activate`, {}, { headers: { ...authHeader() } }),
 };

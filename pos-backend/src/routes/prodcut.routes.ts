@@ -10,4 +10,7 @@ router.get("/:id", authMiddleware, productController.getById);
 router.put("/:id", authMiddleware, productController.update);
 router.delete("/:id", authMiddleware, productController.delete);
 
+router.patch("/:id/deactivate", authMiddleware, productController.deactivate);
+router.patch("/:id/activate", authMiddleware, productController.activate);
+
 export default router;
