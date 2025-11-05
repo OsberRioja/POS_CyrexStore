@@ -1,10 +1,20 @@
-import { JwtPayload } from "jsonwebtoken";
+// src/types/express.d.ts
+import { Permission } from './permissions';
 
 declare global {
   namespace Express {
     interface Request {
-      userId?: string; // lo que añadimos desde el middleware
-      user?: string | JwtPayload; // si quieres guardar todo el payload
+      user?: {
+        sub: string;
+        role: string;
+        email: string;
+        name: string;
+        userCode: number;
+        permissions?: Permission[];
+      };
+      userId?: string;
     }
   }
 }
+
+export {};
