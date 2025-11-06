@@ -1,4 +1,3 @@
-// src/components/SaleFormModal.tsx
 import React, { useEffect, useState } from "react";
 import { productService } from "../services/productService";
 import { clientService } from "../services/clientService";
@@ -6,9 +5,10 @@ import { userService } from "../services/userService";
 import { paymentMethodService } from "../services/paymentMethodService";
 import { saleService } from "../services/saleService";
 import ClientForm from "./ClientForm"; // usamos el formulario completo de cliente
-//import { title } from "process";
-//import { useCurrency } from "../context/currencyContext";
 import { exchangeRateService } from "../services/exchangeRateService";
+import { useAuth } from "../context/authContext";
+import { usePermissions } from "../hooks/usePermissions";
+import { Permission } from "../types/permissions";
 
 type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number; originalPrice?: number; originalCurrency?: string; conversionRate?: number };
 type Payment = { paymentMethodId: number; amount: number };
@@ -24,8 +24,11 @@ export default function SaleFormModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  //const { formatCurrency } = useCurrency();
-  //const [total, setTotal] = useState(0);
+  
+  const { user: currentUser } = useAuth();
+  const { hasPermission } = usePermissions();
+
+  // productos
   const [queryProduct, setQueryProduct] = useState("");
   const [productResults, setProductResults] = useState<any[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -54,6 +57,12 @@ export default function SaleFormModal({
 
   const [showSellerResults, setShowSellerResults] = useState(false);
   const [showClientResults, setShowClientResults] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.role === 'SELLER') {
+      setSellerSelected(currentUser);
+    }
+  }, [currentUser]);
 
   //const { currency } = useCurrency();
 
@@ -342,6 +351,12 @@ export default function SaleFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    //validar permisos
+    if (!hasPermission(Permission.SALE_CREATE)) {
+      alert("No tienes permiso para crear ventas.");
+      return;
+    }
+
     if (!clientSelected) {
       return alert("Selecciona o crea un cliente para continuar");
     }
@@ -387,51 +402,63 @@ export default function SaleFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* VENDEDOR */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-sm">Vendedor (nombre o código)</label>
-              <div className="flex gap-2">
-                <div className="flex gap-2 items-center flex-1">
-                  <input
-                    placeholder="Buscar vendedor por nombre o código"
-                    value={sellerQuery}
-                    onChange={(e) => setSellerQuery(e.target.value)}
-                    onFocus={() => clientQuery.trim() && !clientSelected && setShowClientResults(true)}
-                    className="border p-2 rounded flex-1"
-                  />
-                  {sellerSelected && (
-                    <button 
-                      type="button" 
-                      onClick={clearSellerSelection} 
-                      className="px-2 py-1 bg-red-500 text-white rounded text-sm clear-button"
-                      title="Cambiar Vendedor"
-                    >
-                      X
-                    </button>
-                  )}
+        <form onSubmit={handleSubmit} className="space-y-4"> 
+          <div className={`grid gap-3 ${currentUser?.role !== 'SELLER' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {/* VENDEDOR - ocultar para vendedores */}
+            {currentUser?.role !== 'SELLER' && (
+              <div>
+                <label className="text-sm">Vendedor (nombre o código)</label>
+                <div className="flex gap-2">
+                  <div className="flex gap-2 items-center flex-1">
+                    <input
+                      placeholder="Buscar vendedor por nombre o código"
+                      value={sellerQuery}
+                      onChange={(e) => setSellerQuery(e.target.value)}
+                      onFocus={() => clientQuery.trim() && !clientSelected && setShowClientResults(true)}
+                      className="border p-2 rounded flex-1"
+                    />
+                    {sellerSelected && (
+                      <button 
+                        type="button" 
+                        onClick={clearSellerSelection} 
+                        className="px-2 py-1 bg-red-500 text-white rounded text-sm clear-button"
+                        title="Cambiar Vendedor"
+                      >
+                        X
+                      </button>
+                    )}
+                  </div>
+                  
                 </div>
-                
+
+                {/* lista de resultados por nombre - solo mostrar cuando showSellerResults es true*/}
+                {showSellerResults && sellerResults.length > 0 && (
+                  <div className="border rounded mt-1 max-h-32 overflow-auto bg-white z-50 search-results">
+                    {sellerResults.map((u) => (
+                      <div
+                        key={u.id}
+                        className="p-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleSellerSelect(u)}
+                      >
+                        {u.name} — {u.email} — {u.userCode ?? ""}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {sellerSelected && <div className="text-sm mt-1 text-gray-600">Seleccionado: {sellerSelected.name}</div>}
               </div>
+            )}
 
-              {/* lista de resultados por nombre - solo mostrar cuando showSellerResults es true*/}
-              {showSellerResults && sellerResults.length > 0 && (
-                <div className="border rounded mt-1 max-h-32 overflow-auto bg-white z-50 search-results">
-                  {sellerResults.map((u) => (
-                    <div
-                      key={u.id}
-                      className="p-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => handleSellerSelect(u)}
-                    >
-                      {u.name} — {u.email} — {u.userCode ?? ""}
-                    </div>
-                  ))}
+            {/* Para vendedores, mostrar info del vendedor actual */}
+            {currentUser?.role === 'SELLER' && (
+              <div>
+                <label className="text-sm">Vendedor</label>
+                <div className="p-2 bg-gray-100 rounded text-sm">
+                  {currentUser.name} (Tú)
                 </div>
-              )}
-
-              {sellerSelected && <div className="text-sm mt-1 text-gray-600">Seleccionado: {sellerSelected.name}</div>}
-            </div>
+              </div>
+            )}
 
             {/* CLIENTE */}
             <div>
@@ -467,9 +494,11 @@ export default function SaleFormModal({
               )}
 
               <div className="mt-2 flex gap-2">
-                <button type="button" onClick={handleCreateClientNow} className="px-3 py-1 bg-green-600 text-white rounded">
-                  Crear cliente
-                </button>
+                {hasPermission(Permission.CLIENT_CREATE) &&(
+                  <button type="button" onClick={handleCreateClientNow} className="px-3 py-1 bg-green-600 text-white rounded">
+                    Crear cliente
+                  </button>
+                )}
                 <div className="text-sm mt-1">{clientSelected ? `Cliente: ${clientSelected.nombre}` : ""}</div>
               </div>
             </div>
@@ -620,28 +649,7 @@ export default function SaleFormModal({
             )}
           </div>
 
-          {/* NUEVO: Resumen de totales actualizado */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal de productos:</span>
-                <span className="font-semibold">{itemsTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total a pagar:</span>
-                <span className="font-semibold">{paymentsTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className={isPartial ? 'text-red-600' : 'text-green-600'}>
-                  {isPartial ? 'Saldo pendiente:' : change > 0 ? 'Cambio:' : 'Diferencia:'}
-                </span>
-                <span className={`font-bold ${isPartial ? 'text-red-600' : change > 0 ? 'text-blue-600' : 'text-green-600'}`}>
-                  {isPartial ? remaining.toFixed(2) : change.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-
+          {/* Resumen de totales */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="space-y-2">
               <div className="flex justify-between">

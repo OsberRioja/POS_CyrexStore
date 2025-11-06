@@ -15,5 +15,36 @@ export const userService = {
   getByUsercode: (userCode: number, token?: string) =>
     axios.get(`${BASE}/users/code/${userCode}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    }),
+  }),
+
+  getCurrentUser: () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    
+    // Decodificar el token JWT para obtener información del usuario
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return {
+        id: payload.id,
+        username: payload.username,
+        email: payload.email,
+        role: payload.role,
+        userCode: payload.userCode
+      };
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  },
+  
+  hasRole: (requiredRole: string) => {
+    const user = userService.getCurrentUser();
+    return user?.role === requiredRole;
+  },
+  
+  hasAnyRole: (requiredRoles: string[]) => {
+    const user = userService.getCurrentUser();
+    return requiredRoles.includes(user?.role || '');
+  }
+
 };
