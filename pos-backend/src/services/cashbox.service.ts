@@ -140,7 +140,7 @@ export const CashBoxService = {
           initialAmount: box.initialAmount,
           totalCashSales,
           totalCashExpenses,
-          expectedClosedAmount, // ← Este es el valor que necesitas
+          expectedClosedAmount,
         },
       };
     },

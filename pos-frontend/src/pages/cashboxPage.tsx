@@ -8,6 +8,9 @@ import SalesPage from "./salesPage";
 import ExpensesPage from "./expensesPage";
 import PaymentMethodsPage from "./paymentMethodPage";
 import CloseCashModal from "../components/CloseCashModal";
+import { usePermissions } from "../hooks/usePermissions";
+import { Permission } from "../types/permissions";
+import { PermissionGuard } from "../components/PermissionGuard";
 
 export default function CashboxPage() {
   const { token } = useAuth();
@@ -25,6 +28,15 @@ export default function CashboxPage() {
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeData, setCloseData] = useState<any>(null);
+
+  const { hasPermission, permissions, role } = usePermissions();
+  console.log('🔍 [PERMISSIONS DEBUG]', {
+    role,
+    permissions,
+    hasCASHBOX_READ: hasPermission(Permission.CASHBOX_READ),
+    hasCASHBOX_READ_ALL: hasPermission(Permission.CASHBOX_READ_ALL),
+    allPermissions: Object.values(Permission)
+  });
 
   useEffect(() => {
     loadAll();
@@ -53,7 +65,9 @@ export default function CashboxPage() {
     setLoading(true);
     setWarning(null);
     try {
+      console.log('🔍 [1] Loading open cashbox...');
       const rOpen = await cashboxService.getOpen(_token);
+      console.log('🔍 [1] Open cashbox response:', rOpen);
       const open = rOpen?.data ?? null;
       setOpenCashbox(open);
       if (open?.id) {
@@ -62,21 +76,27 @@ export default function CashboxPage() {
         setSales([]);
         setExpenses([]);
       }
-    } catch {
+    } catch(error) {
+      console.error('❌ Error loading open cashbox:', error);
       setOpenCashbox(null);
     }
     try {
-      const rList = await cashboxService.list(_token);
-      console.log('Raw response:', rList); // DEBUG
-      console.log('Response data:', rList.data); // DEBUG
-
-      // Axios envuelve en .data, y tu backend devuelve { total, data }
-      const boxes = rList.data?.data || rList.data || [];
-      console.log('Boxes to display:', boxes); // DEBUG
-      setCashboxes(Array.isArray(boxes) ? boxes : []);
-    } catch {
+      //solo intentar cargar si el usuario tiene permiso
+      if(hasPermission(Permission.CASHBOX_READ)) {
+        const rList = await cashboxService.list(_token);
+        // Axios envuelve en .data, y tu backend devuelve { total, data }
+        const boxes = rList.data?.data || rList.data || [];
+        setCashboxes(Array.isArray(boxes) ? boxes : []);
+      } else {
+        setCashboxes([]);
+      }
+    } catch(error) {
+      console.error('❌ Error loading cashbox history:', error);
+      // solo mostar el warning si el usuario SI deberia tener acceso
+      if (hasPermission(Permission.CASHBOX_READ)){
+        setWarning("Error cargando historial de cajas.");
+      }
       setCashboxes([]);
-      setWarning("Error cargando historial de cajas.");
     } finally {
       setLoading(false);
     }
@@ -303,30 +323,47 @@ export default function CashboxPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Caja</h1>
-
         <div className="flex gap-2">
-          {!openCashbox && (
-            <button
-              onClick={() => setShowOpenModal(true)}
-              className="px-3 py-2 bg-green-600 text-white rounded"
-            >
-              Abrir
-            </button>
+          {!hasPermission(Permission.CASHBOX_OPEN_CLOSE) && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Modo Vendedor:</strong> Solo puedes realizar ventas cuando la caja esté abierta.
+                    Contacta a un supervisor para abrir/cerrar caja.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
+          <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
+            {!openCashbox && (
+              <button
+                onClick={() => setShowOpenModal(true)}
+                className="px-3 py-2 bg-green-600 text-white rounded"
+              >
+                Abrir Caja
+              </button>
+            )}
+          </PermissionGuard>
           {openCashbox && (
             <>
               <button onClick={() => setView("ventas")} className="px-3 py-2 bg-blue-500 text-white rounded">Ventas</button>
               <button onClick={() => setView("gastos")} className="px-3 py-2 bg-blue-500 text-white rounded">Gastos</button>
               <button onClick={() => setView("paymentMethods")} className="px-3 py-2 bg-blue-500 text-white rounded">Métodos de pago</button>
-              <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-500 text-white rounded">Cerrar</button>
+              <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
+                <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-500 text-white rounded">Cerrar</button>
+              </PermissionGuard>
             </>
           )}
-          <button 
-            onClick={() => setView("history")} 
-            className="px-3 py-2 bg-purple-600 text-white rounded"
-          >
-            📋 Historial
-          </button>
+          <PermissionGuard permission={Permission.CASHBOX_READ_ALL}>
+            <button 
+              onClick={() => setView("history")} 
+              className="px-3 py-2 bg-purple-600 text-white rounded"
+            >
+              📋 Historial
+            </button>
+          </PermissionGuard>
         </div>
       </div>
 
@@ -367,76 +404,83 @@ export default function CashboxPage() {
       ) : (
         <div>
           <p className="mb-3">No hay ninguna caja abierta en este momento.</p>
-          
-          {cashboxes.length > 0 && (
-            <div className="mt-6">
-              <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold mb-4">Historial de Cajas</h2>
-              <button 
-                  onClick={() => setView("history")} 
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                >
-                  Ver todas →
-                </button>
+          <PermissionGuard permission={Permission.CASHBOX_READ}>
+            {cashboxes.length > 0 && (
+              <div className="mt-6">
+                <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold mb-4">Historial de Cajas</h2>
+                <PermissionGuard permission={Permission.CASHBOX_READ_ALL}>
+                  <button 
+                      onClick={() => setView("history")} 
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Ver todas →
+                    </button>
+                </PermissionGuard>
+                </div>
+                <PermissionGuard permission={Permission.CASHBOX_READ}>
+                  <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Abierta</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cerrada</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicial</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {cashboxes.map((box: any) => (
+                          <tr key={box.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">{box.id}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {new Date(box.openedAt).toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {box.closedAt ? new Date(box.closedAt).toLocaleString() : '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {box.initialAmount.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {box.closedAmount?.toFixed(2) || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                box.status === 'OPEN' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {box.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <button
+                                onClick={() => handleViewDetails(box)}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                Ver detalles
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </PermissionGuard>
               </div>
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Abierta</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cerrada</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicial</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {cashboxes.map((box: any) => (
-                      <tr key={box.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{box.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {new Date(box.openedAt).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {box.closedAt ? new Date(box.closedAt).toLocaleString() : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {box.initialAmount.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {box.closedAmount?.toFixed(2) || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            box.status === 'OPEN' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {box.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            onClick={() => handleViewDetails(box)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Ver detalles
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            )}
+          </PermissionGuard>
+          <PermissionGuard permission={Permission.CASHBOX_READ}>
+            {cashboxes.length === 0 && (
+              <div className="mt-6 text-center text-gray-500">
+                <p>No hay historial de cajas</p>
               </div>
-            </div>
-          )}
-          {cashboxes.length === 0 && (
-            <div className="mt-6 text-center text-gray-500">
-              <p>No hay historial de cajas</p>
-            </div>
-          )}
+            )}
+          </PermissionGuard>
         </div>
       )}
 

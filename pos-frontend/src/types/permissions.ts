@@ -49,6 +49,7 @@ export type PermissionType = typeof Permission[keyof typeof Permission];
 // Permisos por rol (actualizado para usar PermissionType)
 export const ROLE_PERMISSIONS: Record<string, PermissionType[]> = {
   ADMIN: Object.values(Permission),
+  
   SUPERVISOR: [
     Permission.PRODUCT_READ,
     Permission.PRODUCT_CREATE,
