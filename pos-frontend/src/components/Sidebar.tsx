@@ -8,6 +8,13 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
+
+  // Determinar qué elementos mostrar según el rol
+  const showStock = user?.role !== 'SELLER';
+  const showUsers = user?.role === 'ADMIN';
+  const showProviders = user?.role !== 'SELLER';
+  const showConfiguration = user?.role === 'ADMIN';
+
   return (
     <aside className="w-40 bg-transparent flex flex-col items-center py-8">
       {/* Mostrar información del usuario si está disponible */}
@@ -27,24 +34,30 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         >
           💰 CAJA
         </button>
+        
+        {/* STOCK - Solo para ADMIN y SUPERVISOR */}
+        {showStock && (
+          <button
+            onClick={() => onSelect("stock")}
+            className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+              selected === "stock" ? "bg-blue-600" : "bg-gray-500/90"
+            }`}
+          >
+            📊 STOCK
+          </button>
+        )}
 
-        <button
-          onClick={() => onSelect("stock")}
-          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
-            selected === "stock" ? "bg-blue-600" : "bg-gray-500/90"
-          }`}
-        >
-          📊 STOCK
-        </button>
-
-        <button
-          onClick={() => onSelect("usuarios")}
-          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
-            selected === "usuarios" ? "bg-blue-600" : "bg-gray-500/90"
-          }`}
-        >
-          👥 USUARIOS
-        </button>
+        {/* USUARIOS - Solo para ADMIN */}
+        {showUsers && (
+          <button
+            onClick={() => onSelect("usuarios")}
+            className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+              selected === "usuarios" ? "bg-blue-600" : "bg-gray-500/90"
+            }`}
+          >
+            👥 USUARIOS
+          </button>
+        )}
 
         <button
           onClick={() => { console.log('Sidebar click: clientes'); onSelect('clientes'); }}
@@ -55,15 +68,17 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
           👥 CLIENTES
         </button>
 
-        <button
-          onClick={() => { console.log('Sidebar click: proveedores'); onSelect('proveedores'); }}
-          className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
-            selected === "proveedores" ? "bg-blue-600" : "bg-gray-500/90"
-          }`}
-        >
-          🏢 PROVEEDORES
-        </button>
-
+        {/* PROVEEDORES - Solo para ADMIN y SUPERVISOR */}
+        {showProviders && (
+          <button
+            onClick={() => { console.log('Sidebar click: proveedores'); onSelect('proveedores'); }}
+            className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+              selected === "proveedores" ? "bg-blue-600" : "bg-gray-500/90"
+            }`}
+          >
+            🏢 PROVEEDORES
+          </button>
+        )}
         <button
           onClick={() => { console.log('Sidebar click: productos'); onSelect('productos'); }}
           className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
@@ -74,7 +89,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         </button>
 
         {/* NUEVA SECCIÓN DE CONFIGURACIÓN SOLO PARA ADMIN */}
-        {user?.role === 'ADMIN' && (
+        {showConfiguration && (
           <>
             {/* Línea separadora */}
             <div className="w-full border-t border-gray-300 my-2" />

@@ -88,7 +88,15 @@ function MainApp() {
         <main className="flex-1 p-6">
           <div className="bg-white rounded-3xl shadow-sm min-h-[80vh] p-6 border border-gray-200">
             {page === "caja" && <CashboxPage/>}
-            {page === "stock" && <StockPage />}
+            {page === "stock" && user?.role !== 'SELLER' && <StockPage />}
+            {page === "stock" && user?.role === 'SELLER' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
             {page === "divisas" && <ExchangeRateSettingsPage />}
             {page === "usuarios" && <UsersPage />}
             {page === "clientes" && <ClientsPage />}
