@@ -1,9 +1,12 @@
-// src/pages/ProductsPage.tsx
 import { useEffect, useState } from "react";
 import ProductTable from "../components/ProductTable";
 import ProductForm from "../components/ProductForm";
 import { productService } from "../services/productService";
-//import productPrice from "../services/ProductPrice";
+import { usePermissions } from "../hooks/usePermissions";
+import { Permission } from "../types/permissions";
+//import type { PermissionType } from "../types/permissions";
+import { PermissionGuard } from "../components/PermissionGuard";
+
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -11,6 +14,8 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<any | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+
+  const { hasPermission } = usePermissions();
 
   const loadProducts = async () => {
     setLoading(true);
@@ -66,21 +71,35 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-700">Productos</h2>
         <div className="flex items-center gap-4">
-          {/* Toggle para mostrar/ocultar inactivos */}
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            Mostrar productos desactivados
-          </label>
-          <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
+          <PermissionGuard permission={Permission.PRODUCT_READ}>
+            {/* Toggle para mostrar/ocultar inactivos */}
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Mostrar productos desactivados
+            </label>
+          </PermissionGuard>
+          <PermissionGuard permission={Permission.PRODUCT_CREATE}>
+            <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
+          </PermissionGuard>
         </div>
       </div>
 
-      <ProductTable products={filteredProducts} loading={loading} onEdit={openEdit} onDelete={loadProducts} onDeactivate={handleDeactivate} onActivate={handleActivate} />
+      <ProductTable 
+        products={filteredProducts}
+        loading={loading}
+        onEdit={openEdit} 
+        onDelete={loadProducts} 
+        onDeactivate={handleDeactivate} 
+        onActivate={handleActivate}
+        canEdit={hasPermission(Permission.PRODUCT_UPDATE)}
+        canDelete={hasPermission(Permission.PRODUCT_DELETE)}
+        canToggleActive={hasPermission(Permission.PRODUCT_TOGGLE_ACTIVE)}
+      />
 
       {showForm && (
         <ProductForm
