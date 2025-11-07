@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { userService } from "../services/userService";
+import { usePermissions } from "../hooks/usePermissions";
+import { Permission } from "../types/permissions";
 
 export default function UserForm({ user, onClose, onSaved }: { user: any | null; onClose: () => void; onSaved: () => void; }) {
   const [form, setForm] = useState({
@@ -12,8 +14,23 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
   });
   const [saving, setSaving] = useState(false);
 
+  const { hasPermission } = usePermissions();
   // Determinar si estamos editando un usuario existente
   const isEditing = !!(user && user.id);
+
+  // Verificar permisos al cargar
+  useEffect(() => {
+    if (isEditing && !hasPermission(Permission.USER_UPDATE)) {
+      alert("No tienes permisos para editar usuarios");
+      onClose();
+      return;
+    }
+    if (!isEditing && !hasPermission(Permission.USER_CREATE)) {
+      alert("No tienes permisos para crear usuarios");
+      onClose();
+      return;
+    }
+  }, [isEditing, hasPermission, onClose]);
 
   useEffect(() => {
     setForm({
@@ -32,6 +49,18 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar permisos nuevamente antes de enviar
+    if (isEditing && !hasPermission(Permission.USER_UPDATE)) {
+      alert("No tienes permisos para editar usuarios");
+      return;
+    }
+    
+    if (!isEditing && !hasPermission(Permission.USER_CREATE)) {
+      alert("No tienes permisos para crear usuarios");
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: any = {
@@ -62,7 +91,11 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white w-96 rounded shadow p-4">
-        <h3 className="text-lg font-bold mb-3">{isEditing ? "Editar usuario" : "Nuevo usuario"}</h3>
+        <h3 className="text-lg font-bold mb-3">{isEditing ? "Editar usuario" : "Nuevo usuario"}
+          {!hasPermission(Permission.USER_UPDATE) && isEditing && (
+            <span className="text-xs text-red-600 ml-2">(SOLO LECTURA)</span>
+          )}
+        </h3>
         <form onSubmit={handleSubmit} className="space-y-2">
           {/* Campo de código - Solo editable al crear */}
           {isEditing ? (
@@ -87,9 +120,33 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
             />
           )}
           
-          <input name="username" value={form.username} onChange={handleChange} placeholder="Nombre" className="w-full border p-2 rounded" required />
-          <input name="email" value={form.email} onChange={handleChange} placeholder="Correo" type="email" className="w-full border p-2 rounded" required />
-          <input name="phone" value={form.phone} onChange={handleChange} placeholder="Teléfono" className="w-full border p-2 rounded" />
+          <input 
+            name="username" 
+            value={form.username} 
+            onChange={handleChange} 
+            placeholder="Nombre" 
+            className="w-full border p-2 rounded" 
+            required
+            disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
+          />
+          <input 
+            name="email" 
+            value={form.email} 
+            onChange={handleChange} 
+            placeholder="Correo" 
+            type="email" 
+            className="w-full border p-2 rounded" 
+            required
+            disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
+          />
+          <input 
+            name="phone" 
+            value={form.phone} 
+            onChange={handleChange} 
+            placeholder="Teléfono"
+            className="w-full border p-2 rounded" 
+            disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
+          />
           
           {/* Campo de contraseña - Diferente mensaje según el modo */}
           {isEditing ? (
@@ -99,7 +156,8 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
               onChange={handleChange} 
               placeholder="Nueva contraseña (dejar vacío para no cambiar)" 
               type="password" 
-              className="w-full border p-2 rounded" 
+              className="w-full border p-2 rounded"
+              disabled={!hasPermission(Permission.USER_UPDATE)}
             />
           ) : (
             <input 
@@ -113,17 +171,27 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
             />
           )}
           
-          <select name="role" value={form.role} onChange={handleChange} className="w-full border p-2 rounded">
+          <select 
+            name="role" 
+            value={form.role} 
+            onChange={handleChange} 
+            className="w-full border p-2 rounded"
+            disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
+          >
             <option value="SELLER">Vendedor</option>
             <option value="SUPERVISOR">Supervisor</option>
             <option value="ADMIN">Administrador</option>
           </select>
 
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-3 py-1 bg-gray-300 rounded">Cancelar</button>
-            <button type="submit" disabled={saving} className="px-3 py-1 bg-blue-600 text-white rounded">
-              {saving ? "Guardando..." : "Guardar"}
+            <button type="button" onClick={onClose} className="px-3 py-1 bg-gray-300 rounded">
+              Cancelar
             </button>
+            {isEditing ? hasPermission(Permission.USER_UPDATE) : hasPermission(Permission.USER_CREATE) && (
+              <button type="submit" disabled={saving} className="px-3 py-1 bg-blue-600 text-white rounded">
+                {saving ? "Guardando..." : "Guardar"}
+              </button>
+            )}
           </div>
         </form>
       </div>

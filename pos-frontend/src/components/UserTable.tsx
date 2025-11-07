@@ -5,16 +5,31 @@ export default function UserTable({
   loading,
   onEdit,
   onRefresh,
+  canEdit,
+  canDelete,
 }: {
   users: any[];
   loading: boolean;
   onEdit: (u: any) => void;
   onRefresh: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar usuario?")) return;
-    await userService.remove(id);
-    onRefresh();
+    if (!canDelete) {
+      alert("No tienes permisos para eliminar usuarios");
+      return;
+    }
+
+    if (!confirm("¿Estas Seguro de Querer Eliminar Este usuario?")) return;
+
+    try {
+      await userService.remove(id);
+      onRefresh();
+    } catch(error) {
+      console.error(error);
+      alert("Error al eliminar el usuario");
+    }
   };
 
   const getCode = (u: any) => u.userCode ?? u.usercode ?? u.user_code ?? u.code ?? "-";
@@ -32,7 +47,7 @@ export default function UserTable({
             <th className="p-3 border text-left">Correo</th>
             <th className="p-3 border text-left">Teléfono</th>
             <th className="p-3 border text-left">Rol</th>
-            <th className="p-3 border text-left">Acciones</th>
+            {(canEdit || canDelete) && <th className="p-3 border text-left">Acciones</th>}
           </tr>
         </thead>
         <tbody>
@@ -42,11 +57,25 @@ export default function UserTable({
               <td className="p-3 border">{u.name ?? u.username ?? u.userName}</td>
               <td className="p-3 border">{u.email}</td>
               <td className="p-3 border">{u.phone}</td>
-              <td className="p-3 border">{u.role}</td>
-              <td className="p-3 border flex gap-2">
-                <button onClick={() => onEdit(u)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
-                <button onClick={() => handleDelete(u.id)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
+              <td className="p-3 border">
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  u.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
+                  u.role === 'SUPERVISOR' ? 'bg-blue-100 text-blue-800' :
+                  'bg-green-100 text-green-800'
+                  }`}>
+                    {u.role}
+                </span>
               </td>
+              {(canEdit || canDelete) &&(
+                <td className="p-3 border flex gap-2">
+                  {canEdit && (
+                    <button onClick={() => onEdit(u)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(u.id)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
