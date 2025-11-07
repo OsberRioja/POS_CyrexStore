@@ -1,6 +1,6 @@
 // src/components/CompleteRepairModal.tsx
 import React, { useState } from 'react';
-import { X, CheckCircle, Wrench } from 'lucide-react';
+import { X, CheckCircle, Truck } from 'lucide-react';
 import { stockService } from '../services/stockService';
 
 interface CompleteRepairModalProps {
@@ -84,6 +84,18 @@ const CompleteRepairModal: React.FC<CompleteRepairModalProps> = ({
               </div>
             </div>
           </div>
+
+          {repair.provider && (
+            <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+              <Truck size={16} className="text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-green-800">Proveedor: {repair.provider.name}</p>
+                {repair.product.provider && repair.product.provider.id_provider !== repair.provider.id_provider && (
+                  <p className="text-xs text-green-600">(Proveedor original del producto)</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Resolución */}
           <div>

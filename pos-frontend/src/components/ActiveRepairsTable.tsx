@@ -1,6 +1,5 @@
-// src/components/ActiveRepairsTable.tsx
 import React, { useState } from 'react';
-import { Wrench, CheckCircle, Clock, Search } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, Search, Truck } from 'lucide-react';
 import CompleteRepairModal from './CompleteRepairModal';
 
 interface ActiveRepair {
@@ -14,7 +13,16 @@ interface ActiveRepair {
     name: string;
     sku: string;
     stock: number;
+    provider?: { // ← Proveedor del producto
+      id_provider: number;
+      name: string;
+      phone: string;
+    } | null;
   };
+  provider?: { // ← Proveedor del movimiento (puede ser diferente)
+    id_provider: number;
+    name: string;
+  } | null;
   user: {
     name: string;
     userCode: number;
@@ -34,8 +42,15 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
   const filteredRepairs = repairs.filter(repair =>
     repair.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     repair.product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    repair.reason.toLowerCase().includes(searchTerm.toLowerCase())
+    repair.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (repair.provider?.name.toLowerCase().includes(searchTerm.toLowerCase())) || // ← BUSCAR POR PROVEEDOR
+    (repair.product.provider?.name.toLowerCase().includes(searchTerm.toLowerCase())) // ← BUSCAR POR PROVEEDOR DEL PRODUCTO
   );
+
+  // Función para obtener el proveedor a mostrar (prioridad: movimiento > producto)
+  const getDisplayProvider = (repair: ActiveRepair) => {
+    return repair.provider || repair.product.provider;
+  };
 
   const handleComplete = (repair: ActiveRepair) => {
     setSelectedRepair(repair);
@@ -77,7 +92,7 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por producto, SKU o razón..."
+            placeholder="Buscar por producto, SKU, razón o proveedor..."
             className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -90,6 +105,7 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cantidad</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proveedor</th> {/* ← PROVEEDOR */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Razón</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enviado por</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
@@ -100,6 +116,7 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
           <tbody className="divide-y divide-gray-200">
             {filteredRepairs.map((repair) => {
               const daysInRepair = getDaysInRepair(repair.createdAt);
+              const displayProvider = getDisplayProvider(repair);
               
               return (
                 <tr key={repair.id} className="hover:bg-gray-50">
@@ -113,6 +130,19 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
                     <span className="inline-flex px-3 py-1 text-sm font-semibold text-red-800 bg-red-100 rounded-full">
                       {Math.abs(repair.quantity)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {displayProvider ? (
+                      <div className="flex items-center gap-2">
+                        <Truck size={16} className="text-green-600" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{displayProvider.name}</div>
+                          <div className="text-xs text-gray-500">ID: {displayProvider.id_provider}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">Sin proveedor</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="max-w-xs">

@@ -77,7 +77,8 @@ export const StockMovementService = {
 
     return prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
-        where: { id: data.productId }
+        where: { id: data.productId },
+        include: { provider: true }
       });
 
       if (!product) {
@@ -95,7 +96,7 @@ export const StockMovementService = {
         where: { id: data.productId },
         data: { stock: newStock }
       });
-
+      //Asignar automáticamente el provider id si el producto tiene uno
       const movement = await tx.stockMovement.create({
         data: {
           productId: data.productId,
@@ -105,10 +106,24 @@ export const StockMovementService = {
           newStock,
           reason: data.reason,
           notes: data.notes,
-          createdBy: userId
+          createdBy: userId,
+          providerId: product.providerId 
         },
         include: {
-          product: { select: { name: true, sku: true } },
+          product: { 
+            select: { 
+              name: true, 
+              sku: true,
+              provider:{
+                select: {
+                  id_provider: true,
+                  name: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          provider: {select:{name: true, id_provider: true} },
           user: { select: { name: true } }
         }
       });
@@ -288,8 +303,17 @@ export const StockMovementService = {
       },
       include: {
         product: {
-          select: { id: true, name: true, sku: true, stock: true }
+          select: { id: true, name: true, sku: true, stock: true,
+            provider:{
+              select: {
+                id_provider: true,
+                name: true,
+                phone: true
+              }
+            }
+          }
         },
+        provider: { select: { name: true, id_provider: true } },
         user: {
           select: { name: true, userCode: true }
         }

@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
-import { X, Wrench, MonitorPlay } from 'lucide-react';
+import { X, Wrench, MonitorPlay, Truck } from 'lucide-react';
 import { stockService } from '../services/stockService';
 
 interface OutboundStockModalProps {
-  product: any;
+  product: {
+    id: string;
+    name: string;
+    sku: string;
+    stock: number;
+    provider?: { // ← Añadir proveedor al tipo del producto
+      id_provider: number;
+      name: string;
+      phone: string;
+    } | null;
+  };
   type: 'repair' | 'demo';
   onClose: () => void;
   onSuccess: () => void;
@@ -96,6 +106,23 @@ const OutboundStockModal: React.FC<OutboundStockModalProps> = ({
             <p className="text-sm text-gray-600">Stock Actual</p>
             <p className="text-2xl font-bold text-blue-600">{product.stock} unidades</p>
           </div>
+
+          {/* Información del Proveedor - NUEVA SECCIÓN */}
+          {product.provider && (
+            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Truck size={16} className="text-green-600" />
+                <p className="text-sm font-medium text-green-800">Proveedor Vinculado</p>
+              </div>
+              <div className="text-sm text-green-700">
+                <p className="font-medium">{product.provider.name}</p>
+                <p className="text-xs">Tel: {product.provider.phone}</p>
+                <p className="text-xs mt-1 text-green-600">
+                  Este proveedor está asociado a este producto
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Cantidad */}
           <div>
