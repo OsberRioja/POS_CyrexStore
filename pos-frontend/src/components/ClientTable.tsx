@@ -5,11 +5,15 @@ export default function ClientTable({
   loading,
   onEdit,
   onDelete,
+  canEdit,
+  canDelete,
 }: {
   clients: any[];
   loading: boolean;
   onEdit: (c: any) => void;
   onDelete: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   const handleDelete = async (id: number) => {
     if (!confirm("Eliminar cliente?")) return;
@@ -36,7 +40,7 @@ export default function ClientTable({
             <th className="p-3 border text-left">Teléfono</th>
             <th className="p-3 border text-left">Género</th>
             <th className="p-3 border text-left">Fecha Nac.</th>
-            <th className="p-3 border text-left">Acciones</th>
+            {(canEdit || canDelete) && <th className="p-3 border text-left">Acciones</th>}
           </tr>
         </thead>
         <tbody>
@@ -48,10 +52,16 @@ export default function ClientTable({
               <td className="p-3 border">{c.telefono ?? c.phone}</td>
               <td className="p-3 border">{c.genero ?? c.gender ?? "-"}</td>
               <td className="p-3 border">{c.fecha_nacimiento ? new Date(c.fecha_nacimiento).toLocaleDateString() : "-"}</td>
-              <td className="p-3 border flex gap-2">
-                <button onClick={() => onEdit(c)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
-                <button onClick={() => handleDelete(c.id_cliente ?? c.id ?? c.idCliente)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
-              </td>
+              {(canEdit || canDelete) &&(
+                <td className="p-3 border flex gap-2">
+                  {canEdit && (
+                    <button onClick={() => onEdit(c)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(c.id_cliente ?? c.id ?? c.idCliente)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

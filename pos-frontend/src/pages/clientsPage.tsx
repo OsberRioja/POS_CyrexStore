@@ -1,9 +1,11 @@
-// src/pages/ClientsPage.tsx
 import { useEffect, useState } from "react";
 import ClientTable from "../components/ClientTable";
 import ClientForm from "../components/ClientForm";
 import { clientService } from "../services/clientService";
-import { useDebounce } from "../hooks/useDebounce"; // usa el hook que ya tienes
+import { useDebounce } from "../hooks/useDebounce";
+import { usePermissions } from "../hooks/usePermissions";
+import { Permission } from "../types/permissions";
+import { PermissionGuard } from "../components/PermissionGuard";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -15,6 +17,8 @@ export default function ClientsPage() {
   const [total, setTotal] = useState<number | null>(null); // si backend devuelve total
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [showForm, setShowForm] = useState(false);
+
+  const { hasPermission } = usePermissions();
 
   const loadClients = async (q = debouncedQuery, p = page) => {
     setLoading(true);
@@ -71,13 +75,17 @@ export default function ClientsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-700">Clientes</h2>
         <div className="flex items-center gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por código, nombre, teléfono, género..."
-            className="border p-2 rounded w-80"
-          />
-          <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
+          <PermissionGuard permission={Permission.CLIENT_READ}>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar por código, nombre, teléfono, género..."
+              className="border p-2 rounded w-80"
+            />
+          </PermissionGuard>
+          <PermissionGuard permission={Permission.CLIENT_CREATE}>
+            <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>
+          </PermissionGuard>
         </div>
       </div>
 
@@ -86,6 +94,8 @@ export default function ClientsPage() {
         loading={loading}
         onEdit={openEdit}
         onDelete={() => loadClients()}
+        canEdit={hasPermission(Permission.CLIENT_UPDATE)}
+        canDelete={hasPermission(Permission.CLIENT_DELETE)}
       />
 
       {/* paginación simple */}

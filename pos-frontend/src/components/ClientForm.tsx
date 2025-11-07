@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { clientService } from "../services/clientService";
+import { usePermissions } from "../hooks/usePermissions";
+import { Permission } from "../types/permissions";
 
 export default function ClientForm({ client, onClose, onSaved }: { client: any | null; onClose: () => void; onSaved?: (createdClient: any) => void }) {
   const [form, setForm] = useState({
@@ -10,6 +12,24 @@ export default function ClientForm({ client, onClose, onSaved }: { client: any |
     fechaNacimiento: client?.fecha_nacimiento ? new Date(client.fecha_nacimiento).toISOString().slice(0,10) : "",
   });
   const [saving, setSaving] = useState(false);
+
+  const { hasPermission } = usePermissions();
+  const isEditing = !!client;
+
+  // Verificar permisos al cargar
+  useEffect(() => {
+    if (isEditing && !hasPermission(Permission.CLIENT_UPDATE)) {
+      alert("No tienes permiso para editar clientes.");
+      onClose();
+      return;
+    }
+
+    if (!isEditing && !hasPermission(Permission.CLIENT_CREATE)) {
+      alert("No tienes permiso para crear clientes.");
+      onClose();
+      return;
+    }
+  }, [isEditing, hasPermission, onClose]);
 
   useEffect(() => {
     setForm({
@@ -79,16 +99,40 @@ export default function ClientForm({ client, onClose, onSaved }: { client: any |
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white w-96 rounded shadow p-4">
-        <h3 className="text-lg font-bold mb-3">{client ? "Editar cliente" : "Nuevo cliente"}</h3>
+        <h3 className="text-lg font-bold mb-3">
+          {client ? "Editar cliente" : "Nuevo cliente"}
+          {!hasPermission(Permission.CLIENT_UPDATE) && client && (
+            <span className="text-xs text-red-600 ml-2">(SOLO LECTURA)</span>
+          )}
+        </h3>
         <form onSubmit={handleSubmit} className="space-y-2">
-          <select name="tipoCliente" value={form.tipoCliente} onChange={handleChange} className="w-full border p-2 rounded">
+          <select name="tipoCliente"
+            value={form.tipoCliente} 
+            onChange={handleChange} 
+            className="w-full border p-2 rounded" 
+            disabled={isEditing && !hasPermission(Permission.CLIENT_UPDATE)} 
+          >
             <option value="PERSONA">Persona</option>
             <option value="EMPRESA">Empresa</option>
           </select>
 
-          <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Nombre" className="w-full border p-2 rounded" required />
+          <input name="nombre" 
+            value={form.nombre} 
+            onChange={handleChange} 
+            placeholder="Nombre" 
+            className="w-full border p-2 rounded" 
+            required 
+            disabled={isEditing && !hasPermission(Permission.CLIENT_UPDATE)}
+          />
 
-          <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Teléfono" className="w-full border p-2 rounded" required />
+          <input name="telefono" 
+            value={form.telefono} 
+            onChange={handleChange} 
+            placeholder="Teléfono" 
+            className="w-full border p-2 rounded" 
+            required 
+            disabled={isEditing && !hasPermission(Permission.CLIENT_UPDATE)}
+          />
 
           {/* SECCIÓN: select que autopopula el input "genero" */}
           <div className="flex gap-2">
@@ -104,6 +148,7 @@ export default function ClientForm({ client, onClose, onSaved }: { client: any |
               })() }
               onChange={(e) => handleSelectGenero(e.target.value)}
               className="border p-2 rounded"
+              disabled={isEditing && !hasPermission(Permission.CLIENT_UPDATE)}
             >
               <option value="">Seleccionar género</option>
               <option value="F">Femenino</option>
@@ -118,14 +163,28 @@ export default function ClientForm({ client, onClose, onSaved }: { client: any |
               readOnly
               placeholder="Género"
               className="flex-1 border p-2 rounded bg-gray-50"
+              disabled={isEditing && !hasPermission(Permission.CLIENT_UPDATE)}
             />
           </div>
 
-          <input name="fechaNacimiento" value={form.fechaNacimiento} onChange={handleChange} placeholder="YYYY-MM-DD" type="date" className="w-full border p-2 rounded" />
+          <input name="fechaNacimiento" 
+            value={form.fechaNacimiento} 
+            onChange={handleChange} 
+            placeholder="YYYY-MM-DD" 
+            type="date" 
+            className="w-full border p-2 rounded" 
+            disabled={isEditing && !hasPermission(Permission.CLIENT_UPDATE)}
+          />
 
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-3 py-1 bg-gray-300 rounded">Cancelar</button>
-            <button type="submit" disabled={saving} className="px-3 py-1 bg-green-600 text-white rounded">{saving ? "Guardando..." : "Guardar"}</button>
+            <button type="button" onClick={onClose} className="px-3 py-1 bg-gray-300 rounded">
+              Cancelar
+            </button>
+            {(isEditing ? hasPermission(Permission.CLIENT_UPDATE) : hasPermission(Permission.CLIENT_CREATE)) && (
+              <button type="submit" disabled={saving} className="px-3 py-1 bg-green-600 text-white rounded">
+                {saving ? "Guardando..." : "Guardar"}
+              </button>
+            )}
           </div>
         </form>
       </div>
