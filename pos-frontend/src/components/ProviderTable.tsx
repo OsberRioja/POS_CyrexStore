@@ -5,11 +5,15 @@ export default function ProviderTable({
   loading,
   onEdit,
   onRefresh,
+  canEdit,
+  canDelete,
 }: {
   providers: any[];
   loading: boolean;
   onEdit: (p: any) => void;
   onRefresh: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   const handleDelete = async (id: number) => {
     if (!confirm("Eliminar proveedor?")) return;
@@ -33,7 +37,7 @@ export default function ProviderTable({
             <th className="p-3 border text-left">Nombre</th>
             <th className="p-3 border text-left">Teléfono</th>
             <th className="p-3 border text-left">Creado</th>
-            <th className="p-3 border text-left">Acciones</th>
+            {(canEdit || canDelete) && <th className="p-3 border text-left">Acciones</th>}
           </tr>
         </thead>
         <tbody>
@@ -42,10 +46,16 @@ export default function ProviderTable({
               <td className="p-3 border">{p.nombre ?? p.name}</td>
               <td className="p-3 border">{p.telefono ?? p.phone}</td>
               <td className="p-3 border">{p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}</td>
-              <td className="p-3 border flex gap-2">
-                <button onClick={() => onEdit(p)} className="px-2 py-1 bg-yellow-500 text-white rounded">Editar</button>
-                <button onClick={() => handleDelete(p.id_provider ?? p.id)} className="px-2 py-1 bg-red-600 text-white rounded">Eliminar</button>
-              </td>
+              {(canEdit || canDelete) && (
+                <td className="p-3 border flex gap-2">
+                  {canEdit && (
+                    <button onClick={() => onEdit(p)} className="px-2 py-1 bg-yellow-500 text-white rounded">Editar</button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(p.id_provider ?? p.id)} className="px-2 py-1 bg-red-600 text-white rounded">Eliminar</button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

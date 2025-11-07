@@ -20,9 +20,9 @@ export default function ProductTable({
   onDelete: () => void;
   onDeactivate: (productId: string) => void;
   onActivate: (productId: string) => void;
-  canEdit?: boolean;
-  canDelete?: boolean;
-  canToggleActive?: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canToggleActive: boolean;
 }) {
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar producto?")) return;
