@@ -4,7 +4,6 @@ import { SaleRepository } from "../repositories/sale.repository";
 import type { CreateSaleDTO, SaleItemDTO, SalePaymentDTO, AddPaymentDTO } from "../dtos/sale.dto";
 import { CashBoxRepository } from "../repositories/cashBox.repository";
 import { PaymentMethodRepository } from "../repositories/paymentMethod.repository";
-import { METHODS } from "http";
 
 const prisma = new PrismaClient();
 
@@ -22,7 +21,7 @@ export const SaleService = {
   /**
    * Crea una venta completa en transacción:
    * - valida productos / stock
-   * - calcula unitPrice y subtotal
+   * - CORREGIDO: usa unitPrice del frontend (ya convertido a BOB)
    * - permite pagos parciales si allowPartialPayment = true
    * - asigna cashBoxId a pagos en efectivo si hay caja abierta
    * - decrementa stock de productos
@@ -57,8 +56,18 @@ export const SaleService = {
       if (!it.productId) throw { status: 400, message: "Cada item debe tener productId" };
       const quantity = Number(it.quantity);
       if (!Number.isInteger(quantity) || quantity <= 0) throw { status: 400, message: "quantity inválida para un item" };
-      // validamos producto y stock dentro de la transacción abajo
-      itemsData.push({ productId: String(it.productId), quantity, unitPrice: Number(it.unitPrice) });
+      
+      // ✅ CRÍTICO: Validar que unitPrice venga del frontend
+      const unitPrice = Number(it.unitPrice);
+      if (isNaN(unitPrice) || unitPrice <= 0) {
+        throw { status: 400, message: "unitPrice inválido para un item" };
+      }
+      
+      itemsData.push({ 
+        productId: String(it.productId), 
+        quantity, 
+        unitPrice // ← Usar el precio que viene del frontend (ya convertido a BOB)
+      });
     }
 
     // Validar payments
@@ -130,7 +139,7 @@ export const SaleService = {
         throw { status: 400, message: "Formato de client inválido" };
       }
 
-      // 1) validar productos (existen y stock)
+      // ✅ 1) CORRECCIÓN: Validar productos pero USAR unitPrice del frontend
       const itemsToCreate: any[] = [];
       let calculatedTotal = 0;
 
@@ -139,13 +148,15 @@ export const SaleService = {
         if (!product) throw { status: 404, message: `Producto ${it.productId} no encontrado` };
         if (product.stock < it.quantity) throw { status: 400, message: `Stock insuficiente para producto ${product.name}` };
 
-        const unitPrice = Number(product.salePrice);
+        // ✅ CORRECCIÓN: Usar el unitPrice que viene del frontend (ya convertido a BOB)
+        const unitPrice = Number(it.unitPrice);
         const subtotal = unitPrice * Number(it.quantity);
         calculatedTotal += subtotal;
+        
         itemsToCreate.push({
           productId: it.productId,
           quantity: it.quantity,
-          unitPrice,
+          unitPrice, //usa el precio del frontend
           subtotal,
         });
       }
@@ -178,8 +189,6 @@ export const SaleService = {
         };
       }
 
-
-
       // 2) preparar paymentsData (y verificar métodos)
       const paymentsData: any[] = [];
       for (const p of adjustedPayments) {
@@ -192,6 +201,7 @@ export const SaleService = {
           cashBoxId: isCash ? openBox.id : undefined,
         });
       }
+      
       // Calcular saldo y estado
       const balance = Math.max(0, calculatedTotal - netCashAmount);
       const paymentStatus = this.calculatePaymentStatus(calculatedTotal, netCashAmount);
@@ -278,6 +288,7 @@ export const SaleService = {
       return created;
     });
   },
+  
   /**
    * NUEVO: Método para completar un pago pendiente
    */
@@ -394,7 +405,7 @@ export const SaleService = {
     cashBoxId?: number;
     dateFrom?: string;
     dateTo?: string;
-    paymentStatus?: PaymentStatus; // NUEVO: filtrar por estado de pago
+    paymentStatus?: PaymentStatus;
   }) {
     return SaleRepository.findAll(params);
   },
@@ -410,7 +421,7 @@ export const SaleService = {
     return sales;
   },
 
-   /**
+  /**
    * NUEVO: Obtener ventas con saldo pendiente
    */
   async findPendingSales(params: { page?: number; limit?: number } = {}) {
