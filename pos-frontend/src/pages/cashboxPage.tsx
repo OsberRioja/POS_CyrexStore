@@ -11,6 +11,7 @@ import CloseCashModal from "../components/CloseCashModal";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
+import CashboxReportModal from "../components/CashboxReportModal";
 
 export default function CashboxPage() {
   const { token } = useAuth();
@@ -24,6 +25,7 @@ export default function CashboxPage() {
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [view, setView] = useState<"ventas" | "gastos" | "paymentMethods" | "history" | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -41,7 +43,7 @@ export default function CashboxPage() {
   useEffect(() => {
     loadAll();
   }, [_token]);
-
+  
   async function loadSales(cashBoxId: number) {
     try {
       const r = await saleService.list({cashBoxId});
@@ -106,6 +108,10 @@ export default function CashboxPage() {
     setSelectedCashbox(box);
     setView("ventas"); // Comenzar mostrando ventas
     try {
+      // Cargar datos completos de la caja
+      const cashboxDetails = await cashboxService.getById(box.id, _token);
+      setSelectedCashbox(cashboxDetails.data || cashboxDetails);
+      
       await Promise.all([
         loadSales(box.id),
         loadExpenses(box.id)
@@ -128,8 +134,6 @@ export default function CashboxPage() {
     try {
     setLoading(true);
     const response = await cashboxService.getClosePreview(openCashbox.id, _token);
-    console.log('🔍 Close Preview Response:', response); // ← LOG
-    console.log('🔍 Close Preview Data:', response.data); // ← LOG
     setCloseData(response.data);
     setShowCloseModal(true);
   } catch (error) {
@@ -142,7 +146,12 @@ export default function CashboxPage() {
 
   const handleConfirmClose = async (data: { cashCount: any; notes?: string }) => {
     try {
-      await cashboxService.close(openCashbox.id, data, _token);
+      await cashboxService.close(openCashbox.id, {
+        realClosedAmount: data.cashCount.total,
+        observations: data.notes,
+        cashCount: data.cashCount
+      }, _token);
+
       setShowCloseModal(false);
       setCloseData(null);
       await loadAll();
@@ -269,28 +278,82 @@ export default function CashboxPage() {
           </div>
         </div>
 
-        <div className="mb-4 p-4 rounded bg-blue-50 border border-blue-200">
-          <div className="font-semibold">Caja cerrada (ID: {selectedCashbox.id})</div>
-          <div className="text-sm text-gray-700">
-            Abierta: {new Date(selectedCashbox.openedAt).toLocaleString('es-BO')}
+        {/* Información de cierre*/}
+        <div className="mb-4 p-4 rounded-lg border bg-white shadow-sm">
+          <div className="flex justify-between items-start mb-3">
+            <div className="font-semibold text-lg">Caja Cerrada - #{selectedCashbox.id}</div>
+            {/* Botón para ver reporte completo - SOLO si la caja está cerrada */}
+            {selectedCashbox.status === 'CLOSED' && (
+              <button
+                onClick={() => {
+                  setShowReportModal(true);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              >
+                📊 Ver Reporte Completo
+              </button>
+            )}
           </div>
-          <div className="text-sm text-gray-700">
-            Cerrada: {selectedCashbox.closedAt ? new Date(selectedCashbox.closedAt).toLocaleString('es-BO') : '-'}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-gray-600">Abierta</p>
+              <p className="font-medium">{new Date(selectedCashbox.openedAt).toLocaleString('es-BO')}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Cerrada</p>
+              <p className="font-medium">
+                {selectedCashbox.closedAt ? new Date(selectedCashbox.closedAt).toLocaleString('es-BO') : '-'}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-600">Monto Inicial</p>
+              <p className="font-medium">Bs. {selectedCashbox.initialAmount.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Monto Real de Cierre</p>
+              <p className="font-medium text-lg font-semibold">
+                {selectedCashbox.realClosedAmount 
+                  ? `Bs. ${selectedCashbox.realClosedAmount.toFixed(2)}`
+                  : selectedCashbox.closedAmount 
+                    ? `Bs. ${selectedCashbox.closedAmount.toFixed(2)}` 
+                    : '-'
+                }
+              </p>
+              {/* Mostrar diferencia si existe */}
+              {selectedCashbox.difference !== null && selectedCashbox.difference !== undefined && (
+                <p className={`text-xs ${
+                  selectedCashbox.difference === 0 ? 'text-green-600' :
+                  selectedCashbox.difference > 0 ? 'text-orange-600' : 'text-red-600'
+                }`}>
+                  {selectedCashbox.difference === 0 
+                    ? '✓ Cuadre exacto' 
+                    : selectedCashbox.difference > 0 
+                      ? `▲ Excedente: Bs. ${Math.abs(selectedCashbox.difference).toFixed(2)}`
+                      : `▼ Faltante: Bs. ${Math.abs(selectedCashbox.difference).toFixed(2)}`
+                  }
+                </p>
+              )}
+            </div>
           </div>
-          <div className="text-sm text-gray-700">
-            Inicial: Bs. {selectedCashbox.initialAmount.toFixed(2)}
-          </div>
-          <div className="text-sm text-gray-700">
-            Final: {selectedCashbox.closedAmount ? `Bs. ${selectedCashbox.closedAmount.toFixed(2)}` : '-'}
+
+          {/* Información de usuarios */}
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-gray-600 border-t pt-3">
+            <div>
+              <span className="font-medium">Abierta por:</span> {selectedCashbox.openedByUser?.name} 
+              {selectedCashbox.openedByUser?.userCode && ` (#${selectedCashbox.openedByUser.userCode})`}
+            </div>
+            {selectedCashbox.closedByUser && (
+              <div>
+                <span className="font-medium">Cerrada por:</span> {selectedCashbox.closedByUser.name}
+                {selectedCashbox.closedByUser.userCode && ` (#${selectedCashbox.closedByUser.userCode})`}
+              </div>
+            )}
           </div>
         </div>
 
         {view === "ventas" && (
           <div>
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-semibold">Ventas</h3>
-              {/* Sin botón de "Nuevo" porque es solo lectura */}
-            </div>
             <SalesPage
               sales={sales || []}
               onReload={() => loadSales(selectedCashbox.id)}
@@ -313,6 +376,16 @@ export default function CashboxPage() {
           <PaymentMethodsPage
             cashBoxId={selectedCashbox.id}
             onBack={() => setView(null)}
+          />
+        )}
+
+        {showReportModal && (
+          <CashboxReportModal
+            cashbox={selectedCashbox}
+            onClose={() => {
+              console.log('🔍 [REPORT MODAL] Cerrando modal');
+              setShowReportModal(false);
+            }}
           />
         )}
       </div>
@@ -492,14 +565,6 @@ export default function CashboxPage() {
         />
       )}
 
-      {/* {showCloseModal && openCashbox && (
-        <CloseCashModal
-          cashbox={openCashbox}
-          onClose={() => setShowCloseModal(false)}
-          onConfirm={handleConfirmClose}
-        />
-      )} */}
-
       {showCloseModal && openCashbox && closeData && (
         <CloseCashModal
         cashbox={openCashbox}
@@ -511,6 +576,14 @@ export default function CashboxPage() {
         onConfirm={handleConfirmClose}
         />
       )}
+
+      {/* {showReportModal && selectedCashbox && (
+        <CashboxReportModal
+          cashbox={selectedCashbox}
+          onClose={() => setShowReportModal(false)}
+        />
+      )} */}
+      
     </div>
   );
 }

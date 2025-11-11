@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Calculator } from 'lucide-react';
 import { useCurrency } from '../context/currencyContext';
 
 interface CloseCashboxModalProps {
@@ -32,6 +32,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
 }) => {
   console.log('🔍 Modal - cashbox:', cashbox);
   console.log('🔍 Modal - closePreview:', closePreview);
+
   const [step, setStep] = useState<'count' | 'summary'>('count');
   const [counts, setCounts] = useState<{ [key: number]: number }>(
     DENOMINATIONS.reduce((acc, d) => ({ ...acc, [d.value]: 0 }), {})
@@ -39,7 +40,6 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // NUEVO: Usar el hook de divisas
   const { formatCurrency } = useCurrency();
 
   // Calcular totales
@@ -49,21 +49,12 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
   );
 
   const expectedCash = closePreview?.report?.expectedClosedAmount || 0;
-  console.log('🔍 Modal - expectedCash value:', expectedCash);
-  console.log('🔍 Modal - closePreview structure:', closePreview);
+  const initialAmount = closePreview?.report?.initialAmount || 0;
+  const totalCashSales = closePreview?.report?.totalCashSales || 0;
+  const totalCashExpenses = closePreview?.report?.totalCashExpenses || 0;
+
   const difference = countedTotal - expectedCash;
   const tolerance = 0.5; // Tolerancia de 0.50 Bs
-
-  // ELIMINADO: La función formatCurrency local ya no es necesaria
-  /*
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-BO', {
-      style: 'currency',
-      currency: 'BOB',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
-  */
 
   const handleCountChange = (value: number, count: number) => {
     setCounts(prev => ({ ...prev, [value]: Math.max(0, count) }));
@@ -107,16 +98,57 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
   const bills = DENOMINATIONS.filter(d => d.type === 'bill');
   const coins = DENOMINATIONS.filter(d => d.type === 'coin');
 
+  // Determinar el estado del cuadre
+  const getStatusInfo = () => {
+    if (Math.abs(difference) <= tolerance) {
+      return {
+        type: 'exact',
+        icon: CheckCircle,
+        color: 'green',
+        title: '¡Caja Cuadrada!',
+        message: 'El efectivo coincide con lo esperado',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-300'
+      };
+    } else if (difference > 0) {
+      return {
+        type: 'shortage',
+        icon: AlertCircle,
+        color: 'red',
+        title: 'Faltante Detectado',
+        message: `Falta efectivo en caja: ${formatCurrency(Math.abs(difference))}`,
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-300'
+      };
+    } else {
+      return {
+        type: 'surplus',
+        icon: AlertCircle,
+        color: 'orange',
+        title: 'Excedente Detectado',
+        message: `Hay más efectivo del esperado: ${formatCurrency(Math.abs(difference))}`,
+        bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-300'
+      };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
+  const StatusIcon = statusInfo.icon;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
-          <div>
-            <h2 className="text-2xl font-bold">Cerrar Caja #{cashbox.id}</h2>
-            <p className="text-sm text-gray-600">
-              {step === 'count' ? 'Paso 1: Conteo de Efectivo' : 'Paso 2: Verificación y Cierre'}
-            </p>
+          <div className="flex items-center gap-3">
+            <Calculator size={24} className="text-blue-600" />
+            <div>
+              <h2 className="text-2xl font-bold">Cerrar Caja #{cashbox.id}</h2>
+              <p className="text-sm text-gray-600">
+                {step === 'count' ? 'Paso 1: Conteo de Efectivo' : 'Paso 2: Verificación y Cierre'}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -132,14 +164,53 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
           {step === 'count' ? (
             // PASO 1: CONTEO
             <div className="space-y-6">
-              {/* Resumen rápido */}
+              {/* Resumen del Sistema - NUEVA SECCIÓN */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-800 mb-3">Resumen del Sistema</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-blue-600">Monto Inicial</p>
+                    <p className="font-semibold">{formatCurrency(initialAmount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-blue-600">Ventas Efectivo</p>
+                    <p className="font-semibold">{formatCurrency(totalCashSales)}</p>
+                  </div>
+                  <div>
+                    <p className="text-blue-600">Gastos Efectivo</p>
+                    <p className="font-semibold">{formatCurrency(totalCashExpenses)}</p>
+                  </div>
+                  <div className="bg-blue-100 p-2 rounded">
+                    <p className="text-blue-800 font-semibold">Total Esperado</p>
+                    <p className="text-lg font-bold text-blue-800">
+                      {formatCurrency(expectedCash)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumen rápido del conteo */}
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Total Contado:</span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(countedTotal)} {/* CAMBIADO: usar formatCurrency del contexto */}
+                  <span className="text-2xl font-bold text-green-600">
+                    {formatCurrency(countedTotal)}
                   </span>
                 </div>
+                {countedTotal > 0 && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    Diferencia preliminar: 
+                    <span className={`ml-1 font-semibold ${
+                      Math.abs(countedTotal - expectedCash) <= tolerance 
+                        ? 'text-green-600' 
+                        : countedTotal > expectedCash 
+                          ? 'text-orange-600' 
+                          : 'text-red-600'
+                    }`}>
+                      {countedTotal > expectedCash ? '+' : ''}{formatCurrency(countedTotal - expectedCash)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Billetes */}
@@ -161,7 +232,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold text-lg">{denom.label}</span>
                           <span className="text-sm text-gray-600">
-                            = {formatCurrency(subtotal)} {/* CAMBIADO */}
+                            = {formatCurrency(subtotal)}
                           </span>
                         </div>
                         <div className="flex gap-2">
@@ -205,7 +276,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold">{denom.label}</span>
                           <span className="text-sm text-gray-600">
-                            = {formatCurrency(subtotal)} {/* CAMBIADO */}
+                            = {formatCurrency(subtotal)}
                           </span>
                         </div>
                         <div className="flex gap-2">
@@ -249,58 +320,34 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
           ) : (
             // PASO 2: RESUMEN Y CONFIRMACIÓN
             <div className="space-y-6">
-              {/* Estado del cuadre */}
-              <div className={`p-6 rounded-lg border-2 ${
-                Math.abs(difference) <= tolerance
-                  ? 'bg-green-50 border-green-300'
-                  : 'bg-red-50 border-red-300'
-              }`}>
+              {/* Estado del cuadre - MEJORADO */}
+              <div className={`p-6 rounded-lg border-2 ${statusInfo.bgColor} ${statusInfo.borderColor}`}>
                 <div className="flex items-center gap-3 mb-4">
-                  {Math.abs(difference) <= tolerance ? (
-                    <>
-                      <CheckCircle size={32} className="text-green-600" />
-                      <div>
-                        <h3 className="text-xl font-bold text-green-800">¡Caja Cuadrada!</h3>
-                        <p className="text-sm text-green-700">El efectivo coincide con lo esperado</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle size={32} className="text-red-600" />
-                      <div>
-                        <h3 className="text-xl font-bold text-red-800">Diferencia Detectada</h3>
-                        <p className="text-sm text-red-700">
-                          {difference > 0 ? 'Hay más efectivo del esperado' : 'Falta efectivo en caja'}
-                        </p>
-                      </div>
-                    </>
-                  )}
+                  <StatusIcon size={32} className={`text-${statusInfo.color}-600`} />
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">{statusInfo.title}</h3>
+                    <p className={`text-sm text-${statusInfo.color}-700`}>{statusInfo.message}</p>
+                  </div>
                 </div>
 
                 {/* Comparación */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  <div className="bg-white p-4 rounded-lg">
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Efectivo Esperado</p>
                     <p className="text-2xl font-bold text-gray-800">
-                      {formatCurrency(expectedCash)} {/* CAMBIADO */}
+                      {formatCurrency(expectedCash)}
                     </p>
                   </div>
-                  <div className="bg-white p-4 rounded-lg">
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Efectivo Contado</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(countedTotal)} {/* CAMBIADO */}
+                      {formatCurrency(countedTotal)}
                     </p>
                   </div>
-                  <div className="bg-white p-4 rounded-lg">
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Diferencia</p>
-                    <p className={`text-2xl font-bold ${
-                      Math.abs(difference) <= tolerance 
-                        ? 'text-green-600' 
-                        : difference > 0 
-                          ? 'text-orange-600' 
-                          : 'text-red-600'
-                    }`}>
-                      {difference > 0 ? '+' : ''}{formatCurrency(difference)} {/* CAMBIADO */}
+                    <p className={`text-2xl font-bold text-${statusInfo.color}-600`}>
+                      {difference > 0 ? '+' : ''}{formatCurrency(difference)}
                     </p>
                   </div>
                 </div>
@@ -311,27 +358,30 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
                 <h3 className="font-semibold mb-3">Detalle del Conteo</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {DENOMINATIONS.filter(d => counts[d.value] > 0).map((denom) => (
-                    <div key={denom.value} className="bg-white p-3 rounded border">
+                    <div key={denom.value} className="bg-white p-3 rounded border shadow-sm">
                       <p className="text-xs text-gray-600">{denom.label}</p>
                       <p className="font-semibold">
-                        {counts[denom.value]} × {denom.label} = {formatCurrency(counts[denom.value] * denom.value)} {/* CAMBIADO */}
+                        {counts[denom.value]} × {denom.label} = {formatCurrency(counts[denom.value] * denom.value)}
                       </p>
                     </div>
                   ))}
                 </div>
+                {DENOMINATIONS.filter(d => counts[d.value] > 0).length === 0 && (
+                  <p className="text-gray-500 text-center py-2">No se registraron denominaciones</p>
+                )}
               </div>
 
               {/* Notas opcionales */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notas o Observaciones (Opcional)
+                  Notas u Observaciones (Opcional)
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
-                  placeholder="Ej: Faltaron 2 bolivianos, cliente pagó con billete roto..."
+                  placeholder="Ej: Explicación de diferencias, billetes falsos, errores de cambio..."
                 />
               </div>
 

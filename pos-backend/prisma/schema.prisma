@@ -24,6 +24,7 @@ model User {
   Sale            Sale[]
   stockMovements  StockMovement[]
   preference      UserPreference?
+  expenses    Expense[]
 
   @@map("User")
 }
@@ -95,11 +96,15 @@ model CashBox {
   closedBy      String?
   initialAmount Float
   closedAmount  Float?
+  realClosedAmount  Float?
+  expectedAmount    Float?
+  difference        Float?
+  observations      String?
   status        CashBoxStatus @default(OPEN)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   cashCount     Json?
-  nostes        String?
+
   closedByUser  User?         @relation("CashBoxClosedBy", fields: [closedBy], references: [id])
   openedByUser  User          @relation("CashBoxOpenedBy", fields: [openedBy], references: [id])
   expenses      Expense[]
@@ -162,6 +167,8 @@ model Expense {
   paymentMethodId Int
   createdAt       DateTime      @default(now())
   createdBy       String?
+
+  user            User?         @relation(fields: [createdBy], references: [id])
   cashBox         CashBox?      @relation(fields: [cashBoxId], references: [id])
   paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
 }
