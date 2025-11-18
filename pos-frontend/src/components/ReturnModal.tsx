@@ -99,7 +99,13 @@ export default function ReturnModal({ saleId, onClose, onSuccess }: ReturnModalP
       onClose();
     } catch (error: any) {
       console.error('Error creating return:', error);
-      alert(error.response?.data?.error || 'Error creando devolución');
+      const errorMessage = error.response?.data?.error || 'Error creando devolución';
+      alert(errorMessage);
+
+       // Si es error de caja cerrada, podemos cerrar el modal automáticamente
+      if (error.response?.status === 400 && errorMessage.includes('caja')) {
+        onClose();
+      }
     } finally {
       setSaving(false);
     }
