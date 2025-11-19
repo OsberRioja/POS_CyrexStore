@@ -369,8 +369,10 @@ export default function CashboxPage() {
           <ExpensesPage
             expenses={expenses}
             onReload={() => loadExpenses(selectedCashbox.id)}
-            openCashboxId={null} // null = no se puede agregar gastos
+            openCashboxId={undefined} // null = no se puede agregar gastos
             token={_token}
+            isClosedCashbox={true}
+            cashboxId={selectedCashbox.id}
           />
         )}
 

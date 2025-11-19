@@ -290,7 +290,7 @@ export const reportService = {
       cell.border = headerStyle.border;
     });
 
-    // 🔥 CORRECCIÓN: Calcular resumen de estados con el enum completo
+    // Calcular resumen de estados con el enum completo
     const statusSummary = cashBox.sales.reduce((acc, sale) => {
       const paidAmount = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
       
@@ -338,6 +338,181 @@ export const reportService = {
       });
     });
 
+    // Generar buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
+  },
+
+  async generateExpensesReport(cashBoxId: number) {
+    // Verificar que la caja existe y está cerrada
+    const cashBox = await prisma.cashBox.findUnique({
+      where: { id: cashBoxId },
+      include: {
+        expenses: {
+          include: {
+            paymentMethod: true,
+            user: {
+              select: {
+                name: true,
+                userCode: true,
+              }
+            }
+          },
+          orderBy: { createdAt: 'asc' }
+        }
+      }
+    });
+  
+    if (!cashBox) {
+      throw { status: 404, message: 'Caja no encontrada' };
+    }
+  
+    if (cashBox.status !== 'CLOSED') {
+      throw { status: 400, message: 'Solo se pueden generar reportes de cajas cerradas' };
+    }
+  
+    // Crear workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sistema POS';
+    workbook.created = new Date();
+  
+    // Hoja de gastos
+    const expensesSheet = workbook.addWorksheet('GASTOS');
+  
+    // Estilos
+    const headerStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF2E86AB' }
+      },
+      font: {
+        color: { argb: 'FFFFFFFF' },
+        bold: true
+      },
+      border: {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      }
+    };
+  
+    // Encabezados
+    expensesSheet.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Fecha', key: 'date', width: 20 },
+      { header: 'Concepto', key: 'concept', width: 30 },
+      { header: 'Método de Pago', key: 'paymentMethod', width: 20 },
+      { header: 'Monto', key: 'amount', width: 15 },
+      { header: 'Registrado por', key: 'user', width: 25 },
+      { header: 'Notas', key: 'notes', width: 40 }
+    ];
+  
+    // Aplicar estilo a los encabezados
+    const headerRow = expensesSheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+  
+    // Datos de gastos
+    let rowNumber = 2;
+    let totalExpenses = 0;
+  
+    cashBox.expenses.forEach((expense) => {
+      expensesSheet.addRow({
+        id: expense.id,
+        date: expense.createdAt.toLocaleString('es-BO'),
+        concept: expense.concept,
+        paymentMethod: expense.paymentMethod.name,
+        amount: `Bs. ${expense.amount.toFixed(2)}`,
+        user: expense.user ? `${expense.user.name} (${expense.user.userCode})` : 'N/A',
+        notes: (expense as any).notes || 'N/A'
+      });
+  
+      // Aplicar bordes a la fila
+      const row = expensesSheet.getRow(rowNumber);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+  
+      totalExpenses += expense.amount;
+      rowNumber++;
+    });
+  
+    // Agregar fila de totales
+    const totalRow = expensesSheet.addRow({});
+    expensesSheet.mergeCells(`A${rowNumber}:D${rowNumber}`);
+    
+    const totalCell = expensesSheet.getCell(`A${rowNumber}`);
+    totalCell.value = 'TOTAL GASTOS';
+    totalCell.font = { bold: true };
+    totalCell.alignment = { horizontal: 'right' };
+  
+    expensesSheet.getCell(`E${rowNumber}`).value = `Bs. ${totalExpenses.toFixed(2)}`;
+    expensesSheet.getCell(`E${rowNumber}`).font = { bold: true };
+    expensesSheet.getCell(`E${rowNumber}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFE0E0' }
+    };
+  
+    // Aplicar bordes a la fila de totales
+    const totalRowCells = expensesSheet.getRow(rowNumber);
+    totalRowCells.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+  
+    // Información de la caja (hoja adicional)
+    const infoSheet = workbook.addWorksheet('INFORMACIÓN CAJA');
+    
+    infoSheet.columns = [
+      { header: 'Campo', key: 'field', width: 25 },
+      { header: 'Valor', key: 'value', width: 30 }
+    ];
+  
+    const infoHeader = infoSheet.getRow(1);
+    infoHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+  
+    const infoData = [
+      { field: 'ID Caja', value: cashBox.id },
+      { field: 'Fecha Apertura', value: cashBox.openedAt.toLocaleString('es-BO') },
+      { field: 'Fecha Cierre', value: cashBox.closedAt?.toLocaleString('es-BO') || 'N/A' },
+      { field: 'Monto Inicial', value: `Bs. ${cashBox.initialAmount.toFixed(2)}` },
+      { field: 'Monto Cierre', value: `Bs. ${cashBox.closedAmount?.toFixed(2) || 'N/A'}` },
+      { field: 'Total Gastos', value: `Bs. ${totalExpenses.toFixed(2)}` },
+      { field: 'Cantidad de Gastos', value: cashBox.expenses.length },
+      { field: 'Estado', value: cashBox.status }
+    ];
+  
+    infoData.forEach((item, index) => {
+      const row = infoSheet.addRow(item);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+  
     // Generar buffer
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
