@@ -359,6 +359,8 @@ export default function CashboxPage() {
               onReload={() => loadSales(selectedCashbox.id)}
               openCashboxId={undefined} // null = no se puede agregar ventas
               token={_token}
+              isClosedCashbox={true}
+              cashboxId={selectedCashbox.id}
             />
           </div>
         )}

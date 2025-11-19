@@ -20,6 +20,7 @@ import returnRoutes from "./routes/return.routes";
 import exchangeRateRoutes from './routes/exchangeRate.routes';
 import userPreferenceRoutes from './routes/userPreference.routes';
 import { startExchangeRateCron, initializeExchangeRates } from './jobs/updateExchangeRates';
+import reportRoutes from './routes/report.routes';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/returns', returnRoutes);
 app.use('/api/exchange-rates', exchangeRateRoutes);
 app.use('/api/user-preferences', userPreferenceRoutes);
+app.use('/api/reports',reportRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);

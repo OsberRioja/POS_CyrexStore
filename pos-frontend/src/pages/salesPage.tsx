@@ -3,20 +3,23 @@ import SalesTable from "../components/salesTable";
 import SaleFormModal from "../components/SaleModal";
 import SaleDetailsModal from "../components/SaleDetailModal";
 import AddPaymentModal from "../components/AddPaymentModal";
-
+import { reportService } from "../services/reportService";
+import { Download } from "lucide-react";
 interface SalesPageProps {
   sales: any[];
   onReload: () => void;
   openCashboxId?: number;
-  //onAddPayment?: (sale: any) => void;
   token?: string;
+  isClosedCashbox?: boolean; // para indicar si la caja está cerrada
+  cashboxId?: number; // ID de la caja para reportes
 }
 
-export default function SalesPage({ sales, onReload, openCashboxId, token }: SalesPageProps) {
+export default function SalesPage({ sales, onReload, openCashboxId, token, isClosedCashbox, cashboxId }: SalesPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   const handleSuccess = async () => {
     setShowModal(false);
@@ -39,27 +42,85 @@ export default function SalesPage({ sales, onReload, openCashboxId, token }: Sal
     await onReload();
   };
 
+  // Descargar reporte de ventas
+  const handleDownloadSalesReport = async () => {
+    if (!cashboxId) {
+      alert('ID de caja no disponible para reporte');
+      return;
+    }
+
+    setDownloadingReport(true);
+    try {
+      await reportService.downloadSalesReport(cashboxId);
+      // Exito silecioso: el archivo se descarga automáticamente
+    } catch (error: any) {
+      console.error('Error descargando reporte:', error);
+      alert(error.message || 'Error descargando reporte');
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
         <h3 className="font-semibold">Ventas</h3>
-        {openCashboxId && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-3 py-1 bg-blue-600 text-white rounded"
-          >
-            + Nuevo
-          </button>
-        )}
+        <div className="flex gap-2">
+          {/* Botón de descarga de reporte - solo para cajas cerradas */}
+          {isClosedCashbox && cashboxId && (
+            <button
+              onClick={handleDownloadSalesReport}
+              disabled={downloadingReport}
+              className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              <Download size={16} />
+              {downloadingReport ? "Generando Excel..." : "Descargar Reporte"}
+            </button>
+          )}
+          
+          {/* Botón de nueva venta - solo para caja abierta */}
+          {openCashboxId && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              + Nuevo
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Información adicional para cajas cerradas */}
+      {isClosedCashbox && cashboxId && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-800">
+                📊 Modo de visualización - Caja Cerrada
+              </p>
+              <p className="text-xs text-blue-600">
+                Puedes descargar el reporte completo de ventas en Excel
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-blue-800">
+                {sales.length} ventas registradas
+              </p>
+              <p className="text-xs text-blue-600">
+                Total: Bs. {sales.reduce((sum, sale) => sum + sale.total, 0).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SalesTable
-       sales={sales || []}
-       onViewSale={handleViewSale}
-       onAddPayment={handleAddPayment}
+        sales={sales || []}
+        onViewSale={handleViewSale}
+        onAddPayment={handleAddPayment}
       />
 
-      {showModal &&   openCashboxId &&(
+      {showModal && openCashboxId && (
         <SaleFormModal
           onClose={() => setShowModal(false)}
           onSuccess={handleSuccess}
@@ -87,7 +148,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token }: Sal
           }}
           onSuccess={handlePaymentSuccess}
           token={token}
-          currentCashBoxId={openCashboxId} // ← Pasar la caja actual (puede ser undefined)
+          currentCashBoxId={openCashboxId}
         />
       )}
     </div>
