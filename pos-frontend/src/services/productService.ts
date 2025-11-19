@@ -20,6 +20,7 @@ export type ProductPayload = {
   category?: string;
   brand?: string;
   providerId?: number | null;
+  imageUrl?: string;
 };
 
 export type ProductSearchParams = {

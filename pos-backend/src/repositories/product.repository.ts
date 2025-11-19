@@ -18,7 +18,8 @@ export const productRepository = {
         stock: dto.stock,
         category: dto.category,
         brand: dto.brand,
-        providerId: dto.providerId ? Number(dto.providerId) : null, // 👈 convertir a númer
+        imageUrl: dto.imageUrl,
+        providerId: dto.providerId ? Number(dto.providerId) : null, // 👈 convertir a número
     },
       include: { user: true, provider: true },
     });
@@ -56,7 +57,10 @@ export const productRepository = {
   async update(id: string, data: UpdateProductDTO) {
     return await prisma.product.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl })
+      },
       include: { user: true, provider: true },
     });
   },

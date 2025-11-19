@@ -7,4 +7,5 @@ export interface UpdateProductDTO {
   category?: string;
   brand?: string;
   providerId?: number;
+  imageUrl?: string; // URL de la imagen del producto
 }

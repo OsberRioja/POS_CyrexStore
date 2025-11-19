@@ -64,6 +64,8 @@ model Product {
   stock          Int
   createdBy      String
   providerId     Int?
+  imageUrl       String?         // URL de la imagen
+  imagePublicId  String?         // ID público en Cloudinary
 
   isActive      Boolean  @default(true)
   deactivatedAt DateTime?

@@ -32,6 +32,7 @@ export const productService = {
           stock: dto.stock || 0,
           category: dto.category?.trim(),
           brand: dto.brand?.trim(),
+          imageUrl: dto.imageUrl,
           createdBy: userId,
           providerId: dto.providerId ? Number(dto.providerId) : null,
         },

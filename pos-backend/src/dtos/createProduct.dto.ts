@@ -9,4 +9,5 @@ export interface CreateProductDTO {
   category?: string; // opcional, si se quiere asociar a una categoría
   brand?: string; // opcional, si se quiere asociar a una marca
   providerId?: string; //porveedor asociado
+  imageUrl?: string; // URL de la imagen del producto
 }

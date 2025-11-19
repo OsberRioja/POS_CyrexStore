@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { productService, type ProductPayload } from "../services/productService";
 import { supplierService, type Supplier } from "../services/supplierService";
 import { useAuth } from "../context/authContext";
-import { DollarSign, CheckSquare, Square } from "lucide-react";
-//import { useCurrency } from "../context/currencyContext";
+import { DollarSign, CheckSquare, Square, Upload, X } from "lucide-react";
+import { imageUploadService } from "../services/imageUploadService";
 
 type FormState = {
   sku: string;
@@ -25,6 +25,9 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [newSupplier, setNewSupplier] = useState({ name: "", phone: "" });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(product?.imageUrl || null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     sku: product?.sku ?? "",
@@ -41,7 +44,12 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
 
   const isEditing = !!(product && (product.id || product._id));
 
-  useEffect(() => { loadSuppliers(); }, []);
+  useEffect(() => {
+    loadSuppliers();
+    if (product?.imageUrl) {
+      setImagePreview(product.imageUrl);
+    }
+  }, []);
 
   useEffect(() => {
     // cuando cambia el producto (editar), reasignar form
@@ -57,7 +65,14 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       brand: product?.brand ?? "",
       providerId: product?.providerId ?? (product?.provider?.id_provider ?? product?.provider?.id) ?? null,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Actualizar preview de imagen cuando cambia el producto
+    if (product?.imageUrl) {
+      setImagePreview(product.imageUrl);
+    }else {
+      setImagePreview(null);
+    }
+    setImageFile(null);
   }, [product]);
 
   const loadSuppliers = async () => {
@@ -68,6 +83,37 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       console.error("Error cargando proveedores", err);
       setSuppliers([]);
     }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validar tipo de archivo
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor selecciona un archivo de imagen válido');
+        return;
+      }
+      
+      // Validar tamaño (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('La imagen no debe superar los 5MB');
+        return;
+      }
+      
+      setImageFile(file);
+      
+      // Crear preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -91,6 +137,23 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
         throw new Error("Precio de costo, precio de venta y stock deben ser números válidos");
       }
 
+      // Subir imagen si hay una nueva
+      let imageUrl = product?.imageUrl || undefined;
+      if (imageFile) {
+        setUploadingImage(true);
+        const uploadResult = await imageUploadService.uploadImage(imageFile);
+
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || "Error al subir la imagen");
+        }
+
+        imageUrl = uploadResult.url;
+        setUploadingImage(false);
+      } else if (imagePreview === null && product?.imageUrl) {
+        // Si se removió la imagen existente
+        imageUrl = undefined;
+      }
+
       const payload: ProductPayload = {
         sku: form.sku.trim(),
         name: form.name.trim(),
@@ -102,8 +165,8 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
         category: form.category?.trim() || undefined,
         brand: form.brand?.trim() || undefined,
         providerId: form.providerId ? Number(form.providerId) : null,
+        imageUrl: imageUrl,
       };
-
       if (isEditing) {
         await productService.update(product.id ?? product._id, payload);
       } else {
@@ -117,6 +180,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       alert(err?.response?.data?.error ?? err?.message ?? "Error al guardar producto");
     } finally {
       setSaving(false);
+      setUploadingImage(false);
     }
   };
 
@@ -138,10 +202,46 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white w-[720px] rounded shadow p-6">
+      <div className="bg-white w-[720px] rounded shadow p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-semibold mb-4">{product ? "Editar producto" : "Nuevo producto"}</h3>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+          {/* Imagen del producto */}
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Imagen del producto
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <input 
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  id="product-image"
+                />
+                <label htmlFor="product-image"
+                  className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors"
+                >
+                  <Upload size={20} />
+                  <span className="text-sm">{imagePreview ? "Cambiar imagen" : "Seleccionar imagen"}</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">WEBP, JPG, PNG. Máx 5MB.</p>
+              </div>
+              {imagePreview && (
+                <div className="relative">
+                  <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border"/>
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
           <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" className="border p-2 rounded col-span-2" required />
           <input name="name" value={form.name} onChange={handleChange} placeholder="Nombre" className="border p-2 rounded col-span-2" required />
@@ -272,7 +372,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
 
           <div className="col-span-2 flex justify-end gap-2 mt-3">
             <button type="button" onClick={onClose} className="px-3 py-1 border rounded">Cancelar</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded">{saving ? "Guardando..." : "Guardar"}</button>
+            <button type="submit" disabled={saving || uploadingImage} className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50">{saving || uploadingImage ? "Guardando..." : "Guardar"}</button>
           </div>
         </form>
       </div>
