@@ -523,15 +523,15 @@ export const reportService = {
     const cashBox = await prisma.cashBox.findUnique({
       where: { id: cashBoxId }
     });
-  
+
     if (!cashBox) {
       throw { status: 404, message: 'Caja no encontrada' };
     }
-  
+
     if (cashBox.status !== 'CLOSED') {
       throw { status: 400, message: 'Solo se pueden generar reportes de cajas cerradas' };
     }
-  
+
     // Obtener todos los métodos de pago y sus totales para esta caja
     const paymentMethodsSummary = await prisma.paymentMethod.findMany({
       include: {
@@ -547,15 +547,15 @@ export const reportService = {
         }
       }
     });
-  
+
     // Crear workbook
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Sistema POS';
     workbook.created = new Date();
-  
+
     // Hoja de métodos de pago
     const paymentMethodsSheet = workbook.addWorksheet('MÉTODOS DE PAGO');
-  
+
     // Estilos
     const headerStyle = {
       fill: {
@@ -574,7 +574,7 @@ export const reportService = {
         right: { style: 'thin' as const }
       }
     };
-  
+
     // Encabezados
     paymentMethodsSheet.columns = [
       { header: 'ID', key: 'id', width: 10 },
@@ -584,7 +584,7 @@ export const reportService = {
       { header: 'Cantidad de Transacciones', key: 'transactions', width: 25 },
       { header: 'Porcentaje del Total', key: 'percentage', width: 20 }
     ];
-  
+
     // Aplicar estilo a los encabezados
     const headerRow = paymentMethodsSheet.getRow(1);
     headerRow.eachCell((cell) => {
@@ -592,7 +592,7 @@ export const reportService = {
       cell.font = headerStyle.font;
       cell.border = headerStyle.border;
     });
-  
+
     // Calcular total general
     const totalGeneral = paymentMethodsSummary.reduce((sum, method) => {
       const methodTotal = method.salePayments.reduce((methodSum, payment) => 
@@ -600,18 +600,18 @@ export const reportService = {
       );
       return sum + methodTotal;
     }, 0);
-  
+
     // Datos de métodos de pago
     let rowNumber = 2;
     let grandTotal = 0;
-  
+
     paymentMethodsSummary.forEach((method) => {
       const methodTotal = method.salePayments.reduce((sum, payment) => 
         sum + payment.amount, 0
       );
       const transactionCount = method.salePayments.length;
       const percentage = totalGeneral > 0 ? (methodTotal / totalGeneral) * 100 : 0;
-    
+
       // Solo mostrar métodos que tengan transacciones o sean relevantes
       if (methodTotal > 0 || method.isCash) {
         paymentMethodsSheet.addRow({
@@ -622,7 +622,7 @@ export const reportService = {
           transactions: transactionCount,
           percentage: `${percentage.toFixed(2)}%`
         });
-      
+
         // Aplicar bordes a la fila
         const row = paymentMethodsSheet.getRow(rowNumber);
         row.eachCell((cell) => {
@@ -633,7 +633,7 @@ export const reportService = {
             right: { style: 'thin' }
           };
         });
-      
+
         // Resaltar métodos de efectivo
         if (method.isCash) {
           const typeCell = paymentMethodsSheet.getCell(`C${rowNumber}`);
@@ -644,21 +644,21 @@ export const reportService = {
           };
           typeCell.font = { bold: true, color: { argb: 'FF1B5E20' } };
         }
-      
+
         grandTotal += methodTotal;
         rowNumber++;
       }
     });
-  
+
     // Agregar fila de totales
     const totalRow = paymentMethodsSheet.addRow({});
     paymentMethodsSheet.mergeCells(`A${rowNumber}:C${rowNumber}`);
-    
+
     const totalCell = paymentMethodsSheet.getCell(`A${rowNumber}`);
     totalCell.value = 'TOTAL GENERAL';
     totalCell.font = { bold: true };
     totalCell.alignment = { horizontal: 'right' };
-  
+
     paymentMethodsSheet.getCell(`D${rowNumber}`).value = `Bs. ${grandTotal.toFixed(2)}`;
     paymentMethodsSheet.getCell(`D${rowNumber}`).font = { bold: true };
     paymentMethodsSheet.getCell(`D${rowNumber}`).fill = {
@@ -666,7 +666,7 @@ export const reportService = {
       pattern: 'solid',
       fgColor: { argb: 'FFE8F5E8' }
     };
-  
+
     // Aplicar bordes a la fila de totales
     const totalRowCells = paymentMethodsSheet.getRow(rowNumber);
     totalRowCells.eachCell((cell) => {
@@ -677,27 +677,27 @@ export const reportService = {
         right: { style: 'thin' }
       };
     });
-  
+
     // Información de la caja (hoja adicional)
     const infoSheet = workbook.addWorksheet('INFORMACIÓN CAJA');
-    
+
     infoSheet.columns = [
       { header: 'Campo', key: 'field', width: 25 },
       { header: 'Valor', key: 'value', width: 30 }
     ];
-  
+
     const infoHeader = infoSheet.getRow(1);
     infoHeader.eachCell((cell) => {
       cell.fill = headerStyle.fill;
       cell.font = headerStyle.font;
       cell.border = headerStyle.border;
     });
-  
+
     // Calcular estadísticas adicionales
     const totalTransactions = paymentMethodsSummary.reduce((sum, method) => 
       sum + method.salePayments.length, 0
     );
-    
+
     const cashTotal = paymentMethodsSummary
       .filter(method => method.isCash)
       .reduce((sum, method) => 
@@ -713,7 +713,7 @@ export const reportService = {
           methodSum + payment.amount, 0
         ), 0
       );
-    
+
     const infoData = [
       { field: 'ID Caja', value: cashBox.id },
       { field: 'Fecha Apertura', value: cashBox.openedAt.toLocaleString('es-BO') },
@@ -729,7 +729,7 @@ export const reportService = {
       { field: 'Total Transacciones', value: totalTransactions },
       { field: 'Estado', value: cashBox.status }
     ];
-  
+
     infoData.forEach((item, index) => {
       const row = infoSheet.addRow(item);
       row.eachCell((cell) => {
@@ -741,7 +741,375 @@ export const reportService = {
         };
       });
     });
-  
+
+    // Generar buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
+  },
+
+  async generateDailyReport(cashBoxId: number) {
+    // Verificar que la caja existe y está cerrada
+    const cashBox = await prisma.cashBox.findUnique({
+      where: { id: cashBoxId },
+      include: {
+        sales: {
+          include: {
+            payments: {
+              include: {
+                paymentMethod: true
+              }
+            },
+            items: {
+              include: {
+                product: {
+                  select: {
+                    name: true,
+                    sku: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        expenses: {
+          include: {
+            paymentMethod: true
+          }
+        },
+        openedByUser: {
+          select: {
+            name: true,
+            userCode: true
+          }
+        },
+        closedByUser: {
+          select: {
+            name: true,
+            userCode: true
+          }
+        }
+      }
+    });
+
+    if (!cashBox) {
+      throw { status: 404, message: 'Caja no encontrada' };
+    }
+
+    if (cashBox.status !== 'CLOSED') {
+      throw { status: 400, message: 'Solo se pueden generar reportes de cajas cerradas' };
+    }
+
+    // Crear workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sistema POS';
+    workbook.created = new Date();
+
+    // Estilos
+    const headerStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF2E86AB' }
+      },
+      font: {
+        color: { argb: 'FFFFFFFF' },
+        bold: true
+      },
+      border: {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      }
+    };
+
+    const successStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FFE8F5E8' }
+      },
+      font: {
+        color: { argb: 'FF1B5E20' },
+        bold: true
+      }
+    };
+
+    const warningStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FFFFE0B2' }
+      },
+      font: {
+        color: { argb: 'FFE65100' },
+        bold: true
+      }
+    };
+
+    const dangerStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FFFFEBEE' }
+      },
+      font: {
+        color: { argb: 'FFB71C1C' },
+        bold: true
+      }
+    };
+
+    // Hoja de Resumen General
+    const summarySheet = workbook.addWorksheet('RESUMEN GENERAL');
+
+    // Título principal
+    summarySheet.mergeCells('A1:F1');
+    const titleCell = summarySheet.getCell('A1');
+    titleCell.value = `REPORTE DIARIO - CAJA #${cashBox.id}`;
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { horizontal: 'center' };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2E86AB' }
+    };
+    titleCell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+
+    // Información de la caja
+    summarySheet.mergeCells('A3:F3');
+    const infoTitleCell = summarySheet.getCell('A3');
+    infoTitleCell.value = 'INFORMACIÓN DE LA CAJA';
+    infoTitleCell.font = { bold: true, size: 12 };
+    infoTitleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF5F5F5' }
+    };
+
+    const infoData = [
+      ['ID Caja:', cashBox.id],
+      ['Fecha Apertura:', cashBox.openedAt.toLocaleString('es-BO')],
+      ['Fecha Cierre:', cashBox.closedAt?.toLocaleString('es-BO') || 'N/A'],
+      ['Abierta por:', `${cashBox.openedByUser.name} (#${cashBox.openedByUser.userCode})`],
+      ['Cerrada por:', cashBox.closedByUser ? `${cashBox.closedByUser.name} (#${cashBox.closedByUser.userCode})` : 'N/A'],
+      ['Monto Inicial:', `Bs. ${cashBox.initialAmount.toFixed(2)}`],
+      ['Monto Esperado:', `Bs. ${cashBox.closedAmount?.toFixed(2) || 'N/A'}`],
+      ['Monto Real:', `Bs. ${cashBox.realClosedAmount || cashBox.closedAmount?.toFixed(2) || 'N/A'}`]
+    ];
+
+    infoData.forEach(([label, value], index) => {
+      summarySheet.getCell(`A${index + 4}`).value = label;
+      summarySheet.getCell(`B${index + 4}`).value = value;
+    });
+
+    // Estado del cuadre
+    const difference = cashBox.difference || 0;
+    let statusStyle = successStyle;
+    let statusText = 'CUADRE EXACTO';
+
+    if (difference > 0) {
+      statusStyle = warningStyle;
+      statusText = `EXCEDENTE: Bs. ${Math.abs(difference).toFixed(2)}`;
+    } else if (difference < 0) {
+      statusStyle = dangerStyle;
+      statusText = `FALTANTE: Bs. ${Math.abs(difference).toFixed(2)}`;
+    }
+
+    summarySheet.mergeCells(`A12:F12`);
+    const statusCell = summarySheet.getCell('A12');
+    statusCell.value = statusText;
+    statusCell.font = { bold: true, size: 14 };
+    statusCell.alignment = { horizontal: 'center' };
+    statusCell.fill = statusStyle.fill;
+    statusCell.font = statusStyle.font;
+
+    // Resumen Financiero
+    summarySheet.mergeCells('A14:F14');
+    const financialTitleCell = summarySheet.getCell('A14');
+    financialTitleCell.value = 'RESUMEN FINANCIERO';
+    financialTitleCell.font = { bold: true, size: 12 };
+    financialTitleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF5F5F5' }
+    };
+
+    // Calcular totales
+    const totalVentas = cashBox.sales.reduce((sum, sale) => sum + sale.total, 0);
+    const totalGastos = cashBox.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const balance = totalVentas - totalGastos;
+
+    // Ventas por método de pago (con nombres reales)
+    const ventasPorMetodo = new Map();
+    cashBox.sales.forEach(sale => {
+      sale.payments.forEach(payment => {
+        const methodName = payment.paymentMethod.name;
+        const current = ventasPorMetodo.get(methodName) || 0;
+        ventasPorMetodo.set(methodName, current + payment.amount);
+      });
+    });
+
+    // Gastos por método de pago (con nombres reales)
+    const gastosPorMetodo = new Map();
+    cashBox.expenses.forEach(expense => {
+      const methodName = expense.paymentMethod.name;
+      const current = gastosPorMetodo.get(methodName) || 0;
+      gastosPorMetodo.set(methodName, current + expense.amount);
+    });
+
+    const financialData = [
+      ['CONCEPTO', 'MONTO'],
+      ['VENTAS TOTALES', `Bs. ${totalVentas.toFixed(2)}`],
+      ['GASTOS TOTALES', `Bs. ${totalGastos.toFixed(2)}`],
+      ['BALANCE DEL DÍA', `Bs. ${balance.toFixed(2)}`]
+    ];
+
+    // Agregar métodos de pago de ventas
+    ventasPorMetodo.forEach((monto, metodo) => {
+      financialData.push([`VENTAS - ${metodo}`, `Bs. ${monto.toFixed(2)}`]);
+    });
+
+    // Agregar métodos de pago de gastos
+    gastosPorMetodo.forEach((monto, metodo) => {
+      financialData.push([`GASTOS - ${metodo}`, `Bs. ${monto.toFixed(2)}`]);
+    });
+
+    financialData.forEach(([concepto, monto], index) => {
+      summarySheet.getCell(`A${index + 15}`).value = concepto;
+      summarySheet.getCell(`B${index + 15}`).value = monto;
+    });
+
+    // Estadísticas
+    const startRow = 15 + financialData.length + 2;
+    summarySheet.mergeCells(`A${startRow}:F${startRow}`);
+    const statsTitleCell = summarySheet.getCell(`A${startRow}`);
+    statsTitleCell.value = 'ESTADÍSTICAS';
+    statsTitleCell.font = { bold: true, size: 12 };
+    statsTitleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF5F5F5' }
+    };
+
+    const statsData = [
+      ['Cantidad de Ventas:', cashBox.sales.length],
+      ['Cantidad de Gastos:', cashBox.expenses.length],
+      ['Productos Vendidos:', cashBox.sales.reduce((sum, sale) => sum + sale.items.length, 0)],
+      ['Unidades Vendidas:', cashBox.sales.reduce((sum, sale) => 
+        sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+      )]
+    ];
+
+    statsData.forEach(([label, value], index) => {
+      summarySheet.getCell(`A${startRow + index + 1}`).value = label;
+      summarySheet.getCell(`B${startRow + index + 1}`).value = value;
+    });
+
+    // Aplicar bordes a todas las celdas con datos
+    for (let i = 1; i <= startRow + statsData.length; i++) {
+      const row = summarySheet.getRow(i);
+      if (Array.isArray(row.values) && row.values.length > 0) {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      }
+    }
+
+    // Hoja de Detalle de Ventas
+    const salesSheet = workbook.addWorksheet('DETALLE VENTAS');
+
+    salesSheet.columns = [
+      { header: 'ID Venta', key: 'id', width: 15 },
+      { header: 'Fecha', key: 'date', width: 20 },
+      { header: 'Productos', key: 'products', width: 40 },
+      { header: 'Cantidad', key: 'quantity', width: 12 },
+      { header: 'Total', key: 'total', width: 15 },
+      { header: 'Métodos de Pago', key: 'paymentMethods', width: 30 }
+    ];
+
+    const salesHeader = salesSheet.getRow(1);
+    salesHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+
+    cashBox.sales.forEach((sale, index) => {
+      const products = sale.items.map(item => 
+        `${item.product.name} (x${item.quantity})`
+      ).join(', ');
+
+      const totalQuantity = sale.items.reduce((sum, item) => sum + item.quantity, 0);
+
+      const paymentMethods = sale.payments.map(payment => 
+        `${payment.paymentMethod.name}: Bs. ${payment.amount.toFixed(2)}`
+      ).join('\n');
+
+      salesSheet.addRow({
+        id: sale.id.substring(0, 8),
+        date: sale.createdAt.toLocaleString('es-BO'),
+        products: products,
+        quantity: totalQuantity,
+        total: `Bs. ${sale.total.toFixed(2)}`,
+        paymentMethods: paymentMethods
+      });
+
+      // Aplicar bordes
+      const row = salesSheet.getRow(index + 2);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    // Hoja de Detalle de Gastos
+    const expensesSheet = workbook.addWorksheet('DETALLE GASTOS');
+
+    expensesSheet.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Fecha', key: 'date', width: 20 },
+      { header: 'Concepto', key: 'concept', width: 30 },
+      { header: 'Método de Pago', key: 'paymentMethod', width: 20 },
+      { header: 'Monto', key: 'amount', width: 15 }
+    ];
+
+    const expensesHeader = expensesSheet.getRow(1);
+    expensesHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+
+    cashBox.expenses.forEach((expense, index) => {
+      expensesSheet.addRow({
+        id: expense.id,
+        date: expense.createdAt.toLocaleString('es-BO'),
+        concept: expense.concept,
+        paymentMethod: expense.paymentMethod.name,
+        amount: `Bs. ${expense.amount.toFixed(2)}`
+      });
+
+      // Aplicar bordes
+      const row = expensesSheet.getRow(index + 2);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
     // Generar buffer
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;

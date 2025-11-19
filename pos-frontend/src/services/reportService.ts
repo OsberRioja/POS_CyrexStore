@@ -108,6 +108,57 @@ class ReportService {
           responseType: 'blob'
         }
       );
+
+      // Crear URL para descarga
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Obtener el nombre del archivo del header o usar uno por defecto
+      const contentDisposition = response.headers['content-disposition'];
+      let fileName = `reporte-metodos-pago-caja-${cashBoxId}.xlsx`;
+
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (fileNameMatch.length === 2) {
+          fileName = fileNameMatch[1];
+        }
+      }
+
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+
+      // Limpiar
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return true;
+    } catch (error: any) {
+      console.error('Error descargando reporte de métodos de pago:', error);
+
+      // Manejar errores específicos
+      if (error.response?.status === 400) {
+        throw new Error('No se puede generar reporte: ' + (error.response.data.error || 'La caja debe estar cerrada'));
+      } else if (error.response?.status === 404) {
+        throw new Error('Caja no encontrada');
+      } else if (error.response?.status === 500) {
+        throw new Error('Error del servidor al generar el reporte');
+      } else {
+        throw new Error(error.response?.data?.error || 'Error descargando reporte de métodos de pago');
+      }
+    }
+  }
+
+  async downloadDailyReport(cashBoxId: number) {
+    try {
+      const response = await axios.get(
+        `${API_URL}/reports/daily/${cashBoxId}`,
+        {
+          headers: this.getAuthHeaders(),
+          responseType: 'blob'
+        }
+      );
     
       // Crear URL para descarga
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -116,7 +167,7 @@ class ReportService {
       
       // Obtener el nombre del archivo del header o usar uno por defecto
       const contentDisposition = response.headers['content-disposition'];
-      let fileName = `reporte-metodos-pago-caja-${cashBoxId}.xlsx`;
+      let fileName = `reporte-diario-caja-${cashBoxId}.xlsx`;
       
       if (contentDisposition) {
         const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
@@ -135,7 +186,7 @@ class ReportService {
     
       return true;
     } catch (error: any) {
-      console.error('Error descargando reporte de métodos de pago:', error);
+      console.error('Error descargando reporte diario:', error);
       
       // Manejar errores específicos
       if (error.response?.status === 400) {
@@ -145,7 +196,7 @@ class ReportService {
       } else if (error.response?.status === 500) {
         throw new Error('Error del servidor al generar el reporte');
       } else {
-        throw new Error(error.response?.data?.error || 'Error descargando reporte de métodos de pago');
+        throw new Error(error.response?.data?.error || 'Error descargando reporte diario');
       }
     }
   }

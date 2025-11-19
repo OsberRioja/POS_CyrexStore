@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, CheckCircle, TrendingUp, TrendingDown, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, CheckCircle, TrendingUp, TrendingDown, FileText, Download } from 'lucide-react';
 import { useCurrency } from '../context/currencyContext';
+import { reportService } from '../services/reportService'; // Nueva importación
 
 interface CashboxReportModalProps {
   cashbox: any;
@@ -18,6 +19,7 @@ interface CashCount {
 
 const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClose }) => {
   const { formatCurrency } = useCurrency();
+  const [downloading, setDownloading] = useState(false); // Estado para descarga
 
   // Determinar el estado del cuadre
   const getStatusInfo = () => {
@@ -59,28 +61,63 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
     }
   };
 
+  // Calcular ventas por método de pago con nombres reales
+  const calcularVentasPorMetodo = () => {
+    const ventasPorMetodo = new Map();
+    
+    cashbox.sales?.forEach((sale: any) => {
+      sale.payments?.forEach((payment: any) => {
+        const methodName = payment.paymentMethod?.name || 'Sin método';
+        const current = ventasPorMetodo.get(methodName) || 0;
+        ventasPorMetodo.set(methodName, current + payment.amount);
+      });
+    });
+    
+    return Array.from(ventasPorMetodo.entries()).map(([metodo, monto]) => ({
+      metodo,
+      monto
+    }));
+  };
+
+  // Calcular gastos por método de pago con nombres reales
+  const calcularGastosPorMetodo = () => {
+    const gastosPorMetodo = new Map();
+    
+    cashbox.expenses?.forEach((expense: any) => {
+      const methodName = expense.paymentMethod?.name || 'Sin método';
+      const current = gastosPorMetodo.get(methodName) || 0;
+      gastosPorMetodo.set(methodName, current + expense.amount);
+    });
+    
+    return Array.from(gastosPorMetodo.entries()).map(([metodo, monto]) => ({
+      metodo,
+      monto
+    }));
+  };
+
   const statusInfo = getStatusInfo();
   const StatusIcon = statusInfo.icon;
+  
+  const ventasPorMetodo = calcularVentasPorMetodo();
+  const gastosPorMetodo = calcularGastosPorMetodo();
 
   // Calcular totales si no están disponibles
   const totalVentas = cashbox.sales?.reduce((sum: number, sale: any) => sum + sale.total, 0) || 0;
   const totalGastos = cashbox.expenses?.reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0;
   
-  // Ventas en efectivo vs tarjeta
-  const ventasEfectivo = cashbox.sales?.flatMap((sale: any) => 
-    sale.payments?.filter((p: any) => p.paymentMethod?.isCash) || []
-  ).reduce((sum: number, payment: any) => sum + payment.amount, 0) || 0;
-  
-  const ventasTarjeta = cashbox.sales?.flatMap((sale: any) => 
-    sale.payments?.filter((p: any) => !p.paymentMethod?.isCash) || []
-  ).reduce((sum: number, payment: any) => sum + payment.amount, 0) || 0;
-
-  // Gastos en efectivo vs tarjeta
-  const gastosEfectivo = cashbox.expenses?.filter((e: any) => e.paymentMethod?.isCash)
-    .reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0;
-  
-  const gastosTarjeta = cashbox.expenses?.filter((e: any) => !e.paymentMethod?.isCash)
-    .reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0;
+  // Función para descargar reporte
+  const handleDownloadReport = async () => {
+    setDownloading(true);
+    try {
+      await reportService.downloadDailyReport(cashbox.id);
+      // Éxito silencioso - el archivo se descarga automáticamente
+    } catch (error: any) {
+      console.error("Error descargando reporte diario:", error);
+      alert(error.message || "Error al descargar el reporte diario");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Tipo seguro para cashCount
   const cashCount = cashbox.cashCount as CashCount | null;
@@ -97,12 +134,23 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
               <p className="text-sm text-gray-600">Detalles completos del cierre de caja</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 p-2"
-          >
-            <X size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Botón de descarga */}
+            <button
+              onClick={handleDownloadReport}
+              disabled={downloading}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              <Download size={16} />
+              {downloading ? "Generando Excel..." : "Descargar Reporte"}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 p-2"
+            >
+              <X size={24} />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -207,14 +255,15 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
                   <span className="text-green-700">Total Ventas:</span>
                   <span className="font-medium">{formatCurrency(totalVentas)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-green-700">En Efectivo:</span>
-                  <span className="font-medium">{formatCurrency(ventasEfectivo)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-green-700">Con Tarjeta:</span>
-                  <span className="font-medium">{formatCurrency(ventasTarjeta)}</span>
-                </div>
+                
+                {/* 🔥 MEJORA: Desglose por métodos de pago reales */}
+                {ventasPorMetodo.map(({ metodo, monto }) => (
+                  <div key={metodo} className="flex justify-between">
+                    <span className="text-green-700">Ventas - {metodo}:</span>
+                    <span className="font-medium">{formatCurrency(monto)}</span>
+                  </div>
+                ))}
+                
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-green-700">Cantidad de Ventas:</span>
                   <span className="font-medium">{cashbox.sales?.length || 0}</span>
@@ -230,18 +279,42 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
                   <span className="text-red-700">Total Gastos:</span>
                   <span className="font-medium">{formatCurrency(totalGastos)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-red-700">En Efectivo:</span>
-                  <span className="font-medium">{formatCurrency(gastosEfectivo)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-red-700">Con Tarjeta:</span>
-                  <span className="font-medium">{formatCurrency(gastosTarjeta)}</span>
-                </div>
+                
+                {/* 🔥 MEJORA: Desglose por métodos de pago reales */}
+                {gastosPorMetodo.map(({ metodo, monto }) => (
+                  <div key={metodo} className="flex justify-between">
+                    <span className="text-red-700">Gastos - {metodo}:</span>
+                    <span className="font-medium">{formatCurrency(monto)}</span>
+                  </div>
+                ))}
+                
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-red-700">Cantidad de Gastos:</span>
                   <span className="font-medium">{cashbox.expenses?.length || 0}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Balance del Día */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="font-semibold mb-3 text-blue-800">⚖️ Balance del Día</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-blue-700">Total Ventas:</span>
+                <span className="font-medium text-green-600">{formatCurrency(totalVentas)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-700">Total Gastos:</span>
+                <span className="font-medium text-red-600">{formatCurrency(totalGastos)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-blue-700 font-semibold">Balance (Ventas - Gastos):</span>
+                <span className={`font-bold text-lg ${
+                  (totalVentas - totalGastos) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(totalVentas - totalGastos)}
+                </span>
               </div>
             </div>
           </div>
