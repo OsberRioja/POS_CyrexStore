@@ -22,14 +22,34 @@ export default function PaymentMethodTable({
         </thead>
         <tbody>
           {methods.map((m) => (
-            <tr key={m.id} className="border-b">
-              <td className="p-2">{m.name}</td>
-              <td className="p-2">{m.isCash ? "Sí" : "No"}</td>
-              <td className="p-2 text-right">{(m.total ?? 0).toFixed(2)}</td>
+            <tr key={m.id} className="border-b hover:bg-gray-50">
+              <td className="p-2 font-medium">{m.name}</td>
+              <td className="p-2">
+                <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                  m.isCash 
+                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  {m.isCash ? "Sí" : "No"}
+                </span>
+              </td>
+              <td className="p-2 text-right font-semibold">
+                Bs. {(m.total ?? 0).toFixed(2)}
+              </td>
               <td className="p-2">
                 <div className="flex gap-2">
-                  <button onClick={() => onEdit(m)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
-                  <button onClick={() => onDelete(m.id)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
+                  <button 
+                    onClick={() => onEdit(m)} 
+                    className="px-2 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600"
+                  >
+                    Editar
+                  </button>
+                  <button 
+                    onClick={() => onDelete(m.id)} 
+                    className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                  >
+                    Eliminar
+                  </button>
                 </div>
               </td>
             </tr>

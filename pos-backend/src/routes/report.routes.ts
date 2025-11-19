@@ -9,5 +9,6 @@ router.use(authMiddleware);
 
 router.get('/sales/:cashBoxId', reportController.downloadSalesReport);
 router.get('/expenses/:cashBoxId', reportController.downloadExpensesReport);
+router.get('/payment-methods/:cashBoxId', reportController.downloadPaymentMethodsReport);
 
 export default router;

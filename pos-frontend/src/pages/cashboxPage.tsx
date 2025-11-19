@@ -380,6 +380,7 @@ export default function CashboxPage() {
           <PaymentMethodsPage
             cashBoxId={selectedCashbox.id}
             onBack={() => setView(null)}
+            isClosedCashbox={true}
           />
         )}
 
@@ -475,6 +476,7 @@ export default function CashboxPage() {
             <PaymentMethodsPage
               cashBoxId={openCashbox?.id}
               onBack={() => setView(null)}
+              isClosedCashbox={false}
             />
           )}
         </>

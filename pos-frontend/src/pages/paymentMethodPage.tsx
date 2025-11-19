@@ -3,9 +3,21 @@ import { useEffect, useState } from "react";
 import PaymentMethodTable from "../components/paymentMethodTable";
 import PaymentMethodForm from "../components/paymentMethodForm";
 import { paymentMethodService } from "../services/paymentMethodService";
+import { reportService } from "../services/reportService";
 import { useAuth } from "../context/authContext";
+import { Download } from "lucide-react";
 
-export default function PaymentMethodsPage({ cashBoxId}: { cashBoxId?: number | null; onBack?: () => void }) {
+interface PaymentMethodsPageProps {
+  cashBoxId?: number | null;
+  onBack?: () => void;
+  isClosedCashbox?: boolean;
+}
+
+export default function PaymentMethodsPage({
+  cashBoxId,
+  onBack,
+  isClosedCashbox = false
+}: PaymentMethodsPageProps) {
   const { token } = useAuth();
   const _token = token ?? undefined;
 
@@ -13,6 +25,7 @@ export default function PaymentMethodsPage({ cashBoxId}: { cashBoxId?: number | 
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -66,15 +79,73 @@ export default function PaymentMethodsPage({ cashBoxId}: { cashBoxId?: number | 
     }
   };
 
+   const handleDownloadPaymentMethodsReport = async () => {
+    if (!cashBoxId) {
+      alert("No se puede generar el reporte: ID de caja no disponible");
+      return;
+    }
+
+    setDownloadingReport(true);
+    try {
+      await reportService.downloadPaymentMethodsReport(cashBoxId);
+      // Éxito silencioso - el archivo se descarga automáticamente
+    } catch (error: any) {
+      console.error("Error descargando reporte de métodos de pago:", error);
+      alert(error.message || "Error al descargar el reporte de métodos de pago");
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Métodos de pago</h2>
         <div className="flex gap-2">
-          <button onClick={handleCreate} className="px-3 py-1 bg-blue-500 text-white rounded">+ Nuevo</button>
-          {/* {onBack && <button onClick={onBack} className="px-3 py-1 bg-gray-300 rounded">Volver</button>} */}
+          {/* Botón de descarga de reporte - solo para cajas cerradas */}
+          {isClosedCashbox && cashBoxId && (
+            <button
+              onClick={handleDownloadPaymentMethodsReport}
+              disabled={downloadingReport}
+              className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              <Download size={16} />
+              {downloadingReport ? "Generando Excel..." : "Descargar Reporte"}
+            </button>
+          )}
+          
+          {/* Botón de nuevo método de pago - no mostramos en caja cerrada */}
+          {!isClosedCashbox && (
+            <button onClick={handleCreate} className="px-3 py-1 bg-blue-500 text-white rounded">+ Nuevo</button>
+          )}
+          
+          {onBack && <button onClick={onBack} className="px-3 py-1 bg-gray-300 rounded">Volver</button>}
         </div>
       </div>
+
+      {/* Información adicional para cajas cerradas */}
+      {isClosedCashbox && cashBoxId && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-800">
+                📊 Modo de visualización - Caja Cerrada
+              </p>
+              <p className="text-xs text-blue-600">
+                Puedes descargar el reporte completo de métodos de pago en Excel
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-blue-800">
+                {methods.length} métodos de pago
+              </p>
+              <p className="text-xs text-blue-600">
+                Total Recaudado: Bs. {methods.reduce((sum: number, method: any) => sum + method.total, 0).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? <p>Cargando...</p> : <PaymentMethodTable methods={methods} onEdit={handleEdit} onDelete={handleDelete} />}
 
