@@ -43,6 +43,7 @@ export default function ProductTable({
       <table className="min-w-full text-sm">
         <thead>
           <tr className="bg-gray-100">
+            <th className="p-3 border text-left">Estado</th>
             <th className="p-3 border text-left">SKU</th>
             <th className="p-3 border text-left">Nombre</th>
             <th className="p-3 border text-left">Descripción</th>
