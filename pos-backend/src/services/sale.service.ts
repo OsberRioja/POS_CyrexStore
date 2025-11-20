@@ -1,9 +1,10 @@
 // src/services/sale.service.ts
 import { PrismaClient, PaymentStatus } from "@prisma/client";
 import { SaleRepository } from "../repositories/sale.repository";
-import type { CreateSaleDTO, SaleItemDTO, SalePaymentDTO, AddPaymentDTO } from "../dtos/sale.dto";
+import type { AddPaymentDTO } from "../dtos/sale.dto";
 import { CashBoxRepository } from "../repositories/cashBox.repository";
 import { PaymentMethodRepository } from "../repositories/paymentMethod.repository";
+import { CommissionCalculationService } from "./commissionCalculation.service";
 
 const prisma = new PrismaClient();
 
@@ -284,6 +285,26 @@ export const SaleService = {
             createdBy: actorUserId
           }
         });
+      }
+      try {
+        const commissionAmount = await CommissionCalculationService.calculateCommission(calculatedTotal);
+
+        // Solo crear comisión si es mayor a 0
+        if (commissionAmount > 0) {
+          await tx.commission.create({
+            data: {
+              saleId: created.id,
+              userId: sellerId,
+              amount: commissionAmount,
+              month: created.createdAt.getMonth() + 1, // Mes 1-12
+              year: created.createdAt.getFullYear()
+            }
+          });
+        }
+      } catch (err) {
+        // Si falla el registro de la comision, no debe fallar toda la venta
+        console.error("Error al calcular:", err);
+        //continuar con la venta sin comisión
       }
       return created;
     });
