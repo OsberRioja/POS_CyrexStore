@@ -13,6 +13,8 @@ import CashboxPage from "./pages/cashboxPage";
 import StockPage from "./pages/stockPage";
 import ExchangeRateSettingsPage from "./pages/ExchangeRateSettingsPage";
 import Navbar from "./components/Navbar";
+import CommissionsReportPage from "./pages/CommissionsReportPage";
+import CommissionConfigPage from "./pages/CommissionConfigPage";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -102,6 +104,29 @@ function MainApp() {
             {page === "clientes" && <ClientsPage />}
             {page === "proveedores" && <ProvidersPage />}
             {page === "productos" && <ProductsPage />}
+            {page === "comisiones" && (user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
+              <CommissionsReportPage />
+            )}
+            {page === "comisiones" && user?.role === 'SELLER' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
+            
+            {page === "config-comisiones" && user?.role === 'ADMIN' && (
+              <CommissionConfigPage />
+            )}
+            {page === "config-comisiones" && user?.role !== 'ADMIN' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
             {page === "salir" && <HomePage />}
             {page === null && <HomePage />}
           </div>

@@ -1,5 +1,5 @@
-// Sidebar.tsx
-import type { User } from "../context/authContext"; // Importar el tipo User
+import { useState } from 'react';
+import type { User } from "../context/authContext";
 
 interface SidebarProps {
   selected: string | null;
@@ -8,15 +8,27 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
   // Determinar qué elementos mostrar según el rol
   const showStock = user?.role !== 'SELLER';
   const showUsers = user?.role === 'ADMIN';
   const showProviders = user?.role !== 'SELLER';
   const showConfiguration = user?.role === 'ADMIN';
+  const showReports = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR'; 
+
+  const toggleSubmenu = (menu: string) => {
+    setOpenSubmenu(openSubmenu === menu ? null : menu);
+  };
+
+  const handleSelect = (page: string | null) => {
+    onSelect(page);
+    // Cerrar submenús al seleccionar una página
+    setOpenSubmenu(null);
+  };
 
   return (
-    <aside className="w-40 bg-transparent flex flex-col items-center py-8">
+    <aside className="w-48 bg-transparent flex flex-col items-center py-8">
       {/* Mostrar información del usuario si está disponible */}
       {user && (
         <div className="mb-6 text-center">
@@ -25,10 +37,10 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         </div>
       )}
 
-      <div className="w-full flex flex-col items-start pl-2 space-y-3">
+      <div className="w-full flex flex-col items-start pl-2 space-y-1">
         <button
-          onClick={() => onSelect("caja")}
-          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+          onClick={() => handleSelect("caja")}
+          className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
             selected === "caja" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
@@ -38,8 +50,8 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         {/* STOCK - Solo para ADMIN y SUPERVISOR */}
         {showStock && (
           <button
-            onClick={() => onSelect("stock")}
-            className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            onClick={() => handleSelect("stock")}
+            className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
               selected === "stock" ? "bg-blue-600" : "bg-gray-500/90"
             }`}
           >
@@ -50,8 +62,8 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         {/* USUARIOS - Solo para ADMIN */}
         {showUsers && (
           <button
-            onClick={() => onSelect("usuarios")}
-            className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            onClick={() => handleSelect("usuarios")}
+            className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
               selected === "usuarios" ? "bg-blue-600" : "bg-gray-500/90"
             }`}
           >
@@ -60,8 +72,8 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         )}
 
         <button
-          onClick={() => { console.log('Sidebar click: clientes'); onSelect('clientes'); }}
-          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+          onClick={() => handleSelect('clientes')}
+          className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
             selected === "clientes" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
@@ -71,8 +83,8 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         {/* PROVEEDORES - Solo para ADMIN y SUPERVISOR */}
         {showProviders && (
           <button
-            onClick={() => { console.log('Sidebar click: proveedores'); onSelect('proveedores'); }}
-            className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+            onClick={() => handleSelect('proveedores')}
+            className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
               selected === "proveedores" ? "bg-blue-600" : "bg-gray-500/90"
             }`}
           >
@@ -80,41 +92,95 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
           </button>
         )}
         <button
-          onClick={() => { console.log('Sidebar click: productos'); onSelect('productos'); }}
-          className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+          onClick={() => handleSelect('productos')}
+          className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
             selected === "productos" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
           📦 PRODUCTOS
         </button>
 
-        {/* NUEVA SECCIÓN DE CONFIGURACIÓN SOLO PARA ADMIN */}
-        {showConfiguration && (
+        {/* NUEVA SECCIÓN DE INFORMES PARA ADMIN Y SUPERVISOR */}
+        {showReports && (
           <>
-            {/* Línea separadora */}
             <div className="w-full border-t border-gray-300 my-2" />
             
-            {/* Título de la sección */}
-            <div className="w-30 text-xs font-semibold px-3 py-1 text-gray-500 uppercase">
-              Configuración
+            {/* Botón de Informes con submenú */}
+            <div className="w-full">
+              <button
+                onClick={() => toggleSubmenu('informes')}
+                className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white flex justify-between items-center ${
+                  openSubmenu === 'informes' ? 'bg-blue-600' : 'bg-gray-500/90'
+                }`}
+              >
+                <span>📈 INFORMES</span>
+                <span>{openSubmenu === 'informes' ? '▲' : '▼'}</span>
+              </button>
+              
+              {/* Submenú de Informes */}
+              {openSubmenu === 'informes' && (
+                <div className="ml-4 mt-1 space-y-1">
+                  <button
+                    onClick={() => handleSelect('comisiones')}
+                    className={`w-36 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+                      selected === "comisiones" ? "bg-blue-500" : "bg-gray-400/90"
+                    }`}
+                  >
+                    💰 Comisiones
+                  </button>
+                  {/* Aquí puedes agregar más opciones de informes en el futuro */}
+                </div>
+              )}
             </div>
-
-            {/* Botón de Divisas/Tasas de Cambio */}
-            <button
-              onClick={() => { console.log('Sidebar click: divisas'); onSelect('divisas'); }}
-              className={`w-30 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
-                selected === "divisas" ? "bg-blue-600" : "bg-gray-500/90"
-              }`}
-            >
-              💱 DIVISAS
-            </button>
           </>
         )}
 
+        {/* NUEVA SECCIÓN DE AJUSTES SOLO PARA ADMIN */}
+        {showConfiguration && (
+          <>
+            <div className="w-full border-t border-gray-300 my-2" />
+            
+            {/* Botón de Ajustes con submenú */}
+            <div className="w-full">
+              <button
+                onClick={() => toggleSubmenu('ajustes')}
+                className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white flex justify-between items-center ${
+                  openSubmenu === 'ajustes' ? 'bg-blue-600' : 'bg-gray-500/90'
+                }`}
+              >
+                <span>⚙️ AJUSTES</span>
+                <span>{openSubmenu === 'ajustes' ? '▲' : '▼'}</span>
+              </button>
+              
+              {/* Submenú de Ajustes */}
+              {openSubmenu === 'ajustes' && (
+                <div className="ml-4 mt-1 space-y-1">
+                  <button
+                    onClick={() => handleSelect('config-comisiones')}
+                    className={`w-36 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+                      selected === "config-comisiones" ? "bg-blue-500" : "bg-gray-400/90"
+                    }`}
+                  >
+                    💰 Comisiones
+                  </button>
+                  <button
+                    onClick={() => handleSelect('divisas')}
+                    className={`w-36 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+                      selected === "divisas" ? "bg-blue-500" : "bg-gray-400/90"
+                    }`}
+                  >
+                    💱 Divisas
+                  </button>
+                  {/* Aquí puedes agregar más opciones de ajustes en el futuro */}
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         <button
-          onClick={() => { console.log('Sidebar click: salir'); onSelect('salir'); }}
-          className={`w-24 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+          onClick={() => handleSelect('salir')}
+          className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
             selected === "salir" ? "bg-blue-600" : "bg-gray-500/90"
           }`}
         >
@@ -123,7 +189,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
       </div>
 
       {/* línea vertical separadora */}
-      <div className="absolute left-40 inset-y-0 my-auto h-3/4 w-px bg-gray-300" />
+      <div className="absolute left-48 inset-y-0 my-auto h-3/4 w-px bg-gray-300" />
     </aside>
   );
 }
