@@ -25,6 +25,8 @@ model User {
   stockMovements  StockMovement[]
   preference      UserPreference?
   expenses    Expense[]
+  commissionConfigs CommissionConfig[]
+  commissions       Commission[]
 
   @@map("User")
 }
@@ -131,6 +133,7 @@ model Sale {
   client         Cliente?        @relation(fields: [clientId], references: [id_cliente])
   seller         User            @relation(fields: [sellerId], references: [id])
   stockMovements StockMovement[]
+  commissions Commission[]
 
   @@map("sales")
 }
@@ -275,6 +278,61 @@ model UserPreference {
   user              User     @relation(fields: [userId], references: [id])
 
   @@map("user_preferences")
+}
+
+model CommissionConfig {
+  id          String          @id @default(uuid())
+  type        CommissionType  @default(FIXED_AMOUNT)
+  isActive    Boolean         @default(false)
+  fixedAmount Float?          // Para comisiones fijas
+  percentage  Float?          // Para comisiones porcentuales
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdBy   String
+  
+  // Para comisiones por rangos (opcional)
+  ranges      CommissionRange[]
+  
+  user        User            @relation(fields: [createdBy], references: [id])
+}
+
+model CommissionRange {
+  id                Int     @id @default(autoincrement())
+  configId          String
+  minAmount         Float
+  maxAmount         Float?
+  commissionValue   Float   // Puede ser monto fijo o porcentaje según el type del padre
+  commissionType    CommissionRangeType @default(FIXED)
+  
+  config            CommissionConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+}
+
+model Commission {
+  id          String    @id @default(uuid())
+  saleId      String
+  userId      String
+  amount      Float
+  calculatedAt DateTime @default(now())
+  month       Int       // Mes de la comisión (1-12)
+  year        Int       // Año de la comisión
+  
+  sale        Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+  
+  @@unique([saleId, userId]) // Una comisión única por venta y usuario
+  @@map("commissions")
+}
+
+
+enum CommissionType {
+  FIXED_AMOUNT     // Monto fijo por venta
+  PERCENTAGE       // Porcentaje del total de venta
+  TIERED_RANGES    // Rangos con diferentes comisiones
+}
+
+enum CommissionRangeType {
+  FIXED      // Monto fijo dentro del rango
+  PERCENTAGE // Porcentaje dentro del rango
 }
 
 enum Role {
