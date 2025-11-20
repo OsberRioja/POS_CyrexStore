@@ -54,7 +54,7 @@ app.use('/api/returns', returnRoutes);
 app.use('/api/exchange-rates', exchangeRateRoutes);
 app.use('/api/user-preferences', userPreferenceRoutes);
 app.use('/api/reports',reportRoutes);
-app.use('/api/commissions-config', commissionRoutes);
+app.use('/api/commission-config', commissionRoutes);
 app.use('/api/commission-reports', commissionReportRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
