@@ -22,6 +22,7 @@ import userPreferenceRoutes from './routes/userPreference.routes';
 import { startExchangeRateCron, initializeExchangeRates } from './jobs/updateExchangeRates';
 import reportRoutes from './routes/report.routes';
 import commissionRoutes from './routes/commission.routes';
+import commissionReportRoutes from './routes/commissionReport.routes';
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/exchange-rates', exchangeRateRoutes);
 app.use('/api/user-preferences', userPreferenceRoutes);
 app.use('/api/reports',reportRoutes);
 app.use('/api/commissions-config', commissionRoutes);
+app.use('/api/commission-reports', commissionReportRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);
