@@ -15,6 +15,7 @@ import ExchangeRateSettingsPage from "./pages/ExchangeRateSettingsPage";
 import Navbar from "./components/Navbar";
 import CommissionsReportPage from "./pages/CommissionsReportPage";
 import CommissionConfigPage from "./pages/CommissionConfigPage";
+import { SettingsProvider } from "./context/settingsContext";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -141,7 +142,9 @@ export default function App() {
   return (
     <AuthProvider>
       <CurrencyProvider>
-        <MainAppWithErrorBoundary />
+        <SettingsProvider>
+          <MainAppWithErrorBoundary />
+        </SettingsProvider>
       </CurrencyProvider>
     </AuthProvider>
   );
