@@ -15,6 +15,7 @@ import ExchangeRateSettingsPage from "./pages/ExchangeRateSettingsPage";
 import Navbar from "./components/Navbar";
 import CommissionsReportPage from "./pages/CommissionsReportPage";
 import CommissionConfigPage from "./pages/CommissionConfigPage";
+import ReceiptSettingsPage from "./pages/ReceiptSettingsPage";
 import { SettingsProvider } from "./context/settingsContext";
 
 // Componente con manejo de errores
@@ -128,6 +129,18 @@ function MainApp() {
                 </div>
               </div>
             )}
+            {page === "config-comprobante" && (user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
+              <ReceiptSettingsPage onBack={() => setPage(null)} />
+            )}
+            {page === "config-comprobante" && user?.role === 'SELLER' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
+
             {page === "salir" && <HomePage />}
             {page === null && <HomePage />}
           </div>
