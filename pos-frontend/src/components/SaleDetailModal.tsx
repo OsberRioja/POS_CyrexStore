@@ -1,12 +1,25 @@
-import React from 'react';
-import { X } from 'lucide-react';
-
+import React, { useState } from 'react';
+import { X, Download } from 'lucide-react';
+import { usePdfGenerator } from '../hooks/usePdfGenerator';
 interface SaleDetailsModalProps {
   sale: any;
   onClose: () => void;
 }
 
 const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) => {
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const { downloadReceipt, isGenerating, progress } = usePdfGenerator();
+
+  const handleDownload = async () => {
+    setDownloadError(null);
+    try {
+      await downloadReceipt(sale);
+    } catch (error) {
+      setDownloadError('Error al generar el comprobante. Intente nuevamente.');
+      console.error('Error downloading receipt:', error);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-BO', {
       style: 'currency',
@@ -192,13 +205,33 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) =>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-6 border-t">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-          >
-            Cerrar
-          </button>
+        <div className="flex justify-between items-center p-6 border-t">
+          <div>
+            {downloadError && (
+              <div className="text-red-600 text-sm">{downloadError}</div>
+            )}
+            {isGenerating && (
+              <div className="text-blue-600 text-sm">
+                Generando comprobante... {progress}%
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={handleDownload}
+              disabled={isGenerating}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={16} />
+              {isGenerating ? 'Generando...' : 'Descargar Comprobante'}
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
     </div>
