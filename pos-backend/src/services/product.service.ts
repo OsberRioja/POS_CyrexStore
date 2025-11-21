@@ -2,6 +2,7 @@ import { productRepository } from "../repositories/product.repository";
 import { CreateProductDTO } from "../dtos/createProduct.dto";
 import { UpdateProductDTO } from "../dtos/updateProduct.dto";
 import { prisma } from "../prismaClient";
+import { da } from "zod/v4/locales/index.cjs";
 
 export const productService = {
   async createProduct(dto: CreateProductDTO, userId: string) {
@@ -58,6 +59,29 @@ export const productService = {
           }
         });
       }
+      // Registrar precio de costo inicial en el historial de precios
+      await tx.priceHistory.create({
+        data: {
+          productId: created.id,
+          oldPrice: 0, // No hay precio anterior
+          newPrice: created.costPrice,
+          priceType: 'cost',
+          changedBy: userId,
+          notes: 'Precio de costo inicial al crear producto'
+        }
+      });
+
+      //Registrar precio de venta inicial en el historial de precios
+      await tx.priceHistory.create({
+        data: {
+          productId: created.id,
+          oldPrice: 0, // No hay precio anterior
+          newPrice: created.salePrice,
+          priceType: 'sale',
+          changedBy: userId,
+          notes: 'Precio de venta inicial al crear producto'
+        }
+      });
 
       return created;
     });

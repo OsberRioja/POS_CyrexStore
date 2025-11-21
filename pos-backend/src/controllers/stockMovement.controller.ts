@@ -199,16 +199,18 @@ export const StockMovementController = {
   async getPriceHistory(req: Request, res: Response) {
     try {
       const { productId } = req.params;
-
-      if (!productId) {
-        return res.status(400).json({ error: "productId es requerido" });
-      }
+      console.log(`🎯 Controlador: Obteniendo historial de precios para ${productId}`);
 
       const history = await StockMovementService.getPriceHistory(productId);
-      return res.json(history);
-    } catch (err: any) {
-      console.error("GET /stock/product/:productId/price-history:", err);
-      return res.status(500).json({ error: "Error interno" });
+
+      console.log(`✅ Controlador: Enviando ${history.data?.length || 0} registros de precio`);
+      res.json(history);
+    } catch (error: any) {
+      console.error('❌ Controlador - Error en getPriceHistory:', error);
+      res.status(error.status || 500).json({
+        success: false,
+        message: error.message
+      });
     }
   },
 

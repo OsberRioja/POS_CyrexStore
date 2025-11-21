@@ -138,5 +138,16 @@ export const PriceHistoryRepository = {
         }
       }
     });
+  },
+  findAllByProduct: async (productId: string) => {
+    return prisma.priceHistory.findMany({
+      where: { productId },
+      orderBy: { changedAt: 'desc' },
+      include: {
+        user: {
+          select: { name: true, userCode: true }
+        }
+      }
+    });
   }
 };

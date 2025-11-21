@@ -25,6 +25,9 @@ router.post('/demo-out', StockMovementController.registerDemoOut);
 // Registrar devolución de venta
 router.post('/return', StockMovementController.registerReturn);
 
+// Historial de cambios de precio de un producto
+router.get('/price-history/:productId', StockMovementController.getPriceHistory);
+
 // ========== PRODUCTOS ==========
 
 // Historial de movimientos de un producto específico

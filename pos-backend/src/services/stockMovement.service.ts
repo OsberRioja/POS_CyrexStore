@@ -1,6 +1,5 @@
 import { MovementType } from "@prisma/client";
 import { StockMovementRepository, PriceHistoryRepository } from "../repositories/stockMovement.repository";
-import { productRepository } from "../repositories/product.repository";
 import { prisma } from "../prismaClient";
 
 export const StockMovementService = {
@@ -251,7 +250,7 @@ export const StockMovementService = {
           newPrice: data.costPrice,
           priceType: 'cost',
           changedBy: userId,
-          notes: data.notes
+          notes: data.notes || `Cambio de precio de costo: ${product.costPrice} → ${data.costPrice}`
         })
       );
     }
@@ -265,7 +264,7 @@ export const StockMovementService = {
           newPrice: data.salePrice,
           priceType: 'sale',
           changedBy: userId,
-          notes: data.notes
+          notes: data.notes || `Cambio de precio de venta: ${product.salePrice} → ${data.salePrice}`
         })
       );
     }
@@ -287,9 +286,17 @@ export const StockMovementService = {
 
   /**
    * Obtener historial de precios
-   */
+  */
   async getPriceHistory(productId: string) {
-    return PriceHistoryRepository.findByProduct(productId);
+    console.log(`💰 Buscando historial de precios para producto: ${productId}`);
+    const history = await PriceHistoryRepository.findAllByProduct(productId);
+    console.log(`📈 Registros de precio encontrados: ${history.length}`);
+
+    // Asegurar que devolvemos el formato correcto que espera el frontend
+    return { 
+      success: true,
+      data: history 
+    };
   },
 
   /**
