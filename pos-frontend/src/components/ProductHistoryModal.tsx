@@ -14,6 +14,7 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
   const [activeTab, setActiveTab] = useState<'movements' | 'prices'>('movements');
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -21,7 +22,10 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
+      console.log(`🔄 Cargando historial para producto: ${product.id}`);
+      
       const [movementsRes, pricesRes] = await Promise.all([
         stockService.getProductHistory(product.id),
         stockService.getPriceHistory(product.id)
@@ -30,10 +34,18 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
       console.log('📊 Respuesta movimientos:', movementsRes);
       console.log('💰 Respuesta precios:', pricesRes);
 
-      setMovements(movementsRes.data?.data || []);
-      setPriceHistory(pricesRes.data?.data || []);
+      // Manejar diferentes formatos de respuesta
+      const movementsData = movementsRes.data?.data || movementsRes.data || [];
+      const pricesData = pricesRes.data?.data || pricesRes.data || [];
+
+      console.log(`📦 Movimientos a mostrar: ${movementsData.length}`);
+      console.log(`💵 Precios a mostrar: ${pricesData.length}`);
+
+      setMovements(movementsData);
+      setPriceHistory(pricesData);
     } catch (error) {
-      console.error('Error loading history:', error);
+      console.error('❌ Error loading history:', error);
+      setError('Error al cargar el historial del producto');
     } finally {
       setLoading(false);
     }
@@ -64,7 +76,7 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header - MODIFICADO para incluir imagen */}
+        {/* Header */}
         <div className="flex justify-between items-start p-6 border-b">
           <div className="flex items-start gap-4 flex-1">
             {/* Sección de imagen del producto */}
@@ -115,7 +127,10 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                   </p>
                 )}
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Precio:</span> {formatCurrency(product.salePrice)}
+                  <span className="font-medium">Precio de venta:</span> {formatCurrency(product.salePrice)}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Precio de costo:</span> {formatCurrency(product.costPrice)}
                 </p>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Stock actual:</span> 
@@ -162,6 +177,12 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
+
           {loading ? (
             <div className="text-center py-12 bg-white rounded-lg">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -172,7 +193,23 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
               <StockMovementsTable movements={movements} />
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Sección de Precio Actual */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-blue-800 mb-2">Precio Actual</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-blue-600">Precio de Costo:</span>
+                    <p className="text-xl font-bold text-blue-800">{formatCurrency(product.costPrice)}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-blue-600">Precio de Venta:</span>
+                    <p className="text-xl font-bold text-blue-800">{formatCurrency(product.salePrice)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Historial de Cambios de Precio */}
               {priceHistory.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 bg-white rounded-lg shadow-sm border">
                   <DollarSign size={48} className="mx-auto mb-4 text-gray-400" />
@@ -181,6 +218,9 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                 </div>
               ) : (
                 <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-3 border-b">
+                    <h3 className="text-lg font-semibold text-gray-800">Historial de Cambios de Precio</h3>
+                  </div>
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
@@ -197,7 +237,10 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                     <tbody className="divide-y divide-gray-200">
                       {priceHistory.map((history) => {
                         const difference = history.newPrice - history.oldPrice;
-                        const percentChange = ((difference / history.oldPrice) * 100).toFixed(2);
+                        // Evitar división por cero
+                        const percentChange = history.oldPrice > 0 
+                          ? ((difference / history.oldPrice) * 100).toFixed(2)
+                          : (difference > 0 ? '100.00' : '0.00');
                         const isIncrease = difference > 0;
 
                         return (
@@ -218,24 +261,32 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                               {formatCurrency(history.oldPrice)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              {isIncrease ? (
-                                <TrendingUp size={18} className="text-green-600 mx-auto" />
+                              {difference !== 0 ? (
+                                isIncrease ? (
+                                  <TrendingUp size={18} className="text-green-600 mx-auto" />
+                                ) : (
+                                  <TrendingDown size={18} className="text-red-600 mx-auto" />
+                                )
                               ) : (
-                                <TrendingDown size={18} className="text-red-600 mx-auto" />
+                                <span className="text-gray-400">-</span>
                               )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900">
                               {formatCurrency(history.newPrice)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className={`font-semibold text-sm ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
-                                {isIncrease ? '+' : ''}{percentChange}%
-                              </span>
+                              {difference !== 0 ? (
+                                <span className={`font-semibold text-sm ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
+                                  {isIncrease ? '+' : ''}{percentChange}%
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               <div>
-                                <div className="text-gray-900 font-medium">{history.user.name}</div>
-                                <div className="text-xs text-gray-500">#{history.user.userCode}</div>
+                                <div className="text-gray-900 font-medium">{history.user?.name || 'Sistema'}</div>
+                                <div className="text-xs text-gray-500">#{history.user?.userCode || 'N/A'}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600">
