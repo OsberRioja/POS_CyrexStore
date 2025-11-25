@@ -23,6 +23,7 @@ import { startExchangeRateCron, initializeExchangeRates } from './jobs/updateExc
 import reportRoutes from './routes/report.routes';
 import commissionRoutes from './routes/commission.routes';
 import commissionReportRoutes from './routes/commissionReport.routes';
+import { emailService } from './services/email.service';
 
 const app = express();
 
@@ -67,9 +68,13 @@ app.use(errorHandler);
     console.log("Payment methods defaults ensured");
     await initializeExchangeRates();
     startExchangeRateCron();
+
+    // Verificación del servicio de email
+    await emailService.verifyConnection();
   } catch (err) {
     console.warn("Error en Inicializacion:", err);
   }
+
 
   // ✅ 5. QUINTO: Arrancar servidor AL FINAL
   const PORT = env.PORT || 3000;
