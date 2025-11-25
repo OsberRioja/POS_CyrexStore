@@ -154,7 +154,7 @@ class PdfService {
           <div>
             <strong>N° Venta:</strong> ${receiptData.saleId}<br>
             <strong>Fecha:</strong> ${formatDate(receiptData.date)}<br>
-            <strong>Vendedor:</strong> ${receiptData.sellerName} (#${receiptData.sellerCode})
+            <strong>Vendedor:</strong> ${receiptData.sellerName}
           </div>
           <div>
             <strong>Cliente:</strong> ${receiptData.clientName}<br>
