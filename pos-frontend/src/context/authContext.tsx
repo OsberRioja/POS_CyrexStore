@@ -18,7 +18,7 @@ interface AuthContextType {
   user: LoginResponse["user"] | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (login: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -46,9 +46,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (login: string, password: string) => {
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ login, password });
       const { token: newToken, user: newUser } = response.data;
 
       // Guardar en localStorage

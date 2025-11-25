@@ -8,7 +8,7 @@ interface LoginPageProps {
 export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const { login } = useAuth();
   const [form, setForm] = useState({
-    email: "",
+    login: "",
     password: ""
   });
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setError("");
 
     try {
-      await login(form.email, form.password);
+      await login(form.login, form.password);
       onLoginSuccess(); // Notificar al componente padre
     } catch (err: any) {
       const message = err?.response?.data?.message || "Error al iniciar sesión";
@@ -43,7 +43,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             Iniciar Sesión
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Sistema POS - Tienda de Computadoras
+            Sistema POS - Cyrex Store
           </p>
         </div>
 
@@ -57,17 +57,17 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                correo electrónico
+                correo electronico o Código de usuario
               </label>
               <input
-                id="email"
-                name="email"
+                id="login"
+                name="login"
                 type="text"
                 required
-                value={form.email}
+                value={form.login}
                 onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="usuario@ejemplo.com"
+                placeholder="usuario@ejemplo.com 0 1234"
               />
             </div>
 

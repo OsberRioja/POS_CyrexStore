@@ -4,15 +4,15 @@ import { AuthService } from "../services/auth.service";
 export const AuthController = {
   async login(req: Request, res: Response) {
     try {
-      const { username, password } = req.body;
+      const { login, password } = req.body;
       
-      if (!username || !password) {
+      if (!login || !password) {
         return res.status(400).json({ 
           message: "Usuario y contraseña son requeridos" 
         });
       }
 
-      const result = await AuthService.login(username, password);
+      const result = await AuthService.login(login, password);
       return res.json({
         message: "Login exitoso",
         ...result

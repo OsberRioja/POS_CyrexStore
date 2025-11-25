@@ -11,12 +11,23 @@ export function generarToken(payload: object) {
 
 export const AuthService = {
 
-  async login(username: string, password: string) {
-    const [user] = await UserRepository.findByName(username);
+  async login(login: string, password: string) {
+    let user = null;
+    // determinar si login es email o usercode
+
+   if (/^\d+$/.test(login)) {
+      // Es un código de usuario (solo números)
+      const userCode = parseInt(login, 10);
+      user = await UserRepository.findByUsercode(userCode);
+    } else {
+      // Es un email
+      user = await UserRepository.findByEmail(login);
+    }
+
     if (!user) throw { status: 401, message: "Credenciales inválidas" };
 
     const match = await bcrypt.compare(password, user.password);
-    console.log("login attempt for:", username);
+    console.log("login attempt for:", login);
     console.log("stored password:", user.password);
 
     if (!match) throw { status: 401, message: "Credenciales inválidas" };

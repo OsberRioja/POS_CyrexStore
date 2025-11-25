@@ -17,7 +17,7 @@ export interface LoginResponse {
 }
 
 export interface LoginRequest {
-  username: string;
+  login: string;
   password: string;
 }
 
