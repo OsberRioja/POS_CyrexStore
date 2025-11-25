@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/authContext";
+import { Eye, EyeOff } from "lucide-react";
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -13,6 +14,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -33,6 +35,10 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -71,22 +77,34 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
               />
             </div>
 
-            <div>
+            <div className="relative">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Contraseña
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={form.password}
-                onChange={handleChange}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={form.password}
+                  onChange={handleChange}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center mt-1"
+                  onClick={togglePasswordVisibility}
+                >
+                  {showPassword ? (
+                    <EyeOff size={16} className="text-gray-500" />
+                  ) : (
+                    <Eye size={16} className="text-gray-500" />
+                 )}
+                </button>
+              </div>
             </div>
-
             <button
               type="submit"
               disabled={loading}
