@@ -1,10 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-//import { StringValue } from "ms";
 import { env } from "../env";
 import { UserRepository } from "../repositories/user.repository";
-//import type { User } from "@prisma/client";
-//import { generateUniqueUsercode } from "../utils/userCode";
 
 export function generarToken(payload: object) {
   return jwt.sign(payload, env.JWT_SECRET, {
@@ -13,14 +10,13 @@ export function generarToken(payload: object) {
 }
 
 export const AuthService = {
-  // NO necesitas register aquí - ya tienes UserService.createUser() funcionando
 
-  async login(email: string, password: string) {
-    const user = await UserRepository.findByEmail(email);
+  async login(username: string, password: string) {
+    const [user] = await UserRepository.findByName(username);
     if (!user) throw { status: 401, message: "Credenciales inválidas" };
 
     const match = await bcrypt.compare(password, user.password);
-    console.log("login attempt for:", email);
+    console.log("login attempt for:", username);
     console.log("stored password:", user.password);
 
     if (!match) throw { status: 401, message: "Credenciales inválidas" };

@@ -1,18 +1,18 @@
-    import { Request, Response } from "express";
+import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
 
 export const AuthController = {
   async login(req: Request, res: Response) {
     try {
-      const { email, password } = req.body;
+      const { username, password } = req.body;
       
-      if (!email || !password) {
+      if (!username || !password) {
         return res.status(400).json({ 
-          message: "Email y contraseña son requeridos" 
+          message: "Usuario y contraseña son requeridos" 
         });
       }
 
-      const result = await AuthService.login(email, password);
+      const result = await AuthService.login(username, password);
       return res.json({
         message: "Login exitoso",
         ...result
@@ -25,7 +25,6 @@ export const AuthController = {
     }
   },
 
-  // NO necesitas register aquí - ya tienes UserController.create() funcionando
 
   async verifyToken(req: Request, res: Response) {
     try {
