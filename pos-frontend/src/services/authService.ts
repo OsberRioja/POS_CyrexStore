@@ -13,7 +13,9 @@ export interface LoginResponse {
     phone?: string;
     role: "ADMIN" | "SUPERVISOR" | "SELLER";
     createdAt: string;
+    passwordChangeRequired?: boolean;
   };
+  requiresPasswordChange: boolean;
 }
 
 export interface LoginRequest {

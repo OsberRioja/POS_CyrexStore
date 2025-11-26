@@ -1,5 +1,4 @@
-// App.tsx - VERSIÓN CON MANEJO DE ERRORES
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/authContext";
 import { CurrencyProvider } from "./context/currencyContext";
 import LoginPage from "./pages/loginPage";
@@ -17,6 +16,8 @@ import CommissionsReportPage from "./pages/CommissionsReportPage";
 import CommissionConfigPage from "./pages/CommissionConfigPage";
 import ReceiptSettingsPage from "./pages/ReceiptSettingsPage";
 import { SettingsProvider } from "./context/settingsContext";
+import PasswordChangeModal from "./components/PasswordChangeModal"; // Importar el modal
+import { passwordService } from "./services/passwordService"; // Importar el servicio
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -43,9 +44,23 @@ function MainAppWithErrorBoundary() {
 
 // Componente principal que maneja la lógica de autenticación
 function MainApp() {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { 
+    isAuthenticated, 
+    user, 
+    loading, 
+    requiresPasswordChange, 
+    completePasswordChange 
+  } = useAuth();
   const [page, setPage] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  // Mostrar modal cuando se requiera cambio de contraseña
+  useEffect(() => {
+    if (isAuthenticated && requiresPasswordChange) {
+      setShowPasswordModal(true);
+    }
+  }, [isAuthenticated, requiresPasswordChange]);
 
   // Mostrar loading mientras verifica la sesión
   if (loading) {
@@ -69,6 +84,16 @@ function MainApp() {
   const handleLogout = () => {
     setShowLogin(true);
     setPage(null);
+  };
+
+  // Función para manejar el cambio de contraseña
+  const handlePasswordChange = async (newPassword: string) => {
+    try {
+      await passwordService.changePassword({ newPassword });
+      completePasswordChange(); // Actualizar el contexto
+    } catch (error) {
+      throw error; // El modal manejará el error
+    }
   };
 
   return (
@@ -146,6 +171,19 @@ function MainApp() {
           </div>
         </main>
       </div>
+
+      {/* Modal de cambio de contraseña obligatorio */}
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        onClose={() => {
+          // No permitir cerrar el modal hasta que se cambie la contraseña
+          // Solo cerrar si no está cargando y no requiere cambio
+          if (!requiresPasswordChange) {
+            setShowPasswordModal(false);
+          }
+        }}
+        onPasswordChange={handlePasswordChange}
+      />
     </div>
   );
 }

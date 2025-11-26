@@ -13,9 +13,9 @@ export const AuthService = {
 
   async login(login: string, password: string) {
     let user = null;
-    // determinar si login es email o usercode
 
-   if (/^\d+$/.test(login)) {
+    // determinar si login es email o usercode
+    if (/^\d+$/.test(login)) {
       // Es un código de usuario (solo números)
       const userCode = parseInt(login, 10);
       user = await UserRepository.findByUsercode(userCode);
@@ -43,9 +43,13 @@ export const AuthService = {
 
     const token = jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
 
-    // devolver token + user (sin password)
+    // devolver token + user (sin password) + informacion de cambio de contraseña
     const { password: _p, ...userSafe } = (user as any);
-    return { token, user: userSafe };
+    return {
+      token,
+      user: userSafe,
+      requiresPasswordChange: user.passwordChangeRequired
+    };
   },
 
   verifyToken(token: string) {

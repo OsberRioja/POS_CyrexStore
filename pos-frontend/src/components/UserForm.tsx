@@ -10,12 +10,11 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
     email: user?.email ?? "",
     phone: user?.phone ?? "",
     role: user?.role ?? "SELLER",
-    password: ""
+    password: "" // Solo para edición, no para creación
   });
   const [saving, setSaving] = useState(false);
 
   const { hasPermission } = usePermissions();
-  // Determinar si estamos editando un usuario existente
   const isEditing = !!(user && user.id);
 
   // Verificar permisos al cargar
@@ -39,7 +38,7 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
       email: user?.email ?? "",
       phone: user?.phone ?? "",
       role: user?.role ?? "SELLER",
-      password: ""
+      password: "" // Siempre vacío para creación
     });
   }, [user]);
 
@@ -50,7 +49,7 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validar permisos nuevamente antes de enviar
+    // Validar permisos
     if (isEditing && !hasPermission(Permission.USER_UPDATE)) {
       alert("No tienes permisos para editar usuarios");
       return;
@@ -58,6 +57,12 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
     
     if (!isEditing && !hasPermission(Permission.USER_CREATE)) {
       alert("No tienes permisos para crear usuarios");
+      return;
+    }
+
+    // Validar email
+    if (!form.email || !form.email.includes('@')) {
+      alert("Por favor ingresa un email válido");
       return;
     }
 
@@ -69,10 +74,18 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
         phone: form.phone,
         role: form.role
       };
-      // si viene usercode y es number, se lo enviamos (solo para usuarios nuevos)
-      if (form.usercode && !isEditing) payload.userCode = Number(form.usercode);
-      // si viene contraseña y es nuevo o cambio, la enviamos
-      if (form.password) payload.password = form.password;
+
+      // Solo enviar userCode para nuevos usuarios
+      if (form.usercode && !isEditing) {
+        payload.userCode = Number(form.usercode);
+      }
+
+      // Solo enviar password para edición si se proporcionó
+      if (isEditing && form.password) {
+        payload.password = form.password;
+      }
+
+      // NO enviar password para creación - se genera automáticamente
 
       if (isEditing) {
         await userService.update(user.id, payload);
@@ -91,7 +104,8 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white w-96 rounded shadow p-4">
-        <h3 className="text-lg font-bold mb-3">{isEditing ? "Editar usuario" : "Nuevo usuario"}
+        <h3 className="text-lg font-bold mb-3">
+          {isEditing ? "Editar usuario" : "Nuevo usuario"}
           {!hasPermission(Permission.USER_UPDATE) && isEditing && (
             <span className="text-xs text-red-600 ml-2">(SOLO LECTURA)</span>
           )}
@@ -115,7 +129,7 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
               name="usercode" 
               value={form.usercode} 
               onChange={handleChange} 
-              placeholder="Código (opcional)" 
+              placeholder="Código (opcional - se generará automáticamente si está vacío)" 
               className="w-full border p-2 rounded" 
             />
           )}
@@ -124,7 +138,7 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
             name="username" 
             value={form.username} 
             onChange={handleChange} 
-            placeholder="Nombre" 
+            placeholder="Nombre completo" 
             className="w-full border p-2 rounded" 
             required
             disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
@@ -133,7 +147,7 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
             name="email" 
             value={form.email} 
             onChange={handleChange} 
-            placeholder="Correo" 
+            placeholder="Correo electrónico" 
             type="email" 
             className="w-full border p-2 rounded" 
             required
@@ -148,27 +162,28 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
             disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
           />
           
-          {/* Campo de contraseña - Diferente mensaje según el modo */}
+          {/* Campo de contraseña - Solo para edición */}
           {isEditing ? (
-            <input 
-              name="password" 
-              value={form.password} 
-              onChange={handleChange} 
-              placeholder="Nueva contraseña (dejar vacío para no cambiar)" 
-              type="password" 
-              className="w-full border p-2 rounded"
-              disabled={!hasPermission(Permission.USER_UPDATE)}
-            />
+            <div>
+              <input 
+                name="password" 
+                value={form.password} 
+                onChange={handleChange} 
+                placeholder="Nueva contraseña (dejar vacío para no cambiar)" 
+                type="password" 
+                className="w-full border p-2 rounded"
+                disabled={!hasPermission(Permission.USER_UPDATE)}
+              />
+              <small className="text-gray-500 text-xs">
+                Solo llena este campo si deseas cambiar la contraseña del usuario
+              </small>
+            </div>
           ) : (
-            <input 
-              name="password" 
-              value={form.password} 
-              onChange={handleChange} 
-              placeholder="Contraseña" 
-              type="password" 
-              className="w-full border p-2 rounded" 
-              required 
-            />
+            <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <p className="text-sm text-blue-700">
+                <strong>Nota:</strong> La contraseña se generará automáticamente y se enviará por email al usuario.
+              </p>
+            </div>
           )}
           
           <select 
@@ -183,11 +198,11 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
             <option value="ADMIN">Administrador</option>
           </select>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 mt-4">
             <button type="button" onClick={onClose} className="px-3 py-1 bg-gray-300 rounded">
               Cancelar
             </button>
-            {isEditing ? hasPermission(Permission.USER_UPDATE) : hasPermission(Permission.USER_CREATE) && (
+            {(isEditing ? hasPermission(Permission.USER_UPDATE) : hasPermission(Permission.USER_CREATE)) && (
               <button type="submit" disabled={saving} className="px-3 py-1 bg-blue-600 text-white rounded">
                 {saving ? "Guardando..." : "Guardar"}
               </button>

@@ -18,24 +18,30 @@ export const UserRepository = {
   },
   async findAll() {
     return prisma.user.findMany({
+      where: { deleted: false },
       orderBy: { createdAt: "desc" }
     });
   },
 
   async findByEmail(email: string) {
-    return prisma.user.findUnique({ where: { email } });
+    return prisma.user.findUnique({
+      where: {
+        email,
+        deleted: false
+      },
+    });
   },
 
   async findByUsercode(userCode: number) {
-    return prisma.user.findUnique({ where: { userCode } });
+    return prisma.user.findUnique({ where: { userCode, deleted: false } });
   },
 
   async findById(id: string) {
-    return prisma.user.findUnique({ where: { id } });
+    return prisma.user.findUnique({ where: { id, deleted: false } });
   },
 
   async findByName(name: string) {
-    return prisma.user.findMany({ where: { name } });
+    return prisma.user.findMany({ where: { name, deleted: false } });
   },
   
   async updateUser(
@@ -71,18 +77,23 @@ export const UserRepository = {
   },
 
   async deleteUser(id: string) {
+
     // Verificar si existe
     const existingUser = await prisma.user.findUnique({ where: { id } });
     if (!existingUser) return null;
-
-    // Eliminar usuario
-    const deletedUser = await prisma.user.delete({
+    // Soft delete: marcar como eliminado en lugar de borrar
+    const updatedUser = await prisma.user.update({
       where: { id },
+      data: { 
+        deleted: true,
+        email: `deleted_${Date.now()}_${existingUser.email}`, // Evitar conflictos de email único
+        userCode: -Math.abs(existingUser.userCode ?? 0) // Evitar conflictos de userCode único
+      },
     });
+    return updatedUser;
+  },
 
-    return deletedUser;
- },
- async getByRole(role: "ADMIN" | "SUPERVISOR" | "SELLER") {
+  async getByRole(role: "ADMIN" | "SUPERVISOR" | "SELLER") {
     return prisma.user.findMany({ where: { role } });
   }
 };

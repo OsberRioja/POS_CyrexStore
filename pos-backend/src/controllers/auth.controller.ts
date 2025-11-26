@@ -8,7 +8,7 @@ export const AuthController = {
       
       if (!login || !password) {
         return res.status(400).json({ 
-          message: "Usuario y contraseña son requeridos" 
+          message: "Email/código de usuario y contraseña son requeridos" 
         });
       }
 
@@ -24,7 +24,6 @@ export const AuthController = {
       });
     }
   },
-
 
   async verifyToken(req: Request, res: Response) {
     try {
