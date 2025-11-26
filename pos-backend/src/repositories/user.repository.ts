@@ -3,15 +3,16 @@ import { CreateUserDTO } from "../dtos/createUser.dto";
 import { User } from "@prisma/client";
 
 export const UserRepository = {
-  async create(dto: CreateUserDTO): Promise<User> {
+  async create(dto: CreateUserDTO & { passwordChangeRequired?: boolean}): Promise<User> {
     return prisma.user.create({
       data: {
         userCode: dto.userCode,
         name: dto.name,
         email: dto.email,
-        password: dto.password,
+        password: dto.password ?? "",
         phone: dto.phone ?? null,
         role: dto.role,
+        passwordChangeRequired: dto.passwordChangeRequired ?? false,
       },
     });
   },
@@ -45,6 +46,7 @@ export const UserRepository = {
       email?: string;
       phone?: string;
       role?: "ADMIN" | "SUPERVISOR" | "SELLER";
+      passwordChangeRequired?: boolean;
     }
   ): Promise<User | null> {
     // Solo actualizar si el usuario existe
@@ -59,6 +61,9 @@ export const UserRepository = {
         ...(data.email && { email: data.email }),
         ...(data.phone && { phone: data.phone }),
         ...(data.role && { role: data.role }),
+        ...(data.passwordChangeRequired !== undefined && {
+          passwordChangeRequired: data.passwordChangeRequired
+        }),
       },
     });
 
@@ -80,22 +85,4 @@ export const UserRepository = {
  async getByRole(role: "ADMIN" | "SUPERVISOR" | "SELLER") {
     return prisma.user.findMany({ where: { role } });
   }
-
-  // async findByQuery(q?: string) {
-  //  if (!q || !q.trim()) return prisma.user.findMany({ orderBy: { createdAt: "desc" } });
- 
-  //  const text = q.trim();
-  //  const numeric = /^\d+$/.test(text) ? Number(text) : null;
- 
-  //  const or: any[] = [];
-  //  if (numeric !== null) or.push({ usercode: numeric });
-  //  or.push({ name: { contains: text, mode: "insensitive" } });
-  //  or.push({ email: { contains: text, mode: "insensitive" } });
-  //  or.push({ phone: { contains: text, mode: "insensitive" } });
- 
-  //  return prisma.user.findMany({
-  //    where: { OR: or },
-  //    orderBy: { createdAt: "desc" },
-  //  });
-  // } 
 };

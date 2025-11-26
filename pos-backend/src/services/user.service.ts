@@ -4,6 +4,9 @@ import { UserRepository } from "../repositories/user.repository";
 import type { CreateUserDTO, RoleString } from "../dtos/createUser.dto";
 import { generateUniqueUsercode } from "../utils/userCode";
 import { User } from "@prisma/client";
+import { generateTemporaryPassword } from "../utils/passwordGenerator";
+import { emailService } from "./email.service";
+import { env } from "../env";
 
 const SALT_ROUNDS = 10;
 const CREATE_RETRY = 5;
@@ -27,13 +30,30 @@ function mapRole(role?: RoleString): "ADMIN" | "SUPERVISOR" | "SELLER" {
   }
 }
 
+// Validar formato de email (básico)
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 export const UserService = {
   async createUser(dto: CreateUserDTO) {
-    if (!dto.name || !dto.email || !dto.password || !dto.role || !dto.phone) {
-      throw { status: 400, message: "todos los son requeridos" };
+    if (!dto.name || !dto.email || !dto.role || !dto.phone) {
+      throw { status: 400, message: "todos los campos son requeridos" };
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+    if (!isValidEmail(dto.email)) {
+      throw { status: 400, message: "formato de email inválido" };
+    }
+
+    // Verificar si el email ya existe
+    const existingEmail = await UserRepository.findByEmail(dto.email);
+    if (existingEmail) {
+      throw { status: 409, message: "El email ya está registrado" };
+    }
+
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
     const role = mapRole(dto.role);
 
     // 1) Si el cliente envió usercode, parsear y validar.
@@ -69,11 +89,35 @@ export const UserService = {
           password: passwordHash,   // enviar la contraseña ya hasheada
           phone: dto.phone ?? null,
           role: role as "ADMIN" | "SUPERVISOR" | "SELLER",
+          passwordChangeRequired: true,
         });
+
+        //Enviar email de invitación
+        try {
+          const invitationData = {
+            userName: user.name,
+            userEmail: user.email,
+            temporaryPassword: temporaryPassword,
+            loginUrl: env.frontendUrl,
+            companyName: env.email.fromName || 'CYREX STORE',
+            adminName: 'Administrador del Sistema',
+          };
+          const emailSent = await emailService.sendInvitationEmail(invitationData);
+          if (emailSent) {
+            console.log(`📧 Email de invitación enviado a: ${user.email}`);
+          } else {
+            console.warn(`⚠️ No se pudo enviar el email de invitación a: ${user.email}`);
+          }
+        }catch (emailErr) {
+          console.error(`❌ Error al enviar email de invitación a ${user.email}:`, emailErr);
+        }
 
         // limpiar password antes de devolver
         const { password, ...safeUser } = user as any;
-        return safeUser;
+        return {
+          ...safeUser,
+          emailSent: true,
+        };
       } catch (err: unknown) {
         // Solo manejamos Prisma P2002 (unique constraint)
         if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -148,6 +192,7 @@ export const UserService = {
       email?: string;
       phone?: string;
       role?: "ADMIN" | "SUPERVISOR" | "SELLER";
+      passwordChangeRequired?: boolean;
     }
     ): Promise<User | null> {
         // comprobar existencia
@@ -169,14 +214,4 @@ export const UserService = {
         if (!user) throw { status: 404, message: "Usuario no encontrado" };
         return user;
     },
-
-    // async searchUsers(q?: string) {
-    //   return UserRepository.findByQuery(q);
-    // }
-
-    // async getBYRole(role: "ALL" | "ADMIN" | "SUPERVISOR" | "SELLER") {
-    //   return UserRepository.getByRole(role);
-    // }
- 
-
 };
