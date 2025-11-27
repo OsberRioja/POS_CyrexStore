@@ -15,9 +15,12 @@ model User {
   phone           String
   password        String
   role            Role            @default(SELLER)
+  branchId        Int?
   createdAt       DateTime        @default(now())
   passwordChangeRequired Boolean @default(false)
   deleted         Boolean         @default(false)
+
+  branch       Branch?    @relation(fields: [branchId], references: [id], onDelete: Cascade)
   cashBoxesClosed CashBox[]       @relation("CashBoxClosedBy")
   cashBoxesOpened CashBox[]       @relation("CashBoxOpenedBy")
   products        Product[]
@@ -67,16 +70,17 @@ model Product {
   brand          String?
   category       String?
   stock          Int
+  branchId       Int
   createdBy      String
   providerId     Int?
   imageUrl       String?         // URL de la imagen
   imagePublicId  String?         // ID público en Cloudinary
-
   isActive      Boolean  @default(true)
   deactivatedAt DateTime?
   deactivatedBy String?
-
   priceCurrency  String          @default("BOB")
+
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   user           User            @relation(fields: [createdBy], references: [id])
   provider       Provider?       @relation(fields: [providerId], references: [id_provider])
   priceHistory   PriceHistory[]
@@ -111,9 +115,11 @@ model CashBox {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   cashCount     Json?
+  branchId      Int
 
   closedByUser  User?         @relation("CashBoxClosedBy", fields: [closedBy], references: [id])
   openedByUser  User          @relation("CashBoxOpenedBy", fields: [openedBy], references: [id])
+  branch        Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
   expenses      Expense[]
   sales         Sale[]        @relation("box_sales")
 }
@@ -128,11 +134,15 @@ model Sale {
   paymentStatus  PaymentStatus   @default(PENDING)
   createdAt      DateTime        @default(now())
   cashBoxId      Int?
+  branchId       Int
   createdBy      String?
+
+
   returns        Return[]
   items          SaleItem[]
   payments       SalePayment[]
   cashBox        CashBox?        @relation("box_sales", fields: [cashBoxId], references: [id])
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   client         Cliente?        @relation(fields: [clientId], references: [id_cliente])
   seller         User            @relation(fields: [sellerId], references: [id])
   stockMovements StockMovement[]
@@ -175,10 +185,12 @@ model Expense {
   paymentMethodId Int
   createdAt       DateTime      @default(now())
   createdBy       String?
+  branchId        Int
 
   user            User?         @relation(fields: [createdBy], references: [id])
   cashBox         CashBox?      @relation(fields: [cashBoxId], references: [id])
   paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  branch          Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
 }
 
 model StockMovement {
@@ -337,6 +349,22 @@ model PasswordResetToken {
 
   @@index([token])
   @@map("password_reset_tokens")
+}
+model Branch {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  address     String?
+  phone       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users      User[]
+  products   Product[]
+  sales      Sale[]
+  cashBoxes  CashBox[]
+  expenses   Expense[]
 }
 
 enum CommissionType {

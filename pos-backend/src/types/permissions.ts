@@ -41,6 +41,12 @@ export enum Permission {
   
   // Reportes
   REPORT_READ = 'report:read',
+
+  //Sucursales
+  BRANCH_READ = 'branch:read',
+  BRANCH_CREATE = 'branch:create',
+  BRANCH_UPDATE = 'branch:update',
+  BRANCH_DELETE = 'branch:delete',
 }
 
 // Permisos por rol
@@ -62,6 +68,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.CASHBOX_OPEN_CLOSE,
     Permission.CASHBOX_READ,
     Permission.CASHBOX_READ_ALL,
+
+    //Usuarios
+    Permission.USER_READ,
     
     // Clientes
     Permission.CLIENT_READ,
@@ -79,6 +88,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     
     // Reportes
     Permission.REPORT_READ,
+
+    // Sucursales
+    Permission.BRANCH_READ,
   ],
   SELLER: [
     // Productos

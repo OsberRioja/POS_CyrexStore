@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { env } from "../env"; // Usar el env validado
+import { env } from "../env";
 import { getPermissionsForRole, Permission } from "../types/permissions";
 
 declare global {
@@ -8,6 +8,7 @@ declare global {
     interface Request {
       user?: JwtPayload & {
         permissions?: Permission[];
+        branchId?: number | null;
       };
       userId?: string;
     }
@@ -34,7 +35,8 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     req.userId = decoded.sub ?? decoded.id ?? decoded.userId as string;
     req.user = {
       ...decoded,
-      permissions: getPermissionsForRole(decoded.role)
+      permissions: getPermissionsForRole(decoded.role),
+      branchId: decoded.branchId 
     };
     
     next();
@@ -79,4 +81,52 @@ export const requireRole = (...roles: ("ADMIN" | "SUPERVISOR" | "SELLER")[]) => 
 
     next();
   };
+};
+
+// Middleware para verificar acceso a sucursal
+export const requireBranchAccess = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "No autenticado" });
+  }
+
+  const userRole = (req.user as JwtPayload).role;
+  const userBranchId = req.user.branchId;
+
+  // Administradores globales (branchId = null) pueden acceder a todo
+  if (userRole === 'ADMIN' && userBranchId === null) {
+    return next();
+  }
+
+  // Para otros roles, deben tener un branchId asignado
+  if (!userBranchId) {
+    return res.status(403).json({ 
+      message: 'Usuario no asignado a ninguna sucursal' 
+    });
+  }
+
+  next();
+};
+
+// NUEVO: Middleware para extraer/validar branchId de parámetros o body
+export const withBranchContext = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "No autenticado" });
+  }
+
+  const userBranchId = req.user.branchId;
+  const userRole = (req.user as JwtPayload).role;
+
+  // Si es administrador global, puede especificar branchId en query/body
+  if (userRole === 'ADMIN' && userBranchId === null) {
+    // Permitir override de branchId para admins
+    const branchIdFromQuery = req.query.branchId ? Number(req.query.branchId) : undefined;
+    const branchIdFromBody = req.body.branchId ? Number(req.body.branchId) : undefined;
+    
+    if (branchIdFromQuery || branchIdFromBody) {
+      req.user.branchId = branchIdFromQuery || branchIdFromBody;
+    }
+    // Si no se especifica, el admin opera en "modo global"
+  }
+
+  next();
 };

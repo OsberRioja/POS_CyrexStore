@@ -7,6 +7,10 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "db:init": "tsx scripts/initDb.ts",
+    "db:reset": "npx prisma migrate reset && npm run db:init",
+    "db:migrate": "npx prisma migrate dev",
+    "db:studio": "npx prisma studio",
     "seed:commissions": "tsx prisma/seedCommissionConfig.ts"
   },
   "keywords": [],
