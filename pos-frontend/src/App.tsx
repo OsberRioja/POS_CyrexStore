@@ -16,8 +16,10 @@ import CommissionsReportPage from "./pages/CommissionsReportPage";
 import CommissionConfigPage from "./pages/CommissionConfigPage";
 import ReceiptSettingsPage from "./pages/ReceiptSettingsPage";
 import { SettingsProvider } from "./context/settingsContext";
-import PasswordChangeModal from "./components/PasswordChangeModal"; // Importar el modal
-import { passwordService } from "./services/passwordService"; // Importar el servicio
+import PasswordChangeModal from "./components/PasswordChangeModal";
+import { passwordService } from "./services/passwordService";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -51,9 +53,16 @@ function MainApp() {
     requiresPasswordChange, 
     completePasswordChange 
   } = useAuth();
-  const [page, setPage] = useState<string | null>(null);
-  const [showLogin, setShowLogin] = useState(false);
+  const [authView, setAuthView] = useState<"login" | "forgot-password" | "reset-password">("login");
+  const [mainPage, setMainPage] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
+
+  console.log("🔍 App.tsx - Estado actual:");
+  console.log("   isAuthenticated:", isAuthenticated);
+  console.log("   authView:", authView);
+  console.log("   mainPage:", mainPage);
+  console.log("   resetToken:", resetToken);
 
   // Mostrar modal cuando se requiera cambio de contraseña
   useEffect(() => {
@@ -61,6 +70,21 @@ function MainApp() {
       setShowPasswordModal(true);
     }
   }, [isAuthenticated, requiresPasswordChange]);
+
+  useEffect(() => {
+    // Verificar si hay un token de reset en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    
+    if (tokenFromUrl && !isAuthenticated) {
+      setResetToken(tokenFromUrl);
+      setAuthView('reset-password');
+
+      // Limpiar la URL sin recargar la página
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, [isAuthenticated]);
 
   // Mostrar loading mientras verifica la sesión
   if (loading) {
@@ -71,19 +95,46 @@ function MainApp() {
     );
   }
 
-  // Si no está autenticado, mostrar login
-  if (!isAuthenticated || showLogin) {
-    return (
-      <LoginPage 
-        onLoginSuccess={() => setShowLogin(false)} 
-      />
-    );
+  // ✅ VERSIÓN SIMPLIFICADA - SOLO UNA PÁGINA DE AUTH A LA VEZ
+  if (!isAuthenticated) {
+    switch (authView) {
+      case "forgot-password":
+        return (
+          <ForgotPasswordPage 
+            onBack={() => setAuthView("login")}
+            onSuccess={() => setAuthView("login")}
+          />
+        );
+      
+      case "reset-password":
+        return (
+          <ResetPasswordPage 
+            token={resetToken}
+            onBack={() => setAuthView("login")}
+            onSuccess={() => {
+              setAuthView("login");
+              setResetToken(null);
+            }}
+          />
+        );
+      
+      case "login":
+      default:
+        return (
+          <LoginPage 
+            onLoginSuccess={() => {}} // No necesitamos hacer nada aquí porque el contexto maneja la autenticación
+            onForgotPassword={() => setAuthView("forgot-password")}
+          />
+        );
+    }
   }
+
+  // ✅ SI ESTÁ AUTENTICADO, MOSTRAR LA APLICACIÓN NORMAL
 
   // Manejar logout desde sidebar
   const handleLogout = () => {
-    setShowLogin(true);
-    setPage(null);
+    // El logout se maneja en el contexto, pero aquí reseteamos la vista de auth
+    setAuthView("login");
   };
 
   // Función para manejar el cambio de contraseña
@@ -99,15 +150,14 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Navbar />
-      
       <div className="flex">
         <Sidebar 
-          selected={page} 
+          selected={mainPage} 
           onSelect={(p) => {
             if (p === "salir") {
               handleLogout();
             } else {
-              setPage(p);
+              setMainPage(p);
             }
           }}
           user={user}
@@ -116,9 +166,9 @@ function MainApp() {
         {/* Contenedor principal */}
         <main className="flex-1 p-6">
           <div className="bg-white rounded-3xl shadow-sm min-h-[80vh] p-6 border border-gray-200">
-            {page === "caja" && <CashboxPage/>}
-            {page === "stock" && user?.role !== 'SELLER' && <StockPage />}
-            {page === "stock" && user?.role === 'SELLER' && (
+            {mainPage === "caja" && <CashboxPage/>}
+            {mainPage === "stock" && user?.role !== 'SELLER' && <StockPage />}
+            {mainPage === "stock" && user?.role === 'SELLER' && (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center text-gray-500">
                   <div className="text-xl">⛔</div>
@@ -126,38 +176,15 @@ function MainApp() {
                 </div>
               </div>
             )}
-            {page === "divisas" && <ExchangeRateSettingsPage />}
-            {page === "usuarios" && <UsersPage />}
-            {page === "clientes" && <ClientsPage />}
-            {page === "proveedores" && <ProvidersPage />}
-            {page === "productos" && <ProductsPage />}
-            {page === "comisiones" && (user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
+            {mainPage === "divisas" && <ExchangeRateSettingsPage />}
+            {mainPage === "usuarios" && <UsersPage />}
+            {mainPage === "clientes" && <ClientsPage />}
+            {mainPage === "proveedores" && <ProvidersPage />}
+            {mainPage === "productos" && <ProductsPage />}
+            {mainPage === "comisiones" && (user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
               <CommissionsReportPage />
             )}
-            {page === "comisiones" && user?.role === 'SELLER' && (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center text-gray-500">
-                  <div className="text-xl">⛔</div>
-                  <p>No tienes permisos para acceder a esta sección</p>
-                </div>
-              </div>
-            )}
-            
-            {page === "config-comisiones" && user?.role === 'ADMIN' && (
-              <CommissionConfigPage />
-            )}
-            {page === "config-comisiones" && user?.role !== 'ADMIN' && (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center text-gray-500">
-                  <div className="text-xl">⛔</div>
-                  <p>No tienes permisos para acceder a esta sección</p>
-                </div>
-              </div>
-            )}
-            {page === "config-comprobante" && (user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
-              <ReceiptSettingsPage onBack={() => setPage(null)} />
-            )}
-            {page === "config-comprobante" && user?.role === 'SELLER' && (
+            {mainPage === "comisiones" && user?.role === 'SELLER' && (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center text-gray-500">
                   <div className="text-xl">⛔</div>
@@ -166,8 +193,31 @@ function MainApp() {
               </div>
             )}
 
-            {page === "salir" && <HomePage />}
-            {page === null && <HomePage />}
+            {mainPage === "config-comisiones" && user?.role === 'ADMIN' && (
+              <CommissionConfigPage />
+            )}
+            {mainPage === "config-comisiones" && user?.role !== 'ADMIN' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
+            {mainPage === "config-comprobante" && (user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
+              <ReceiptSettingsPage onBack={() => setMainPage(null)} />
+            )}
+            {mainPage === "config-comprobante" && user?.role === 'SELLER' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
+
+            {mainPage === "salir" && <HomePage />}
+            {mainPage === null && <HomePage />}
           </div>
         </main>
       </div>

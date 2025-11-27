@@ -4,9 +4,10 @@ import { Eye, EyeOff } from "lucide-react";
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
+  onForgotPassword: () => void;
 }
 
-export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
+export default function LoginPage({ onLoginSuccess, onForgotPassword }: LoginPageProps) {
   const { login } = useAuth();
   const [form, setForm] = useState({
     login: "",
@@ -18,7 +19,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    setError(""); // Limpiar error al escribir
+    setError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +29,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
     try {
       await login(form.login, form.password);
-      onLoginSuccess(); // Notificar al componente padre
+      onLoginSuccess();
     } catch (err: any) {
       const message = err?.response?.data?.message || "Error al iniciar sesión";
       setError(message);
@@ -49,7 +50,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             Iniciar Sesión
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Sistema POS - Cyrex Store
+            Sistema POS - Tienda de Computadoras
           </p>
         </div>
 
@@ -62,8 +63,8 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                correo electronico o Código de usuario
+              <label htmlFor="login" className="block text-sm font-medium text-gray-700">
+                Correo electrónico o Código de usuario
               </label>
               <input
                 id="login"
@@ -73,7 +74,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 value={form.login}
                 onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="usuario@ejemplo.com 0 1234"
+                placeholder="usuario@ejemplo.com o 12345"
               />
             </div>
 
@@ -89,7 +90,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   required
                   value={form.password}
                   onChange={handleChange}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 pr-10"
                   placeholder="••••••••"
                 />
                 <button
@@ -101,10 +102,11 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     <EyeOff size={16} className="text-gray-500" />
                   ) : (
                     <Eye size={16} className="text-gray-500" />
-                 )}
+                  )}
                 </button>
               </div>
             </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -112,6 +114,20 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             >
               {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
             </button>
+
+            {/* Enlace para recuperar contraseña */}
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  console.log("✅ Botón clickeado - llamando onForgotPassword");
+                  onForgotPassword();
+                }}
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
           </div>
         </form>
 

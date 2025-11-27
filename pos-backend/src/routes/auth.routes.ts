@@ -8,14 +8,11 @@ const router = Router();
 
 // POST /api/auth/login - ESTO es lo único que necesitas
 router.post("/login", AuthController.login);
-
-// POST /api/auth/verify-token (para validar tokens)
 router.post("/verify-token", AuthController.verifyToken);
+//Recuperacion de contraseñas
+router.post('/forgot-password', PasswordResetController.requestReset);
+router.post('/validate-reset-token', PasswordResetController.validateToken);
+router.post('/reset-password', PasswordResetController.resetPassword);
 
 router.post('/change-password', authMiddleware, PasswordController.changePassword);
-
-router.post('/forgot-password', authMiddleware, PasswordResetController.requestReset);
-router.post('/validate-reset-token', authMiddleware, PasswordResetController.validateToken);
-router.post('/reset-password', authMiddleware, PasswordResetController.resetPassword);
-
 export default router;
