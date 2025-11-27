@@ -120,7 +120,6 @@ export default function LoginPage({ onLoginSuccess, onForgotPassword }: LoginPag
               <button
                 type="button"
                 onClick={() => {
-                  console.log("✅ Botón clickeado - llamando onForgotPassword");
                   onForgotPassword();
                 }}
                 className="text-sm text-blue-600 hover:text-blue-500"

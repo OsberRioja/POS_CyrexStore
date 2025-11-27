@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ApiErrorHandler } from './apiErrorHandler';
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
@@ -9,8 +10,14 @@ export interface ResetPasswordRequest {
 
 export const passwordResetService = {
   // Solicitar enlace de recuperación
-  requestReset: (email: string) =>
-    axios.post(`${BASE}/auth/forgot-password`, { email }),
+  async requestReset(email: string) {
+    try {
+      const response = await axios.post(`${BASE}/auth/forgot-password`, { email });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(ApiErrorHandler.handle(error));
+    }
+  },
 
   // Validar token
   validateToken: (token: string) =>

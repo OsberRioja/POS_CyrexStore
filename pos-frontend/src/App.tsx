@@ -20,6 +20,7 @@ import PasswordChangeModal from "./components/PasswordChangeModal";
 import { passwordService } from "./services/passwordService";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import { ToastProvider } from "./context/ToastContext";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -57,12 +58,6 @@ function MainApp() {
   const [mainPage, setMainPage] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
-
-  console.log("🔍 App.tsx - Estado actual:");
-  console.log("   isAuthenticated:", isAuthenticated);
-  console.log("   authView:", authView);
-  console.log("   mainPage:", mainPage);
-  console.log("   resetToken:", resetToken);
 
   // Mostrar modal cuando se requiera cambio de contraseña
   useEffect(() => {
@@ -244,7 +239,9 @@ export default function App() {
     <AuthProvider>
       <CurrencyProvider>
         <SettingsProvider>
-          <MainAppWithErrorBoundary />
+          <ToastProvider>
+            <MainAppWithErrorBoundary />
+          </ToastProvider>
         </SettingsProvider>
       </CurrencyProvider>
     </AuthProvider>
