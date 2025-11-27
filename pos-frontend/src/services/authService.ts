@@ -14,8 +14,13 @@ export interface LoginResponse {
     role: "ADMIN" | "SUPERVISOR" | "SELLER";
     createdAt: string;
     passwordChangeRequired?: boolean;
+    branchId?: number | null;
   };
   requiresPasswordChange: boolean;
+  branch?: {
+    id: number;
+    name?: string;
+  } | null;
 }
 
 export interface LoginRequest {
@@ -53,10 +58,32 @@ export const authService = {
     localStorage.setItem("user", JSON.stringify(user));
   },
 
+  // Obtener branchId del localStorage
+  getBranchId: (): number | null => {
+    const user = authService.getUser();
+    return user?.branchId ?? null;
+  },
+
+  // Guardar informacion de sucursal seleccionada (para administradores)
+  saveSelectedBranch: (branchId: number | null): void => {
+    if (branchId === null) {
+      localStorage.removeItem("selectedBranch");
+    } else {
+      localStorage.setItem("selectedBranch", branchId.toString());
+    }
+  },
+
+  // Obtener sucursal seleccionada
+  getSelectedBranch: (): number | null => {
+    const branchId = localStorage.getItem("selectedBranch");
+    return branchId ? parseInt(branchId, 10) : null;
+  },
+
   // Logout - limpiar localStorage
   logout: (): void => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("selectedBranch");
   },
 
   // Verificar si está logueado
@@ -72,6 +99,11 @@ axios.interceptors.request.use(
     const token = authService.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const branchId = authService.getSelectedBranch() || authService.getBranchId();
+    if( branchId && config.params ) {
+      config.params.branchId = branchId;
     }
     return config;
   },

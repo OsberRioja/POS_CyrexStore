@@ -13,6 +13,7 @@ export interface User {
   role: "ADMIN" | "SUPERVISOR" | "SELLER";
   createdAt: string;
   passwordChangeRequired?: boolean;
+  branchId?: number | null;
 }
 
 interface AuthContextType {
@@ -20,10 +21,12 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   requiresPasswordChange: boolean;
+  currentBranchId?: number | null;
   login: (login: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
   completePasswordChange: () => void;
+  selectBranch: (branchId: number | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,21 +39,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<LoginResponse["user"] | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [requiresPasswordChange, setRequiresPasswordChange] = useState<boolean>(false);
+  const [currentBranchId, setCurrentBranchId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Verificar si hay sesión activa al cargar la app
   useEffect(() => {
     const savedToken = authService.getToken();
     const savedUser = authService.getUser();
+    const savedBranchId = authService.getSelectedBranch();
 
     if (savedToken && savedUser) {
       setToken(savedToken);
       const userWithDefaults = {
         ...savedUser,
-        passwordChangeRequired: savedUser.passwordChangeRequired ?? false
+        passwordChangeRequired: savedUser.passwordChangeRequired ?? false,
+        branchId: savedUser.branchId ?? null,
       };
       setUser(userWithDefaults);
       authService.saveUser(userWithDefaults);
+
+      const branchToUse = savedBranchId || savedUser.branchId || null;
+      setCurrentBranchId(branchToUse);
 
       // Nota: No podemos saber si requiere cambio de contraseña desde localStorage
       // Esto se manejara en el primer login despues de cargar la página
@@ -62,18 +71,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const response = await authService.login({ login, password });
       const { token: newToken, user: newUser, requiresPasswordChange } = response.data;
-      console.log('🔐 Login response COMPLETA:', response.data);
-      console.log('🔐 Campos del usuario:', newUser ? Object.keys(newUser) : 'No user');
-      console.log('🔐 requiresPasswordChange:', requiresPasswordChange);
 
       // Guardar en localStorage
       authService.saveToken(newToken);
       authService.saveUser(newUser);
 
+      // Para usuarios no admin, establecer su sucursal como la actual
+      if (newUser.role !== "ADMIN" && newUser.branchId) {
+        authService.saveSelectedBranch(newUser.branchId);
+      }
+
       // Actualizar estado
       setToken(newToken);
       setUser(newUser);
       setRequiresPasswordChange(requiresPasswordChange);
+
+      // Establecer sucursal actual
+      const branchId = newUser.branchId || null;
+      setCurrentBranchId(branchId);
     } catch (error) {
       throw error; // Propagar error para manejo en componentes
     }
@@ -84,21 +99,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setToken(null);
     setUser(null);
     setRequiresPasswordChange(false);
+    setCurrentBranchId(null);
   };
 
   const completePasswordChange = () => {
     setRequiresPasswordChange(false);
   };
 
+  // Funcion para cambiar de sucursal (para administradores)
+  const selectBranch = (branchId: number | null) => {
+    if (user?.role !== 'ADMIN') {
+      console.warn("Solo los administradores pueden cambiar de sucursal.");
+      return;
+    }
+    authService.saveSelectedBranch(branchId);
+    setCurrentBranchId(branchId);
+    console.log(`🏪 Sucursal cambiada a: ${branchId}`);
+  };
+
+
   const value: AuthContextType = {
     user,
     token,
     isAuthenticated: !!token && !!user,
     requiresPasswordChange,
+    currentBranchId,
     login,
     logout,
     loading,
     completePasswordChange,
+    selectBranch,
   };
 
   return (

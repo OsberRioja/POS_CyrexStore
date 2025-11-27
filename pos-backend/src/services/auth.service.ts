@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
 import { UserRepository } from "../repositories/user.repository";
+import { id } from "zod/v4/locales/index.cjs";
 
 export function generarToken(payload: object) {
   return jwt.sign(payload, env.JWT_SECRET, {
@@ -39,16 +40,32 @@ export const AuthService = {
       email: user.email,
       name: user.name,
       userCode: user.userCode, // Añadido para tener el código disponible
+      branchId: user.branchId,
     };
 
     const token = jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
 
     // devolver token + user (sin password) + informacion de cambio de contraseña
     const { password: _p, ...userSafe } = (user as any);
+
+    // Informacion de sucursal en la respuesta
+    let branchInfo = null;
+    if (user.branchId) {
+      // SI es necesario cargar info de sucursal, hacerlo aqui
+      branchInfo = {
+        id: user.branchId,
+        // podemos agregar mas info si es necesario
+      };
+    }
+
     return {
       token,
-      user: userSafe,
-      requiresPasswordChange: user.passwordChangeRequired
+      user: {
+        ...userSafe,
+        branchId: user.branchId,
+      },
+      requiresPasswordChange: user.passwordChangeRequired,
+      branch: branchInfo
     };
   },
 
