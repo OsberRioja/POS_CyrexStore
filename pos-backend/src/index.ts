@@ -24,6 +24,7 @@ import reportRoutes from './routes/report.routes';
 import commissionRoutes from './routes/commission.routes';
 import commissionReportRoutes from './routes/commissionReport.routes';
 import { emailService } from './services/email.service';
+import { startTokenCleanupCron } from './jobs/cleanupExpiredTokens';
 
 const app = express();
 
@@ -68,6 +69,7 @@ app.use(errorHandler);
     console.log("Payment methods defaults ensured");
     await initializeExchangeRates();
     startExchangeRateCron();
+    startTokenCleanupCron();
 
     // Verificación del servicio de email
     await emailService.verifyConnection();

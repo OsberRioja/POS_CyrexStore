@@ -7,6 +7,12 @@ export interface InvitationEmailData {
   adminName?: string;
 }
 
+export interface PasswordResetEmailData {
+  userName: string;
+  resetLink: string;
+  companyName: string;
+}
+
 export class EmailTemplates {
   static generateInvitationEmail(data: InvitationEmailData): string {
     const { userName, userEmail, temporaryPassword, loginUrl, companyName, adminName } = data;
@@ -205,7 +211,178 @@ export class EmailTemplates {
     `;
   }
 
-  // También podemos agregar otras plantillas aquí en el futuro
-  // static generatePasswordResetEmail(...) { ... }
+  static generatePasswordResetEmail(data: PasswordResetEmailData): string {
+    const { userName, resetLink, companyName } = data;
+
+    return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restablecer Contraseña - Sistema POS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px;
+        }
+        .welcome-text {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .reset-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .security-notice {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+            border-top: 1px solid #e9ecef;
+        }
+        .steps {
+            margin: 25px 0;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .step-number {
+            background-color: #667eea;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Restablecer Contraseña</h1>
+        </div>
+        
+        <div class="content">
+            <p class="welcome-text">
+                Hola <strong>${userName}</strong>,
+            </p>
+            
+            <p class="welcome-text">
+                Has solicitado restablecer tu contraseña para el sistema de punto de venta de ${companyName}.
+            </p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <strong>Haz clic en el botón de abajo</strong> para restablecer tu contraseña.
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <strong>Crea una nueva contraseña</strong> segura en la página que se abrirá.
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <strong>Inicia sesión</strong> con tu nueva contraseña.
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="${resetLink}" class="reset-button">Restablecer Contraseña</a>
+            </div>
+
+            <p class="welcome-text">
+                Si no puedes hacer clic en el botón, copia y pega el siguiente enlace en tu navegador:
+            </p>
+            
+            <p style="word-break: break-all; color: #667eea; font-size: 14px; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                ${resetLink}
+            </p>
+
+            <div class="security-notice">
+                ⚠️ <strong>Importante:</strong> 
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Este enlace expirará en 1 hora por motivos de seguridad.</li>
+                    <li>Si no solicitaste este restablecimiento, ignora este email.</li>
+                    <li>Tu contraseña anterior seguirá funcionando hasta que completes este proceso.</li>
+                </ul>
+            </div>
+
+            <p style="color: #6c757d; font-size: 14px; text-align: center;">
+                Si tienes problemas para restablecer tu contraseña, contacta con el administrador del sistema.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>Este es un mensaje automático. Por favor, no respondas a este correo.</p>
+            <p>&copy; ${new Date().getFullYear()} ${companyName}. Todos los derechos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  }
   // static generateNotificationEmail(...) { ... }
 }
