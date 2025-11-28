@@ -29,6 +29,7 @@ export interface CreateSaleDTO {
   createdBy?: string; // quien registró
   note?: string; // opcional
   cashBoxId?: number | null; // opcional
+  // NOTA: branchId se obtiene del usuario autenticado, no del DTO
 }
 
 // NUEVO: Schema de Zod para validación de pagos adicionales

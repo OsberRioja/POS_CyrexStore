@@ -8,12 +8,14 @@ export const CashBoxRepository = {
     initialAmount: number;
     status?: "OPEN" | "CLOSED";
     cashCount?: any;
+    branchId: number;
   }): Promise<CashBox> => {
     return prisma.cashBox.create({
       data: {
         openedBy: data.openedBy,
         initialAmount: data.initialAmount,
         status: data.status ?? "OPEN",
+        branchId: data.branchId,
       },
     });
   },
@@ -25,12 +27,20 @@ export const CashBoxRepository = {
     });
   },
 
+  findOpenByBranch: async (branchId: number): Promise<CashBox | null> => {
+    return prisma.cashBox.findFirst({
+      where: { status: "OPEN", branchId },
+      orderBy: { openedAt: "desc" },
+    });
+  },
+
   findById: async (id: number) => {
     return prisma.cashBox.findUnique({
       where: { id },
       include: {
         // no incluimos sales/expenses por defecto para evitar queries grandes;
         // si quieres, añade include: { sales: true, expenses: true }
+        branch: { select: { name: true } },
       },
     });
   },

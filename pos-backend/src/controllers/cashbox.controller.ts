@@ -9,7 +9,14 @@ export const CashBoxController = {
       const dto = req.body as OpenCashBoxDTO;
       const userId = (req as any).userId ?? (req as any).user?.sub;
       if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
-      const created = await CashBoxService.open(dto, String(userId));
+
+      // Obtener branchId del usuario autenticado
+      const userBranchId = (req as any).user?.branchId;
+      if (!userBranchId) {
+        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      }
+
+      const created = await CashBoxService.open(dto, String(userId), userBranchId);
       return res.status(201).json(created);
     } catch (err: any) {
       console.error("POST /cashbox/open", err);
@@ -19,7 +26,13 @@ export const CashBoxController = {
 
   async getOpen(req: Request, res: Response) {
     try {
-      const open = await CashBoxService.getOpen();
+      // Obtener branchId del usuario autenticado
+      const userBranchId = (req as any).user?.branchId;
+      if (!userBranchId) {
+        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      }
+
+      const open = await CashBoxService.getOpen(userBranchId);
       return res.json(open);
     } catch (err: any) {
       console.error("GET /cashbox/open", err);
@@ -53,13 +66,20 @@ export const CashBoxController = {
   },
 
   async list(req: Request, res: Response) {
-  try {
-    const page = req.query.page ? Number(req.query.page) : 1;
-    const limit = req.query.limit ? Number(req.query.limit) : 50;
-    const status = req.query.status as 'OPEN' | 'CLOSED' | undefined;
+    try {
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const status = req.query.status as 'OPEN' | 'CLOSED' | undefined;
 
-    const result = await CashBoxService.list({ page, limit, status });
-    return res.json(result);
+      // Obtener branchId del usuario autenticado
+      const userBranchId = (req as any).user?.branchId;
+      if (!userBranchId) {
+        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      }
+
+      // Filtrar por sucursal del usuario
+      const result = await CashBoxService.list({ page, limit, status, branchId: userBranchId });
+      return res.json(result);
     } catch (err: any) {
       console.error("GET /cashbox", err);
       return res.status(500).json({ error: "Error interno" });
@@ -69,7 +89,7 @@ export const CashBoxController = {
   async getClosePreview(req: Request, res: Response) {
     try {
       const boxId = Number(req.params.id);
-      console.log('🔍 Getting close preview for box:', boxId); // ← LOG
+      console.log('🔍 Getting close preview for box:', boxId);
       const preview = await CashBoxService.getClosePreview(boxId);
       console.log('🔍 Preview calculated:', preview);
       return res.json(preview);
@@ -78,5 +98,4 @@ export const CashBoxController = {
       return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
     }
   },
-
 };

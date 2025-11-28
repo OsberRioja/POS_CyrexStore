@@ -9,7 +9,13 @@ export const ExpenseController = {
       const userId = (req as any).userId ?? (req as any).user?.sub;
       if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
 
-      const created = await ExpenseService.createExpense(dto, String(userId));
+      // Obtener branchId del usuario autenticado
+      const userBranchId = (req as any).user?.branchId;
+      if (!userBranchId) {
+        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      }
+
+      const created = await ExpenseService.createExpense(dto, String(userId), userBranchId);
       return res.status(201).json(created);
     } catch (err: any) {
       console.error("POST /expenses:", err);
@@ -31,7 +37,8 @@ export const ExpenseController = {
 
   async listAll(req: Request, res: Response) {
     try {
-      const list = await ExpenseService.listAll();
+      const userBranchId = (req as any).user?.branchId;
+      const list = await ExpenseService.listAll(userBranchId);
       return res.json(list);
     } catch (err: any) {
       console.error("GET /expenses:", err);

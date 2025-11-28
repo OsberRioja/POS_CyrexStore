@@ -6,7 +6,7 @@ import type { UpdateProductDTO } from "../dtos/updateProduct.dto";
 const prisma = new PrismaClient();
 
 export const productRepository = {
-  async create(dto: CreateProductDTO, createdBy: string): Promise<Product> {
+  async create(dto: CreateProductDTO, createdBy: string, branchId: number): Promise<Product> {
     return prisma.product.create({
       data: {
         createdBy,
@@ -19,29 +19,38 @@ export const productRepository = {
         category: dto.category,
         brand: dto.brand,
         imageUrl: dto.imageUrl,
-        providerId: dto.providerId ? Number(dto.providerId) : null, // 👈 convertir a número
+        providerId: dto.providerId ? Number(dto.providerId) : null,
+        branchId: branchId,
     },
-      include: { user: true, provider: true },
+      include: { user: true, provider: true, branch: { select: { name: true } } },
     });
   },
 
-  findAll(includeInactive = false) {
+  findAll(includeInactive = false, branchId?: number) {
     return prisma.product.findMany({
-      where: includeInactive ? undefined : { isActive: true },
+      where: {
+        ...(includeInactive ? undefined : { isActive: true }),
+        ...(branchId ? { branchId } : {})
+      },
       include: {
         user: { select: { name: true, userCode: true } },
-        provider: true
+        provider: true,
+        branch: { select: { name: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
   },
 
-  findAllActive() {
+  findAllActive(branchId?: number) {
     return prisma.product.findMany({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        ...(branchId ? { branchId } : {})
+      },
       include: {
         user: { select: { name: true, userCode: true } },
-        provider: true
+        provider: true,
+        branch: { select: { name: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -50,7 +59,7 @@ export const productRepository = {
   async findById(id: string) {
     return await prisma.product.findUnique({
       where: { id },
-      include: { user: true, provider: true },
+      include: { user: true, provider: true, branch: { select: { name: true } } },
     });
   },
 
@@ -61,7 +70,7 @@ export const productRepository = {
         ...data,
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl })
       },
-      include: { user: true, provider: true },
+      include: { user: true, provider: true, branch: { select: { name: true } } },
     });
   },
 

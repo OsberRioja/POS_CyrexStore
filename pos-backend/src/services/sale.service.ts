@@ -27,7 +27,7 @@ export const SaleService = {
    * - asigna cashBoxId a pagos en efectivo si hay caja abierta
    * - decrementa stock de productos
    */
-  async createSale(dto: any, actorUserId: string) {
+  async createSale(dto: any, actorUserId: string, branchId: number) {
     // Validaciones iniciales
     if (!dto.items || !Array.isArray(dto.items) || dto.items.length === 0) {
       throw { status: 400, message: "items es requerido" };
@@ -39,14 +39,14 @@ export const SaleService = {
     // Resolver sellerId (por userCode o id, fallback actor)
     let sellerId = dto.sellerId ?? null;
     if (!sellerId && dto.sellerUserCode) {
-      const user = await prisma.user.findFirst({ where: { userCode: dto.sellerUserCode } as any });
-      if (!user) throw { status: 404, message: "Vendedor no encontrado por userCode" };
+      const user = await prisma.user.findFirst({ where: { userCode: dto.sellerUserCode, branchId: branchId }  });
+      if (!user) throw { status: 404, message: "Vendedor no encontrado por userCode en esta sucursal" };
       sellerId = user.id;
     }
     if (!sellerId) sellerId = actorUserId;
 
-    // comprobar que haya caja abierta (regla)
-    const openBox = await CashBoxRepository.findOpen();
+    // comprobar que haya caja abierta en la misma sucursal(regla)
+    const openBox = await CashBoxRepository.findOpenByBranch(branchId);
     if (!openBox) {
       throw { status: 400, message: "Debe abrir caja antes de registrar ventas" };
     }
@@ -218,6 +218,7 @@ export const SaleService = {
           paymentStatus: paymentStatus,
           createdBy: dto.createdBy ?? actorUserId,
           cashBoxId: openBox.id,
+          branchId: branchId,
           items: { create: itemsToCreate },
           payments: { create: paymentsData },
         },
@@ -248,7 +249,8 @@ export const SaleService = {
               userCode: true
             }
           },
-          client: true
+          client: true,
+          branch: { select: { name: true } }
         },
       });
 
@@ -427,6 +429,7 @@ export const SaleService = {
     dateFrom?: string;
     dateTo?: string;
     paymentStatus?: PaymentStatus;
+    branchId?: number;
   }) {
     return SaleRepository.findAll(params);
   },

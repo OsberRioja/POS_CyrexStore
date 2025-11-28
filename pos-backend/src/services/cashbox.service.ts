@@ -5,7 +5,7 @@ import type { OpenCashBoxDTO, CloseCashBoxDTO } from "../dtos/cashBox.dto";
 const prisma = new PrismaClient();
 
 export const CashBoxService = {
-  async open(openDto: OpenCashBoxDTO, actorUserId: string) {
+  async open(openDto: OpenCashBoxDTO, actorUserId: string, branchId: number) {
     if (!openDto || typeof openDto.initialAmount !== "number" || Number.isNaN(openDto.initialAmount)) {
       throw { status: 400, message: "initialAmount es requerido y debe ser número" };
     }
@@ -14,30 +14,31 @@ export const CashBoxService = {
       throw { status: 400, message: "El monto inicial no puede ser negativo" };
     }
 
-    // Verificar que no haya caja abierta
-    const existing = await CashBoxRepository.findOpen();
-    if (existing) throw { status: 400, message: "Ya existe una caja abierta" };
+    // Verificar que no haya caja abierta EN LA MISMA SUCURSAL
+    const existing = await CashBoxRepository.findOpenByBranch(branchId);
+    if (existing) throw { status: 400, message: "Ya existe una caja abierta en esta sucursal" };
 
     const created = await CashBoxRepository.create({
       openedBy: actorUserId,
       initialAmount: openDto.initialAmount,
       status: "OPEN",
+      branchId: branchId,
     });
 
     return created;
   },
 
-  async getOpen() {
-    const open = await CashBoxRepository.findOpen();
+  async getOpen(branchId: number) {
+    const open = await CashBoxRepository.findOpenByBranch(branchId);
     if (!open) return null;
     
-    // Incluir información del usuario que abrió la caja
     return await prisma.cashBox.findUnique({
       where: { id: open.id },
       include: {
         openedByUser: {
           select: { name: true, userCode: true }
-        }
+        },
+        branch: { select: { name: true } }
       }
     });
   },
@@ -81,9 +82,9 @@ export const CashBoxService = {
       const realClosedAmount = Number(closeDto.realClosedAmount);
       const difference = realClosedAmount - expectedAmount;
 
-      // 5) Preparar datos de actualización - CORREGIDO: usar tipo any para evitar problemas complejos
+      // 5) Preparar datos de actualización
       const updateData: any = {
-        status: CashBoxStatus.CLOSED, // ← USAR EL ENUM
+        status: CashBoxStatus.CLOSED,
         closedAt: new Date(),
         closedBy: actorUserId,
         closedAmount: Number(expectedAmount.toFixed(2)),
@@ -93,7 +94,7 @@ export const CashBoxService = {
         observations: closeDto.observations || null,
       };
 
-      // 6) Manejar cashCount correctamente (usar Prisma.JsonNull para null)
+      // 6) Manejar cashCount correctamente
       if (closeDto.cashCount !== undefined) {
         updateData.cashCount = closeDto.cashCount === null ? Prisma.JsonNull : closeDto.cashCount;
       }
@@ -104,7 +105,8 @@ export const CashBoxService = {
         data: updateData,
         include: {
           openedByUser: { select: { name: true, userCode: true } },
-          closedByUser: { select: { name: true, userCode: true } }
+          closedByUser: { select: { name: true, userCode: true } },
+          branch: { select: { name: true } }
         }
       });
 
@@ -137,6 +139,7 @@ export const CashBoxService = {
       include: {
         openedByUser: { select: { name: true, userCode: true } },
         closedByUser: { select: { name: true, userCode: true } },
+        branch: { select: { name: true } },
         sales: {
           include: {
             items: true,
@@ -168,12 +171,16 @@ export const CashBoxService = {
     return box;
   },
 
-  async list(params?: { page?: number; limit?: number; status?: 'OPEN' | 'CLOSED' }) {
+  async list(params?: { page?: number; limit?: number; status?: 'OPEN' | 'CLOSED'; branchId?: number }) {
     const page = params?.page || 1;
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
 
-    const where = params?.status ? { status: params.status } : {};
+    const where: any = {};
+    
+    if (params?.status) where.status = params.status;
+    // ← NUEVO: Filtrar por sucursal
+    if (params?.branchId !== undefined) where.branchId = params.branchId;
 
     const [boxes, total] = await Promise.all([
       prisma.cashBox.findMany({
@@ -183,6 +190,7 @@ export const CashBoxService = {
         include: {
           openedByUser: { select: { name: true, userCode: true } },
           closedByUser: { select: { name: true, userCode: true } },
+          branch: { select: { name: true } },
           _count: {
             select: {
               sales: true,
@@ -207,7 +215,8 @@ export const CashBoxService = {
     const box = await prisma.cashBox.findUnique({
       where: { id: boxId },
       include: {
-        openedByUser: { select: { name: true, userCode: true } }
+        openedByUser: { select: { name: true, userCode: true } },
+        branch: { select: { name: true } }
       }
     });
 
@@ -246,7 +255,7 @@ export const CashBoxService = {
         totalCashSales,
         totalCashExpenses,
         totalCardSales,
-        totalOtherSales: totalCardSales, // Por ahora solo tarjeta como "otros"
+        totalOtherSales: totalCardSales,
         expectedClosedAmount,
       },
     };

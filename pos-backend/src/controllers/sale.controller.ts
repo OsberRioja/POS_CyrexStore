@@ -16,7 +16,13 @@ export const create = async (req: Request, res: Response) => {
     const userId = (req as any).userId ?? (req as any).user?.sub;
     if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
 
-    const created = await SaleService.createSale(dto, String(userId));
+    // Obtener branchId del usuario autenticado
+    const userBranchId = (req as any).user?.branchId;
+    if (!userBranchId) {
+      return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+    }
+
+    const created = await SaleService.createSale(dto, String(userId), userBranchId);
     return res.status(201).json(created);
   } catch (err: any) {
     console.error("POST /sales:", err);
@@ -34,6 +40,12 @@ export const list = async (req: Request, res: Response) => {
     const dateTo = typeof req.query.dateTo === "string" ? req.query.dateTo : undefined;
     const paymentStatus = req.query.paymentStatus ? req.query.paymentStatus as PaymentStatus : undefined;
 
+    // ← NUEVO: Obtener branchId del usuario autenticado
+    const userBranchId = (req as any).user?.branchId;
+    if (!userBranchId) {
+      return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+    }
+
     const result = await SaleService.list({ 
       page, 
       limit, 
@@ -41,7 +53,8 @@ export const list = async (req: Request, res: Response) => {
       cashBoxId, 
       dateFrom, 
       dateTo,
-      paymentStatus 
+      paymentStatus,
+      branchId: userBranchId
     });
     return res.json(result);
   } catch (err: any) {

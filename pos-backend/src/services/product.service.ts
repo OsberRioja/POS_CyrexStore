@@ -2,10 +2,9 @@ import { productRepository } from "../repositories/product.repository";
 import { CreateProductDTO } from "../dtos/createProduct.dto";
 import { UpdateProductDTO } from "../dtos/updateProduct.dto";
 import { prisma } from "../prismaClient";
-import { da } from "zod/v4/locales/index.cjs";
 
 export const productService = {
-  async createProduct(dto: CreateProductDTO, userId: string) {
+  async createProduct(dto: CreateProductDTO, userId: string, branchId: number) {
     // validaciones mínimas
     if (!dto.sku || !dto.name || dto.salePrice == null || dto.costPrice == null) {
       throw { status: 400, message: "sku, name, costPrice y salePrice son requeridos" };
@@ -21,6 +20,17 @@ export const productService = {
     
     // ✅ Usar transacción para crear producto y registrar movimiento
     return prisma.$transaction(async (tx) => {
+      // Verificar si el SKU ya existe en la misma sucursal
+      const existingProduct = await tx.product.findFirst({
+        where:{
+          sku: dto.sku.trim(),
+          branchId: branchId
+        }
+      });
+      if (existingProduct) {
+        throw { status: 400, message: `El SKU '${dto.sku}' ya existe en esta sucursal.` };
+      }
+
       // Crear el producto usando el repository pero dentro de la transacción
       const created = await tx.product.create({
         data: {
@@ -36,10 +46,12 @@ export const productService = {
           imageUrl: dto.imageUrl,
           createdBy: userId,
           providerId: dto.providerId ? Number(dto.providerId) : null,
+          branchId: branchId
         },
         include: {
           user: { select: { name: true, userCode: true } },
           provider: true,
+          branch: { select: { name: true } }
         },
       });
 
@@ -87,12 +99,12 @@ export const productService = {
     });
   },
 
-  async getAllProducts(includeInactive = true) {
-    return await productRepository.findAll(includeInactive);
+  async getAllProducts(includeInactive = true, branchId?: number) {
+    return await productRepository.findAll(includeInactive, branchId);
   },
 
-  async getProducts() {
-    return await productRepository.findAllActive();
+  async getProducts(branchId?: number) {
+    return await productRepository.findAllActive(branchId);
   },
 
   async getProductById(id: string) {

@@ -3,7 +3,7 @@ import { CreateUserDTO } from "../dtos/createUser.dto";
 import { User } from "@prisma/client";
 
 export const UserRepository = {
-  async create(dto: CreateUserDTO & { passwordChangeRequired?: boolean}): Promise<User> {
+  async create(dto: CreateUserDTO & { passwordChangeRequired?: boolean; branchId?: number | null }): Promise<User> {
     return prisma.user.create({
       data: {
         userCode: dto.userCode,
@@ -13,12 +13,28 @@ export const UserRepository = {
         phone: dto.phone ?? null,
         role: dto.role,
         passwordChangeRequired: dto.passwordChangeRequired ?? false,
+        branchId: dto.branchId, // ← NUEVO: incluir branchId
       },
     });
   },
-  async findAll() {
+
+  async findAll(branchId?: number | null) {
+    // Filtrar por sucursal si se proporciona
+    const where: any = { deleted: false };
+    if (branchId !== undefined && branchId !== null) {
+      where.branchId = branchId;
+    }
+
     return prisma.user.findMany({
-      where: { deleted: false },
+      where,
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
       orderBy: { createdAt: "desc" }
     });
   },
@@ -29,19 +45,57 @@ export const UserRepository = {
         email,
         deleted: false
       },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
     });
   },
 
   async findByUsercode(userCode: number) {
-    return prisma.user.findUnique({ where: { userCode, deleted: false } });
+    return prisma.user.findUnique({ 
+      where: { userCode, deleted: false },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
+    });
   },
 
   async findById(id: string) {
-    return prisma.user.findUnique({ where: { id, deleted: false } });
+    return prisma.user.findUnique({ 
+      where: { id, deleted: false },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
+    });
   },
 
   async findByName(name: string) {
-    return prisma.user.findMany({ where: { name, deleted: false } });
+    return prisma.user.findMany({ 
+      where: { name, deleted: false },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
+    });
   },
   
   async updateUser(
@@ -53,6 +107,7 @@ export const UserRepository = {
       phone?: string;
       role?: "ADMIN" | "SUPERVISOR" | "SELLER";
       passwordChangeRequired?: boolean;
+      branchId?: number | null;
     }
   ): Promise<User | null> {
     // Solo actualizar si el usuario existe
@@ -70,6 +125,7 @@ export const UserRepository = {
         ...(data.passwordChangeRequired !== undefined && {
           passwordChangeRequired: data.passwordChangeRequired
         }),
+        ...(data.branchId !== undefined && { branchId: data.branchId }), // ← NUEVO: actualizar branchId
       },
     });
 
@@ -77,7 +133,6 @@ export const UserRepository = {
   },
 
   async deleteUser(id: string) {
-
     // Verificar si existe
     const existingUser = await prisma.user.findUnique({ where: { id } });
     if (!existingUser) return null;
@@ -94,6 +149,16 @@ export const UserRepository = {
   },
 
   async getByRole(role: "ADMIN" | "SUPERVISOR" | "SELLER") {
-    return prisma.user.findMany({ where: { role } });
+    return prisma.user.findMany({ 
+      where: { role },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
+    });
   }
 };

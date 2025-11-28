@@ -37,7 +37,7 @@ function isValidEmail(email: string): boolean {
 }
 
 export const UserService = {
-  async createUser(dto: CreateUserDTO) {
+  async createUser(dto: CreateUserDTO, currentUserBranchId?: number | null) {
     if (!dto.name || !dto.email || !dto.role || !dto.phone) {
       throw { status: 400, message: "todos los campos son requeridos" };
     }
@@ -56,10 +56,30 @@ export const UserService = {
     const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
     const role = mapRole(dto.role);
 
+    // Determinar branchId para el nuevo usuario
+    let userBranchId: number | null = null;
+
+    // Si el usuario actual es administrador global (currentUserBranchId es null) y proporciona un branchId, usarlo
+    if (currentUserBranchId === null && dto.branchId) {
+      userBranchId = dto.branchId;
+    }
+    // Si el usuario actual tiene una sucursal (currentUserBranchId es un número), asignar esa sucursal
+    else if (currentUserBranchId) {
+      userBranchId = currentUserBranchId;
+    }
+    // Si el rol es ADMIN, puede ser global (branchId null)
+    else if (role === 'ADMIN') {
+      userBranchId = null;
+    }
+    // Para otros roles, debe tener sucursal. Si no se puede determinar, lanzar error.
+    else {
+      throw { status: 400, message: "No se puede determinar la sucursal para el usuario" };
+    }
+
     // 1) Si el cliente envió usercode, parsear y validar.
     let providedUsercode: number | undefined;
     try {
-      providedUsercode = parseAndValidateUsercode((dto as any).userCode);
+      providedUsercode = parseAndValidateUsercode(dto.userCode);
     } catch (e) {
       throw e;
     }
@@ -90,9 +110,10 @@ export const UserService = {
           phone: dto.phone ?? null,
           role: role as "ADMIN" | "SUPERVISOR" | "SELLER",
           passwordChangeRequired: true,
+          branchId: userBranchId ?? undefined,
         });
 
-        //Enviar email de invitación
+        // Enviar email de invitación
         try {
           const invitationData = {
             userName: user.name,
@@ -108,7 +129,7 @@ export const UserService = {
           } else {
             console.warn(`⚠️ No se pudo enviar el email de invitación a: ${user.email}`);
           }
-        }catch (emailErr) {
+        } catch (emailErr) {
           console.error(`❌ Error al enviar email de invitación a ${user.email}:`, emailErr);
         }
 
@@ -156,12 +177,13 @@ export const UserService = {
     throw { status: 500, message: "No se pudo generar un usercode único. Intenta de nuevo." };
   },
 
-  async listUsers(){
-    return UserRepository.findAll();
+  async listUsers(currentUserBranchId?: number | null) {
+    // ← NUEVO: Pasar branchId para filtrar
+    return UserRepository.findAll(currentUserBranchId);
   },
 
   async getUserById(id: string) {
-    const u = await UserRepository.findById(id  );
+    const u = await UserRepository.findById(id);
     if (!u) throw { status: 404, message: "Usuario no encontrado"};
     return u;
   },
@@ -193,25 +215,26 @@ export const UserService = {
       phone?: string;
       role?: "ADMIN" | "SUPERVISOR" | "SELLER";
       passwordChangeRequired?: boolean;
+      branchId?: number | null; // ← NUEVO: permitir actualizar branchId
     }
-    ): Promise<User | null> {
-        // comprobar existencia
-        const existing = await UserRepository.findById(id);
-        if (!existing) throw { status: 404, message: "Usuario no encontrado" };
+  ): Promise<User | null> {
+    // comprobar existencia
+    const existing = await UserRepository.findById(id);
+    if (!existing) throw { status: 404, message: "Usuario no encontrado" };
 
-        const updatedData: any = { ...data };
-        if (data.password) {
-          updatedData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
-        }
+    const updatedData: any = { ...data };
+    if (data.password) {
+      updatedData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
+    }
 
-        const user = await UserRepository.updateUser(id, updatedData);
-        if (!user) throw { status: 404, message: "Usuario no encontrado"};
-        return user;
-    },
+    const user = await UserRepository.updateUser(id, updatedData);
+    if (!user) throw { status: 404, message: "Usuario no encontrado"};
+    return user;
+  },
 
-    async deleteUser(id: string): Promise<User> {
-        const user = await UserRepository.deleteUser(id);
-        if (!user) throw { status: 404, message: "Usuario no encontrado" };
-        return user;
-    },
+  async deleteUser(id: string): Promise<User> {
+    const user = await UserRepository.deleteUser(id);
+    if (!user) throw { status: 404, message: "Usuario no encontrado" };
+    return user;
+  },
 };

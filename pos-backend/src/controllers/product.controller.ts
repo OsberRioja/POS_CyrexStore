@@ -4,11 +4,17 @@ import { productService } from "../services/product.service";
 export const productController = {
   async create(req: Request, res: Response) {
     try {
-      const userId = (req as any).userId ?? (req as any).user?.sub ?? (req as any).user?.id; // ID del usuario logueado desde middleware JWT
+      const userId = (req as any).userId ?? (req as any).user?.sub ?? (req as any).user?.id;
       if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
 
-      const dto = req.body; // body validado por DTO idealmente
-      const created = await productService.createProduct(dto, String(userId));
+      // Obtener branchId del usuario autenticado
+      const userBranchId = (req as any).user?.branchId;
+      if (!userBranchId) {
+        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      }
+
+      const dto = req.body;
+      const created = await productService.createProduct(dto, String(userId), userBranchId);
       return res.status(201).json(created);
     } catch (err: any) {
       console.error("POST /products error:", err);
@@ -20,13 +26,17 @@ export const productController = {
     try {
       const { q, onlyActive } = req.query;
       
+      // Obtener branchId del usuario autenticado
+      const userBranchId = (req as any).user?.branchId;
+      if (!userBranchId) {
+        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      }
+
       let products;
       if (onlyActive === 'true') {
-        // Solo productos activos
-        products = await productService.getProducts();
+        products = await productService.getProducts(userBranchId);
       } else {
-        // Todos los productos (incluyendo inactivos)
-        products = await productService.getAllProducts();
+        products = await productService.getAllProducts(true, userBranchId);
       }
       
       // Si hay query de búsqueda, filtrar adicionalmente

@@ -8,4 +8,5 @@ export interface CreateUserDTO {
   password?: string; // Contraseña
   phone: string; // Teléfono (opcional)
   role: RoleString; // Rol del usuario
+  branchId?: number; // ID de la sucursal asignada (opcional)
 }
