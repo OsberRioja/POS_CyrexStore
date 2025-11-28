@@ -9,6 +9,9 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log('🔐 Interceptor - Token agregado a headers');
+  } else {
+    console.warn('⚠️ Interceptor - No hay token en localStorage');
   }
 
   // Obtener branchId del localStorage o del usuario
@@ -18,7 +21,13 @@ api.interceptors.request.use((config) => {
   const userBranchId = user?.branchId;
   
   // Prioridad: selectedBranch > userBranchId
-  const currentBranchId = selectedBranch ? parseInt(selectedBranch) : userBranchId;
+  let currentBranchId = selectedBranch ? parseInt(selectedBranch) : userBranchId;
+
+  // Si es admin global y no tiene sucursal, usar la primera disponible
+  if (user?.role === 'ADMIN' && user.branchId === null && !currentBranchId) {
+    currentBranchId = 1;
+    console.log('⚠️ Usando sucursal por defecto para admin global:', currentBranchId);
+  }
 
   console.log('🔧 Interceptor - Current Branch ID:', currentBranchId);
   console.log('🔧 Interceptor - Request Method:', config.method);
