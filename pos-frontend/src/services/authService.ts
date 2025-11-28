@@ -92,10 +92,18 @@ export const authService = {
 
   // Logout - limpiar localStorage
   logout: (): void => {
+    authService.clearAuthState();
+  },
+
+  clearAuthState: (): void => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("selectedBranch");
     localStorage.removeItem('branchMode');
+  },
+
+  hasActiveSession: (): boolean => {
+    return !!authService.getToken() && !!authService.getUser();
   },
 
   // Verificar si está logueado

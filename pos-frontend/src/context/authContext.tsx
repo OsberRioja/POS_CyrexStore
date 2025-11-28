@@ -128,11 +128,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = () => {
-    authService.logout();
+    authService.clearAuthState();
     setToken(null);
     setUser(null);
     setRequiresPasswordChange(false);
     setCurrentBranchId(null);
+    setIsInBranchMode(false);
   };
 
   const completePasswordChange = () => {
