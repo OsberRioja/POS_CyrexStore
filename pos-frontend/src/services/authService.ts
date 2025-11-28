@@ -79,11 +79,23 @@ export const authService = {
     return branchId ? parseInt(branchId, 10) : null;
   },
 
+  // Guardar estado de modo
+  saveBranchMode: (isInBranchMode: boolean) => {
+    localStorage.setItem('branchMode', JSON.stringify(isInBranchMode));
+  },
+
+  // Obtener estado de modo
+  getBranchMode: (): boolean => {
+    const saved = localStorage.getItem('branchMode');
+    return saved ? JSON.parse(saved) : false;
+  },
+
   // Logout - limpiar localStorage
   logout: (): void => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("selectedBranch");
+    localStorage.removeItem('branchMode');
   },
 
   // Verificar si está logueado

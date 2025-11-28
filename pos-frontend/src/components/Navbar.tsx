@@ -4,7 +4,7 @@ import CurrencySelector from "./CurrencySelector";
 import BranchSelector from "./BranchSelector";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, isInBranchMode, exitToAdminHome } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Si no hay usuario, mostrar navbar básico
@@ -31,10 +31,11 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Selector de sucursal para administradores globales */}
-          <BranchSelector />
+          {/* Mostrar selector de sucursal solo en modo sucursal */}
+          {isInBranchMode && <BranchSelector />}
 
-          <CurrencySelector />
+          {/* Mostrar selector de divisa solo en modo sucursal */}
+          {isInBranchMode && <CurrencySelector />}
 
           <div className="relative">
             <button
@@ -48,7 +49,9 @@ export default function Navbar() {
                 <div className="font-medium text-gray-700">{user.name}</div>
                 <div className="text-xs text-gray-500">#{user.userCode}</div>
                 {user.role === 'ADMIN' && user.branchId === null && (
-                  <div className="text-xs text-blue-500">Administrador Global</div>
+                  <div className="text-xs text-blue-500">
+                    {isInBranchMode ? 'Administrador Global' : 'Modo Administración'}
+                  </div>
                 )}
               </div>
             </button>
@@ -60,9 +63,24 @@ export default function Navbar() {
                   <div className="text-sm text-gray-500">{user.email}</div>
                   <div className="text-xs text-gray-400">Código: #{user.userCode}</div>
                   {user.role === 'ADMIN' && user.branchId === null && (
-                    <div className="text-xs text-blue-400">Administrador Global</div>
+                    <div className="text-xs text-blue-400">
+                      {isInBranchMode ? 'Administrador Global' : 'Modo Administración'}
+                    </div>
                   )}
                 </div>
+                
+                {/* Opción para volver al home admin si está en modo sucursal */}
+                {isInBranchMode && user.role === 'ADMIN' && user.branchId === null && (
+                  <button
+                    onClick={() => {
+                      exitToAdminHome();
+                      setShowUserMenu(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    🏠 Volver al Home Admin
+                  </button>
+                )}
                 
                 <button
                   onClick={logout}

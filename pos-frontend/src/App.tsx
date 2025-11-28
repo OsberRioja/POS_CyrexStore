@@ -21,6 +21,7 @@ import { passwordService } from "./services/passwordService";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ToastProvider } from "./context/ToastContext";
+import AdminHomePage from "./pages/AdminHomePage";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -52,12 +53,16 @@ function MainApp() {
     user, 
     loading, 
     requiresPasswordChange, 
-    completePasswordChange 
+    completePasswordChange,
+    isInBranchMode
   } = useAuth();
   const [authView, setAuthView] = useState<"login" | "forgot-password" | "reset-password">("login");
   const [mainPage, setMainPage] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
+  
+  const isGlobalAdmin = user?.role === 'ADMIN' && user?.branchId === null;
+  const shouldShowAdminHome = isGlobalAdmin && !isInBranchMode;
 
   // Mostrar modal cuando se requiera cambio de contraseña
   useEffect(() => {
@@ -141,6 +146,18 @@ function MainApp() {
       throw error; // El modal manejará el error
     }
   };
+
+  // ✅ SI ESTÁ AUTENTICADO, DECIDIR QUÉ MOSTRAR
+  if (shouldShowAdminHome) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="container mx-auto px-4 py-6">
+          <AdminHomePage />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">

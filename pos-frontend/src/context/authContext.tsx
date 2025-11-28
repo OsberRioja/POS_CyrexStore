@@ -22,11 +22,14 @@ interface AuthContextType {
   isAuthenticated: boolean;
   requiresPasswordChange: boolean;
   currentBranchId?: number | null;
+  isInBranchMode: boolean;
   login: (login: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
   completePasswordChange: () => void;
   selectBranch: (branchId: number | null) => void;
+  enterBranch: (branchId: number) => void;
+  exitToAdminHome: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(null);
   const [requiresPasswordChange, setRequiresPasswordChange] = useState<boolean>(false);
   const [currentBranchId, setCurrentBranchId] = useState<number | null>(null);
+  const [isInBranchMode, setIsInBranchMode] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   // Verificar si hay sesión activa al cargar la app
@@ -47,6 +51,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const savedToken = authService.getToken();
     const savedUser = authService.getUser();
     const savedBranchId = authService.getSelectedBranch();
+    const savedBranchMode = authService.getBranchMode();
+
 
     if (savedToken && savedUser) {
       setToken(savedToken);
@@ -68,12 +74,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setCurrentBranchId(branchToUse);
+      setIsInBranchMode(savedBranchMode || (branchToUse !== null && userWithDefaults.role !== 'ADMIN'));
 
       // Nota: No podemos saber si requiere cambio de contraseña desde localStorage
       // Esto se manejara en el primer login despues de cargar la página
     }
     setLoading(false);
   }, []);
+
+  // Función para ingresar a una sucursal
+  const enterBranch = (branchId: number) => {
+    authService.saveSelectedBranch(branchId);
+    setCurrentBranchId(branchId);
+    setIsInBranchMode(true);
+    authService.saveBranchMode(true);
+    console.log(`🏪 Ingresando a sucursal: ${branchId}`);
+  };
+
+  // Función para volver al home admin
+  const exitToAdminHome = () => {
+    authService.saveSelectedBranch(null);
+    setCurrentBranchId(null);
+    setIsInBranchMode(false);
+    authService.saveBranchMode(false);
+    console.log('🏠 Volviendo al home admin');
+  };
 
   const login = async (login: string, password: string) => {
     try {
@@ -122,7 +147,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     authService.saveSelectedBranch(branchId);
     setCurrentBranchId(branchId);
-    console.log(`🏪 Sucursal cambiada a: ${branchId}`);
+
+    if (isInBranchMode && branchId) {
+      console.log(`🏪 Cambiando a sucursal: ${branchId}`);
+    }
   };
 
 
@@ -132,11 +160,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: !!token && !!user,
     requiresPasswordChange,
     currentBranchId,
+    isInBranchMode,
     login,
     logout,
     loading,
     completePasswordChange,
     selectBranch,
+    enterBranch,
+    exitToAdminHome
   };
 
   return (
