@@ -12,11 +12,35 @@ export const CashBoxController = {
 
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
-      if (!userBranchId) {
-        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+
+      // Para administradores usar branchId del body o params:
+      let targetBranchId = userBranchId;
+      if (!targetBranchId) {
+        targetBranchId = dto.branchId;
+
+        // Si no viene en body, buscar en query params (para GET) o headers
+        if (!targetBranchId && req.method === 'GET') {
+          targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        }
+
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
       }
 
-      const created = await CashBoxService.open(dto, String(userId), userBranchId);
+      // if (!userBranchId) {
+      //   return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      // }
+      console.log('🔍 Debug open cashbox:', {
+        userBranchId: (req as any).user?.branchId,
+        bodyBranchId: dto.branchId,
+        finalBranchId: targetBranchId,
+        userId: (req as any).userId
+      });
+
+      const created = await CashBoxService.open(dto, String(userId), targetBranchId);
       return res.status(201).json(created);
     } catch (err: any) {
       console.error("POST /cashbox/open", err);
@@ -28,11 +52,20 @@ export const CashBoxController = {
     try {
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
-      if (!userBranchId) {
-        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      let targetBranchId = userBranchId;
+      
+      if (!targetBranchId) {
+        // Para admin global, buscar branchId en query params
+        targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal via query param: ?branchId=1" 
+          });
+        }
       }
 
-      const open = await CashBoxService.getOpen(userBranchId);
+      const open = await CashBoxService.getOpen(targetBranchId);
       return res.json(open);
     } catch (err: any) {
       console.error("GET /cashbox/open", err);
@@ -73,12 +106,21 @@ export const CashBoxController = {
 
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
-      if (!userBranchId) {
-        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      let targetBranchId = userBranchId;
+    
+      // Si es admin global, buscar branchId en query params
+      if (!targetBranchId) {
+        targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal via query param: ?branchId=1" 
+          });
+        }
       }
 
       // Filtrar por sucursal del usuario
-      const result = await CashBoxService.list({ page, limit, status, branchId: userBranchId });
+      const result = await CashBoxService.list({ page, limit, status, branchId: targetBranchId });
       return res.json(result);
     } catch (err: any) {
       console.error("GET /cashbox", err);

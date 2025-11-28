@@ -1,8 +1,7 @@
-// src/components/OpenCashboxModal.tsx
 import React, { useState } from "react";
 import { cashboxService } from "../services/cashboxService";
 
-export default function OpenCashboxModal({ onClose, onSuccess, token } : { onClose: () => void; onSuccess: () => void; token?: string }) {
+export default function OpenCashboxModal({ onClose, onSuccess } : { onClose: () => void; onSuccess: () => void;}) {
   const [initialAmount, setInitialAmount] = useState<string>("0");
   const [saving, setSaving] = useState(false);
 
@@ -12,7 +11,7 @@ export default function OpenCashboxModal({ onClose, onSuccess, token } : { onClo
     if (Number.isNaN(val) || val < 0) return alert("Monto inválido.");
     setSaving(true);
     try {
-      await cashboxService.open({ initialAmount: val }, token);
+      await cashboxService.open({ initialAmount: val });
       onSuccess();
       onClose();
     } catch (err:any) {

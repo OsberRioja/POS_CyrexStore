@@ -23,6 +23,15 @@ api.interceptors.request.use((config) => {
   // Prioridad: selectedBranch > userBranchId
   let currentBranchId = selectedBranch ? parseInt(selectedBranch) : userBranchId;
 
+  console.log('🚀 Interceptor ejecutándose para:', config.url);
+  console.log('📁 Datos del interceptor:', {
+    selectedBranch,
+    userBranchId: user?.branchId,
+    currentBranchId,
+    method: config.method,
+    data: config.data
+  });
+
   // Si es admin global y no tiene sucursal, usar la primera disponible
   if (user?.role === 'ADMIN' && user.branchId === null && !currentBranchId) {
     currentBranchId = 1;

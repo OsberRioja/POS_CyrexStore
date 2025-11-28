@@ -31,14 +31,8 @@ export default function CashboxPage() {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeData, setCloseData] = useState<any>(null);
 
-  const { hasPermission, permissions, role } = usePermissions();
-  console.log('🔍 [PERMISSIONS DEBUG]', {
-    role,
-    permissions,
-    hasCASHBOX_READ: hasPermission(Permission.CASHBOX_READ),
-    hasCASHBOX_READ_ALL: hasPermission(Permission.CASHBOX_READ_ALL),
-    allPermissions: Object.values(Permission)
-  });
+  const { hasPermission } = usePermissions();
+ 
 
   useEffect(() => {
     loadAll();
@@ -68,7 +62,7 @@ export default function CashboxPage() {
     setWarning(null);
     try {
       console.log('🔍 [1] Loading open cashbox...');
-      const rOpen = await cashboxService.getOpen(_token);
+      const rOpen = await cashboxService.getOpen();
       console.log('🔍 [1] Open cashbox response:', rOpen);
       const open = rOpen?.data ?? null;
       setOpenCashbox(open);
@@ -85,7 +79,7 @@ export default function CashboxPage() {
     try {
       //solo intentar cargar si el usuario tiene permiso
       if(hasPermission(Permission.CASHBOX_READ)) {
-        const rList = await cashboxService.list(_token);
+        const rList = await cashboxService.list();
         // Axios envuelve en .data, y tu backend devuelve { total, data }
         const boxes = rList.data?.data || rList.data || [];
         setCashboxes(Array.isArray(boxes) ? boxes : []);
@@ -109,7 +103,7 @@ export default function CashboxPage() {
     setView("ventas"); // Comenzar mostrando ventas
     try {
       // Cargar datos completos de la caja
-      const cashboxDetails = await cashboxService.getById(box.id, _token);
+      const cashboxDetails = await cashboxService.getById(box.id);
       setSelectedCashbox(cashboxDetails.data || cashboxDetails);
       
       await Promise.all([
@@ -133,7 +127,7 @@ export default function CashboxPage() {
     if (!confirm("¿Cerrar caja ahora?")) return;
     try {
     setLoading(true);
-    const response = await cashboxService.getClosePreview(openCashbox.id, _token);
+    const response = await cashboxService.getClosePreview(openCashbox.id);
     setCloseData(response.data);
     setShowCloseModal(true);
   } catch (error) {
@@ -150,7 +144,7 @@ export default function CashboxPage() {
         realClosedAmount: data.cashCount.total,
         observations: data.notes,
         cashCount: data.cashCount
-      }, _token);
+      });
 
       setShowCloseModal(false);
       setCloseData(null);
@@ -567,7 +561,6 @@ export default function CashboxPage() {
         <OpenCashboxModal
           onClose={() => setShowOpenModal(false)}
           onSuccess={loadAll}
-          token={_token}
         />
       )}
 

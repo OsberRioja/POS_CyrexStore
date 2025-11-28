@@ -1,31 +1,17 @@
-// src/services/cashboxService.ts
-import axios from "axios";
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import api from './api';
 
 export const cashboxService = {
-  list: (token?: string) => axios.get(`${BASE}/cashbox`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
-  getOpen: (token?: string) => axios.get(`${BASE}/cashbox/open`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
-  getById: (id: number, token?: string) => 
-    axios.get(`${BASE}/cashbox/${id}`, { 
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined 
-  }),
+  list: () => api.get('/cashbox'),
+  getOpen: () => api.get('/cashbox/open'),
+  getById: (id: number) => api.get(`/cashbox/${id}`),
+  
+  getClosePreview: (id: number) => api.get(`/cashbox/${id}/close-preview`),
 
-  getClosePreview: (id: number, token?: string) => 
-    axios.get(`${BASE}/cashbox/${id}/close-preview`, { 
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined 
-  }),
-
-  open: (payload: { initialAmount: number }, token?: string) => 
-    axios.post(`${BASE}/cashbox/open`, payload, { 
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined 
-    }),
+  open: (payload: { initialAmount: number }) => api.post('/cashbox/open', payload),
 
   close: (id: number, payload: {
     realClosedAmount: number;
-    observations?: string
+    observations?: string;
     cashCount?: any;
-  }, token?: string) => 
-    axios.post(`${BASE}/cashbox/${id}/close`, payload, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined 
-    }),
+  }) => api.post(`/cashbox/${id}/close`, payload),
 };

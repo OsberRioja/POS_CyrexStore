@@ -179,7 +179,7 @@ export const CashBoxService = {
     const where: any = {};
     
     if (params?.status) where.status = params.status;
-    // ← NUEVO: Filtrar por sucursal
+    // Filtrar por sucursal
     if (params?.branchId !== undefined) where.branchId = params.branchId;
 
     const [boxes, total] = await Promise.all([

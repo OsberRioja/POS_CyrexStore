@@ -1,6 +1,7 @@
 export interface OpenCashBoxDTO {
   openedBy: string; // user id
   initialAmount: number;
+  branchId?: number;
 }
 
 export interface CloseCashBoxDTO {
