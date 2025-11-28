@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/authContext";
+import { useBranch } from "../hooks/useBranch";
 
 export default function HomePage() {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { branches, currentBranchId } = useBranch(); // ← usar hook de sucursal
+
+  // Obtener nombre de la sucursal actual
+  const currentBranchName = branches.find(b => b.id === currentBranchId)?.name;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -57,6 +62,13 @@ export default function HomePage() {
                   {user.role === "ADMIN" ? "Administrador" : 
                    user.role === "SUPERVISOR" ? "Supervisor" : "Vendedor"}
                 </span>
+                {/* ← NUEVO: Mostrar sucursal si existe */}
+                {currentBranchName && (
+                  <>
+                    <span>•</span>
+                    <span>Sucursal: {currentBranchName}</span>
+                  </>
+                )}
               </div>
             )}
             {formatDate(currentTime)}
@@ -120,6 +132,12 @@ export default function HomePage() {
           <div>
             <span className="font-medium">Tipo:</span> Sistema Multi-sucursal
           </div>
+          {/* ← NUEVO: Mostrar sucursal actual */}
+          {currentBranchName && (
+            <div>
+              <span className="font-medium">Sucursal Actual:</span> {currentBranchName}
+            </div>
+          )}
         </div>
       </div>
     </div>

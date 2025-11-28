@@ -6,6 +6,8 @@ import { useDebounce } from "../hooks/useDebounce";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
+import { useAuth } from "../context/authContext";
+import { useBranch } from "../hooks/useBranch";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -18,9 +20,13 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<"ALL" | "ADMIN" | "SUPERVISOR" | "SELLER">("ALL");
 
   const { hasPermission } = usePermissions();
+  const { currentBranchId } = useAuth(); // ← obtener currentBranchId
+  const { branches, currentBranchId: branchId } = useBranch(); // ← usar hook de sucursal
+
+  // Obtener nombre de la sucursal actual
+  const currentBranchName = branches.find(b => b.id === branchId)?.name;
 
   const loadUsers = async () => {
-    // Verificar permisos antes de cargar
     if(!hasPermission(Permission.USER_READ)) {
       return;
     }
@@ -28,8 +34,13 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const res = await userService.getUsers();
-      setUsers(res.data || []);
-      setFiltered(res.data || []);
+      // Filtrar usuarios por sucursal si no es admin global
+      let usersData = res.data || [];
+      if (currentBranchId) {
+        usersData = usersData.filter((user: any) => user.branchId === currentBranchId);
+      }
+      setUsers(usersData);
+      setFiltered(usersData);
     } catch (err) {
       console.error(err);
       setUsers([]);
@@ -43,29 +54,23 @@ export default function UsersPage() {
     if (hasPermission(Permission.USER_READ)){
       loadUsers();
     } 
-  }, []);
+  }, [currentBranchId]); // ← recargar cuando cambie la sucursal
 
   useEffect(() => {
-    // aplica el filtrado localmente cuando cambia la query (debounced)
     const q = (debouncedQuery || "").trim().toLowerCase();
     if (!q) { setFiltered(users); return; }
     const numeric = /^\d+$/.test(q) ? Number(q) : null;
     const result = users.filter((u) => {
-    // Primer: filtrado por rol (si aplica)
     if (roleFilter !== "ALL") {
-      // normalizar valor de rol que venga del backend (puede ser 'ADMIN' o 'admin')
       const r = (u.role ?? "").toString().toUpperCase();
       if (r !== roleFilter) return false;
     }
-    // Luego: búsqueda multicriterio
-    if (!q) return true; // si no hay query, ya pasó el filtro de rol
-    // normalizar campos
+    if (!q) return true;
     const code = (u.userCode ?? u.usercode ?? "").toString().toLowerCase();
     const name = (u.name ?? u.username ?? "").toString().toLowerCase();
     const email = (u.email ?? "").toString().toLowerCase();
     const phone = (u.phone ?? "").toString().toLowerCase();
     if (numeric !== null && code === numeric.toString()) return true;
-    // contains for others
     if (name.includes(q) || email.includes(q) || phone.includes(q) || code.includes(q)) return true;
     return false;
   });
@@ -91,7 +96,6 @@ export default function UsersPage() {
     setShowForm(true); 
   };
 
-  // Si no tiene permiso para ver usuarios, mostrar mensaje
   if (!hasPermission(Permission.USER_READ)) {
     return (
       <div className="p-6">
@@ -112,7 +116,15 @@ export default function UsersPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-700">Usuarios</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-700">Usuarios</h2>
+          {/* ← NUEVO: Mostrar sucursal actual */}
+          {currentBranchName && (
+            <p className="text-sm text-gray-500">
+              Sucursal: {currentBranchName}
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <PermissionGuard permission={Permission.USER_READ}>
             <input
@@ -124,7 +136,6 @@ export default function UsersPage() {
           </PermissionGuard>
 
           <PermissionGuard permission={Permission.USER_READ}>
-            {/* FILTRO POR ROL */}
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as any)}

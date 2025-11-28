@@ -1,4 +1,3 @@
-// src/services/productService.ts
 import axios from "axios";
 import { authService } from "./authService";
 
@@ -21,26 +20,55 @@ export type ProductPayload = {
   brand?: string;
   providerId?: number | null;
   imageUrl?: string;
+  // branchId se obtiene automáticamente del interceptor
 };
 
 export type ProductSearchParams = {
   q?: string;
   onlyActive?: boolean;
+  branchId?: number; // ← NUEVO: parámetro para filtrado por sucursal
 };
+
 export const productService = {
-  getAll: () => axios.get(`${BASE}/products`, { headers: { ...authHeader() } }),
-  getById: (id: string) => axios.get(`${BASE}/products/${id}`, { headers: { ...authHeader() } }),
-  create: (payload: ProductPayload) => axios.post(`${BASE}/products`, payload, { headers: { ...authHeader() } }),
-  update: (id: string, payload: Partial<ProductPayload>) => axios.put(`${BASE}/products/${id}`, payload, { headers: { ...authHeader() } }),
-  remove: (id: string) => axios.delete(`${BASE}/products/${id}`, { headers: { ...authHeader() } }),
- search: (params?: ProductSearchParams) =>
+  getAll: (params?: ProductSearchParams) => 
+    axios.get(`${BASE}/products`, { 
+      params,
+      headers: { ...authHeader() } 
+    }),
+
+  getById: (id: string) => 
+    axios.get(`${BASE}/products/${id}`, { 
+      headers: { ...authHeader() } 
+    }),
+
+  create: (payload: ProductPayload) => 
+    axios.post(`${BASE}/products`, payload, { 
+      headers: { ...authHeader() } 
+    }),
+
+  update: (id: string, payload: Partial<ProductPayload>) => 
+    axios.put(`${BASE}/products/${id}`, payload, { 
+      headers: { ...authHeader() } 
+    }),
+
+  remove: (id: string) => 
+    axios.delete(`${BASE}/products/${id}`, { 
+      headers: { ...authHeader() } 
+    }),
+
+  search: (params?: ProductSearchParams) =>
     axios.get(`${BASE}/products`, { 
       params: params ?? {}, 
       headers: { ...authHeader() } 
   }),
 
   deactivate: (id: string) => 
-    axios.patch(`${BASE}/products/${id}/deactivate`, {}, { headers: { ...authHeader() } }),
+    axios.patch(`${BASE}/products/${id}/deactivate`, {}, { 
+      headers: { ...authHeader() } 
+    }),
+
   activate: (id: string) => 
-    axios.patch(`${BASE}/products/${id}/activate`, {}, { headers: { ...authHeader() } }),
+    axios.patch(`${BASE}/products/${id}/activate`, {}, { 
+      headers: { ...authHeader() } 
+    }),
 };

@@ -4,9 +4,9 @@ import ProductForm from "../components/ProductForm";
 import { productService } from "../services/productService";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
-//import type { PermissionType } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
-
+import { useAuth } from "../context/authContext"; // ← NUEVO: importar useAuth
+import { useBranch } from "../hooks/useBranch"; // ← NUEVO: importar useBranch
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -16,11 +16,19 @@ export default function ProductsPage() {
   const [showInactive, setShowInactive] = useState(false);
 
   const { hasPermission } = usePermissions();
+  const { currentBranchId } = useAuth(); // ← NUEVO: obtener currentBranchId
+  const { branches, currentBranchId: branchId } = useBranch(); // ← NUEVO: usar hook de sucursal
+
+  // Obtener nombre de la sucursal actual
+  const currentBranchName = branches.find(b => b.id === branchId)?.name;
 
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await productService.getAll();
+      const res = await productService.getAll({ 
+        onlyActive: !showInactive,
+        branchId: currentBranchId ?? undefined 
+      });
       setProducts(res.data ?? []);
     } catch (err) {
       console.error("Error cargando productos", err);
@@ -30,9 +38,15 @@ export default function ProductsPage() {
     }
   };
 
-  useEffect(() => { loadProducts(); }, []);
+  useEffect(() => { 
+    loadProducts(); 
+  }, [currentBranchId, showInactive]); // ← NUEVO: recargar cuando cambie la sucursal
 
-  const openNew = () => { setSelected(null); setShowForm(true); };
+  const openNew = () => { 
+    setSelected(null); 
+    setShowForm(true); 
+  };
+
   const openEdit = (p: any) => { 
     if (!p.isActive) {
       if (!confirm("Este producto está desactivado. ¿Deseas editarlo?")) return;
@@ -69,10 +83,17 @@ export default function ProductsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-700">Productos</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-700">Productos</h2>
+          {/* ← NUEVO: Mostrar sucursal actual */}
+          {currentBranchName && (
+            <p className="text-sm text-gray-500">
+              Sucursal: {currentBranchName}
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           <PermissionGuard permission={Permission.PRODUCT_READ}>
-            {/* Toggle para mostrar/ocultar inactivos */}
             <label className="flex items-center gap-2 text-sm text-gray-600">
               <input
                 type="checkbox"

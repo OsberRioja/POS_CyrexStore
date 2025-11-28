@@ -5,13 +5,16 @@ import SaleDetailsModal from "../components/SaleDetailModal";
 import AddPaymentModal from "../components/AddPaymentModal";
 import { reportService } from "../services/reportService";
 import { Download } from "lucide-react";
+import { useAuth } from "../context/authContext";
+import { useBranch } from "../hooks/useBranch";
+
 interface SalesPageProps {
   sales: any[];
   onReload: () => void;
   openCashboxId?: number;
   token?: string;
-  isClosedCashbox?: boolean; // para indicar si la caja está cerrada
-  cashboxId?: number; // ID de la caja para reportes
+  isClosedCashbox?: boolean;
+  cashboxId?: number;
 }
 
 export default function SalesPage({ sales, onReload, openCashboxId, token, isClosedCashbox, cashboxId }: SalesPageProps) {
@@ -20,6 +23,12 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+
+  const { currentBranchId } = useAuth();
+  const { branches, currentBranchId: branchId } = useBranch();
+
+  // Obtener nombre de la sucursal actual
+  const currentBranchName = branches.find(b => b.id === branchId)?.name;
 
   const handleSuccess = async () => {
     setShowModal(false);
@@ -52,7 +61,6 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
     setDownloadingReport(true);
     try {
       await reportService.downloadSalesReport(cashboxId);
-      // Exito silecioso: el archivo se descarga automáticamente
     } catch (error: any) {
       console.error('Error descargando reporte:', error);
       alert(error.message || 'Error descargando reporte');
@@ -64,7 +72,15 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
-        <h3 className="font-semibold">Ventas</h3>
+        <div>
+          <h3 className="font-semibold">Ventas</h3>
+          {/* ← NUEVO: Mostrar sucursal actual */}
+          {currentBranchName && (
+            <p className="text-xs text-gray-500">
+              Sucursal: {currentBranchName}
+            </p>
+          )}
+        </div>
         <div className="flex gap-2">
           {/* Botón de descarga de reporte - solo para cajas cerradas */}
           {isClosedCashbox && cashboxId && (
