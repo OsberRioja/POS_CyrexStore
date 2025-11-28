@@ -93,19 +93,18 @@ export const authService = {
   }
 };
 
-// Interceptor para agregar token automáticamente a las requests
-axios.interceptors.request.use(
-  (config) => {
-    const token = authService.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+// // Interceptor para agregar token automáticamente a las requests
+// axios.interceptors.request.use(
+//   (config) => {
+//     const token = authService.getToken();
+//     if (token) {
+//       config.headers.Authorization = `Bearer ${token}`;
+//     }
 
-    const branchId = authService.getSelectedBranch() || authService.getBranchId();
-    if( branchId && config.params ) {
-      config.params.branchId = branchId;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+//     const branchId = authService.getSelectedBranch() || authService.getBranchId();
+//     if( branchId && config.params ) {
+//       config.params.branchId = branchId;
+//     }
+//     return config;
+//   },
+//   (error) => Promise.reject(error)

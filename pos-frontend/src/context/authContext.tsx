@@ -59,6 +59,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       authService.saveUser(userWithDefaults);
 
       const branchToUse = savedBranchId || savedUser.branchId || null;
+
+      // Si es admin global y no hay sucursal seleccionada, forzar selección
+      if (userWithDefaults.role === 'ADMIN' && userWithDefaults.branchId === null && !savedBranchId) {
+        console.log('⚠️ Admin global sin sucursal seleccionada - se requiere seleccionar una');
+        // Podrías redirigir a una página de selección de sucursal aquí
+        // Por ahora, lo dejamos como null pero mostramos un mensaje
+      }
+
       setCurrentBranchId(branchToUse);
 
       // Nota: No podemos saber si requiere cambio de contraseña desde localStorage

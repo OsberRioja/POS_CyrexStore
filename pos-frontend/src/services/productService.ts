@@ -1,12 +1,4 @@
-import axios from "axios";
-import { authService } from "./authService";
-
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
-const authHeader = () => {
-  const token = authService.getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import api from './api';
 
 export type ProductPayload = {
   sku: string;
@@ -20,55 +12,20 @@ export type ProductPayload = {
   brand?: string;
   providerId?: number | null;
   imageUrl?: string;
-  // branchId se obtiene automáticamente del interceptor
 };
 
 export type ProductSearchParams = {
   q?: string;
   onlyActive?: boolean;
-  branchId?: number; // ← NUEVO: parámetro para filtrado por sucursal
 };
 
 export const productService = {
-  getAll: (params?: ProductSearchParams) => 
-    axios.get(`${BASE}/products`, { 
-      params,
-      headers: { ...authHeader() } 
-    }),
-
-  getById: (id: string) => 
-    axios.get(`${BASE}/products/${id}`, { 
-      headers: { ...authHeader() } 
-    }),
-
-  create: (payload: ProductPayload) => 
-    axios.post(`${BASE}/products`, payload, { 
-      headers: { ...authHeader() } 
-    }),
-
-  update: (id: string, payload: Partial<ProductPayload>) => 
-    axios.put(`${BASE}/products/${id}`, payload, { 
-      headers: { ...authHeader() } 
-    }),
-
-  remove: (id: string) => 
-    axios.delete(`${BASE}/products/${id}`, { 
-      headers: { ...authHeader() } 
-    }),
-
-  search: (params?: ProductSearchParams) =>
-    axios.get(`${BASE}/products`, { 
-      params: params ?? {}, 
-      headers: { ...authHeader() } 
-  }),
-
-  deactivate: (id: string) => 
-    axios.patch(`${BASE}/products/${id}/deactivate`, {}, { 
-      headers: { ...authHeader() } 
-    }),
-
-  activate: (id: string) => 
-    axios.patch(`${BASE}/products/${id}/activate`, {}, { 
-      headers: { ...authHeader() } 
-    }),
+  getAll: (params?: ProductSearchParams) => api.get('/products', { params }),
+  getById: (id: string) => api.get(`/products/${id}`),
+  create: (payload: ProductPayload) => api.post('/products', payload),
+  update: (id: string, payload: Partial<ProductPayload>) => api.put(`/products/${id}`, payload),
+  remove: (id: string) => api.delete(`/products/${id}`),
+  search: (params?: ProductSearchParams) => api.get('/products', { params: params ?? {} }),
+  deactivate: (id: string) => api.patch(`/products/${id}/deactivate`, {}),
+  activate: (id: string) => api.patch(`/products/${id}/activate`, {}),
 };

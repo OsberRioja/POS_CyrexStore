@@ -1,61 +1,39 @@
-// src/services/userService.ts
-import axios from "axios";
-import { ApiErrorHandler } from "./apiErrorHandler";
-import  api  from "./api";
+import api from './api';
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  phone: string;
+  role: "ADMIN" | "SUPERVISOR" | "SELLER";
+  userCode?: number;
+  branchId?: number; // ← Ahora se incluirá automáticamente
+}
+
+export interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: "ADMIN" | "SUPERVISOR" | "SELLER";
+  password?: string;
+  branchId?: number;
+}
 
 export const userService = {
-  create: (data: any) => axios.post(`${BASE}/users`, data),
-  update: (id: string, data: any) => axios.put(`${BASE}/users/${id}`, data),
-  //remove: (id: string) => axios.delete(`${BASE}/users/${id}`),
+  // Obtener todos los usuarios
+  getUsers: () => api.get('/users'),
 
-  // obtener lista con búsqueda opcional
-  getUsers: (q?: string) => axios.get(`${BASE}/users`, { params: q ? { q } : {} }),
+  // Obtener usuario por ID
+  getUserById: (id: string) => api.get(`/users/${id}`),
 
-  // 🔎 nuevo: buscar vendedor por código
-  getByUsercode: (userCode: number, token?: string) =>
-    axios.get(`${BASE}/users/code/${userCode}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  }),
+  // Crear usuario
+  create: (payload: CreateUserPayload) => api.post('/users', payload),
 
-  getCurrentUser: () => {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
-    
-    // Decodificar el token JWT para obtener información del usuario
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return {
-        id: payload.id,
-        username: payload.username,
-        email: payload.email,
-        role: payload.role,
-        userCode: payload.userCode
-      };
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      return null;
-    }
-  },
-  
-  hasRole: (requiredRole: string) => {
-    const user = userService.getCurrentUser();
-    return user?.role === requiredRole;
-  },
-  
-  hasAnyRole: (requiredRoles: string[]) => {
-    const user = userService.getCurrentUser();
-    return requiredRoles.includes(user?.role || '');
-  },
+  // Actualizar usuario
+  update: (id: string, payload: UpdateUserPayload) => api.put(`/users/${id}`, payload),
 
-  async remove(id: string) {
-    try {
-      const response = await api.delete(`${BASE}/users/${id}`);
-      return response.data;
-  } catch (error) {
-      const message = ApiErrorHandler.handle(error);
-      throw new Error(message);
-    }
-  }
+  // Eliminar usuario
+  delete: (id: string) => api.delete(`/users/${id}`),
+
+  // Buscar usuarios
+  search: (query: string) => api.get('/users', { params: { q: query } }),
 };

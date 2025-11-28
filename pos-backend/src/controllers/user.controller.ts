@@ -6,8 +6,16 @@ export const UserController = {
   async create(req: Request, res: Response) {
     try {
       const dto: CreateUserDTO = req.body;
-      // ← NUEVO: Obtener branchId del usuario autenticado
+
+      console.log('🔍 UserController.create - Body recibido:', dto);
+      console.log('🔍 UserController.create - Headers:', req.headers);
+      console.log('🔍 UserController.create - User del token:', (req as any).user);
+      
+      // Obtener branchId del usuario autenticado
       const currentUserBranchId = (req as any).user?.branchId;
+
+      console.log('🔍 UserController.create - currentUserBranchId:', currentUserBranchId);
+
       const user = await UserService.createUser(dto, currentUserBranchId);
       return res.status(201).json(user);
     } catch (err: any) {
