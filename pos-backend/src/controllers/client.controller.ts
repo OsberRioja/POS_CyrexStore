@@ -13,7 +13,6 @@ export const ClienteController = {
     }
   },
 
-  // GET /api/clientes?q=...&page=1&limit=20
   async list(req: Request, res: Response) {
     try {
       const q = typeof req.query.q === "string" ? (req.query.q as string) : undefined;

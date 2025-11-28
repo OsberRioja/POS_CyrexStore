@@ -9,12 +9,21 @@ export const productController = {
 
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
-      if (!userBranchId) {
-        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      let targetBranchId = userBranchId;
+      
+      // Si es admin global, buscar branchId en el body
+      if (!targetBranchId) {
+        targetBranchId = req.body.branchId;
+        
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal (branchId en el body)" 
+          });
+        }
       }
 
       const dto = req.body;
-      const created = await productService.createProduct(dto, String(userId), userBranchId);
+      const created = await productService.createProduct(dto, String(userId), targetBranchId);
       return res.status(201).json(created);
     } catch (err: any) {
       console.error("POST /products error:", err);
@@ -28,15 +37,24 @@ export const productController = {
       
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
-      if (!userBranchId) {
-        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+      let targetBranchId = userBranchId;
+      
+      // Si es admin global, buscar branchId en query params
+      if (!targetBranchId) {
+        targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal via query param: ?branchId=1" 
+          });
+        }
       }
 
       let products;
       if (onlyActive === 'true') {
-        products = await productService.getProducts(userBranchId);
+        products = await productService.getProducts(targetBranchId);
       } else {
-        products = await productService.getAllProducts(true, userBranchId);
+        products = await productService.getAllProducts(true, targetBranchId);
       }
       
       // Si hay query de búsqueda, filtrar adicionalmente

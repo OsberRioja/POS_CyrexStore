@@ -1,7 +1,4 @@
-import axios from 'axios';
-
-// ✅ Usa ruta relativa para aprovechar el proxy de Vite
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import api from "./api";
 
 interface CreateSalePayload {
   sellerUserCode?: number;
@@ -36,7 +33,7 @@ class SaleServiceClass {
   }
 
   async create(payload: CreateSalePayload) {
-    const response = await axios.post(`${API_URL}/sales`, payload, {
+    const response = await api.post('/sales', payload, {
       headers: this.getAuthHeaders()
     });
     return response.data;
@@ -52,7 +49,7 @@ class SaleServiceClass {
   } = {}) {
     console.log('SaleService.list called with params:', params);
     
-    const response = await axios.get(`${API_URL}/sales`, {
+    const response = await api.get('/sales', {
       params, // Axios maneja los query params automáticamente
       headers: this.getAuthHeaders()
     });
@@ -62,21 +59,21 @@ class SaleServiceClass {
   }
 
   async getById(id: string) {
-    const response = await axios.get(`${API_URL}/sales/${id}`, {
+    const response = await api.get(`/sales/${id}`, {
       headers: this.getAuthHeaders()
     });
     return response.data;
   }
 
   async addPayment(saleId: string, payload: AddPaymentPayload) {
-    const response = await axios.post(`${API_URL}/sales/${saleId}/payments`, payload, {
+    const response = await api.post(`/sales/${saleId}/payments`, payload, {
       headers: this.getAuthHeaders()
     });
     return response.data;
   }
 
   async getPendingSales(params: { page?: number; limit?: number } = {}) {
-    const response = await axios.get(`${API_URL}/sales/pending`, {
+    const response = await api.get('/sales/pending', {
       params,
       headers: this.getAuthHeaders()
     });
@@ -84,7 +81,7 @@ class SaleServiceClass {
   }
 
   // async findByBox(cashBoxId: number) {
-  //   const response = await axios.get(`${API_URL}/sales`, {
+  //   const response = await api.get(`${API_URL}/sales`, {
   //     params: { cashBoxId },
   //     headers: this.getAuthHeaders()
   //   });
@@ -94,7 +91,7 @@ class SaleServiceClass {
   async debug() {
     console.log('SaleService.debug - Making debug request');
     
-    const response = await axios.get(`${API_URL}/sales/debug`, {
+    const response = await api.get('/sales/debug', {
       headers: this.getAuthHeaders()
     });
     
