@@ -1,14 +1,15 @@
+// En src/components/BranchFormModal.tsx - MEJORAR
 import { useState } from "react";
 import { useBranch } from "../hooks/useBranch";
 
 interface BranchFormModalProps {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newBranch?: any) => void;
   branch?: any;
 }
 
 export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFormModalProps) {
-  const { createBranch, loading: branchLoading } = useBranch();
+  const { createBranch } = useBranch();
   const [formData, setFormData] = useState({
     name: branch?.name || "",
     address: branch?.address || "",
@@ -20,9 +21,20 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validación básica
-    if (!formData.name.trim()) {
+    // Validación mejorada
+    const name = formData.name.trim();
+    if (!name) {
       setError("El nombre de la sucursal es requerido");
+      return;
+    }
+
+    if (name.length < 2) {
+      setError("El nombre debe tener al menos 2 caracteres");
+      return;
+    }
+
+    if (name.length > 50) {
+      setError("El nombre no puede exceder los 50 caracteres");
       return;
     }
 
@@ -30,12 +42,14 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
     setError(null);
 
     try {
-      await createBranch({
-        name: formData.name.trim(),
+      const newBranch = await createBranch({
+        name: name,
         address: formData.address.trim() || undefined,
         phone: formData.phone.trim() || undefined,
       });
-      onSuccess();
+      
+      // Llamar onSuccess con la nueva sucursal creada
+      onSuccess(newBranch);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -50,19 +64,31 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
     if (error) setError(null);
   };
 
-  const isLoading = submitting || branchLoading;
+  const isLoading = submitting;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md">
+      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {branch ? "Editar Sucursal" : "Crear Nueva Sucursal"}
-          </h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">
+              {branch ? "Editar Sucursal" : "Crear Nueva Sucursal"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-xl"
+              disabled={isLoading}
+            >
+              ×
+            </button>
+          </div>
           
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              <div className="flex items-center">
+                <span className="text-red-500 mr-2">⚠</span>
+                <span>{error}</span>
+              </div>
             </div>
           )}
 
@@ -78,9 +104,14 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
                 onChange={handleChange}
                 required
                 disabled={isLoading}
+                maxLength={50}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 placeholder="Ej: Sucursal Centro"
+                autoFocus
               />
+              <div className="text-xs text-gray-500 mt-1 text-right">
+                {formData.name.length}/50
+              </div>
             </div>
 
             <div>
@@ -113,7 +144,7 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={onClose}
@@ -125,7 +156,7 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center gap-2 min-w-[120px] justify-center"
               >
                 {isLoading ? (
                   <>

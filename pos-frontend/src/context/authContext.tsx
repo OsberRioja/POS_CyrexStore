@@ -84,11 +84,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Función para ingresar a una sucursal
   const enterBranch = (branchId: number) => {
+    console.log('🚀 Ejecutando enterBranch con branchId:', branchId);
     authService.saveSelectedBranch(branchId);
     setCurrentBranchId(branchId);
     setIsInBranchMode(true);
     authService.saveBranchMode(true);
     console.log(`🏪 Ingresando a sucursal: ${branchId}`);
+    console.log('📱 Estado actual - isInBranchMode:', true, 'currentBranchId:', branchId);
   };
 
   // Función para volver al home admin

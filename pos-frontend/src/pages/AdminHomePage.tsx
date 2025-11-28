@@ -1,5 +1,5 @@
-// En src/pages/AdminHomePage.tsx - ACTUALIZAR
-import { useState } from "react";
+// En src/pages/AdminHomePage.tsx - CORREGIR
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/authContext";
 import { useBranch } from "../hooks/useBranch";
 import BranchCard from "../components/BranchCard";
@@ -15,15 +15,30 @@ export default function AdminHomePage() {
     enterBranch 
   } = useBranch();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [justCreatedBranch, setJustCreatedBranch] = useState<any>(null);
 
-  // Manejar recarga después de crear sucursal
-  const handleCreateSuccess = () => {
+  // NUEVO: Efecto para ingresar automáticamente a la sucursal recién creada
+  useEffect(() => {
+    if (justCreatedBranch) {
+      console.log('🔄 Ingresando automáticamente a sucursal creada:', justCreatedBranch);
+      enterBranch(justCreatedBranch.id);
+      setJustCreatedBranch(null); // Resetear después de usar
+    }
+  }, [justCreatedBranch, enterBranch]);
+
+  // NUEVO: Función mejorada para manejar éxito en creación
+  const handleCreateSuccess = (newBranch: any) => {
+    console.log('✅ Sucursal creada exitosamente:', newBranch);
     setShowCreateModal(false);
-    // No necesitamos recargar manualmente porque el hook useBranch ya lo hace
+    setJustCreatedBranch(newBranch); // Esto activará el useEffect anterior
+    
+    // También recargamos la lista para asegurar
+    reloadBranches();
   };
 
-  // Función para manejar selección de sucursal
+  // NUEVO: Función para manejar selección manual de sucursal
   const handleSelectBranch = (branchId: number) => {
+    console.log('🎯 Seleccionando sucursal:', branchId);
     enterBranch(branchId);
   };
 
