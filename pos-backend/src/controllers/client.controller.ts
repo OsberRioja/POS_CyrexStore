@@ -29,7 +29,7 @@ export const ClienteController = {
         limit,
       });
     } catch (err: any) {
-      console.error("Error GET /api/clientes:", err);
+      console.error("Error GET /api/clients:", err);
       return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
     }
   },

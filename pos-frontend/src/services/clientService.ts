@@ -1,15 +1,17 @@
-import axios from "axios";
-
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import api from './api';
 
 export const clientService = {
   search: (params?: { q?: string; page?: number; limit?: number }) =>
-    axios.get(`${BASE}/clients`, { params: params ?? {} }),
+    api.get('/clients', { params: params ?? {} }),
 
-  create: (data: any) => axios.post(`${BASE}/clients`, data),
-  update: (id: number | string, data: any) => axios.put(`${BASE}/clients/${id}`, data),
-  remove: (id: number | string) => axios.delete(`${BASE}/clients/${id}`),
+  create: (data: any) => api.post('/clients', data),
+  
+  update: (id: number | string, data: any) => api.put(`/clients/${id}`, data),
+  
+  remove: (id: number | string) => api.delete(`/clients/${id}`),
+  
   getClients: (params?: { q?: string; page?: number; limit?: number }) =>
-    axios.get(`${BASE}/clients`, { params: params ?? {} }),
-  getById: (id: number | string) => axios.get(`${BASE}/clients/${id}`),
+    api.get('/clients', { params: params ?? {} }),
+    
+  getById: (id: number | string) => api.get(`/clients/${id}`),
 };
