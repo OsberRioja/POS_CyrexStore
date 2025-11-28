@@ -11,11 +11,25 @@ export const ExpenseController = {
 
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
-      if (!userBranchId) {
-        return res.status(403).json({ error: "Usuario no asignado a una sucursal" });
+
+      let targetBranchId = userBranchId;
+      // Si es admin global (branchId = null), buscar branchId alternativo
+      if (!targetBranchId) {
+        if (req.method === 'GET') {
+          targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        } 
+        else {
+          targetBranchId = req.body.branchId;
+        }
+
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
       }
 
-      const created = await ExpenseService.createExpense(dto, String(userId), userBranchId);
+      const created = await ExpenseService.createExpense(dto, String(userId), targetBranchId);
       return res.status(201).json(created);
     } catch (err: any) {
       console.error("POST /expenses:", err);
@@ -38,7 +52,23 @@ export const ExpenseController = {
   async listAll(req: Request, res: Response) {
     try {
       const userBranchId = (req as any).user?.branchId;
-      const list = await ExpenseService.listAll(userBranchId);
+      let targetBranchId = userBranchId;
+      // Si es admin global (branchId = null), buscar branchId alternativo
+      if (!targetBranchId) {
+        if (req.method === 'GET') {
+          targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        } 
+        else {
+          targetBranchId = req.body.branchId;
+        }
+
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
+      }
+      const list = await ExpenseService.listAll(targetBranchId);
       return res.json(list);
     } catch (err: any) {
       console.error("GET /expenses:", err);
