@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useAuth } from "../context/authContext";
+import { useBranch } from "../hooks/useBranch"; // Importar hook de sucursales
 import CurrencySelector from "./CurrencySelector";
 import BranchSelector from "./BranchSelector";
 
 export default function Navbar() {
   const { user, logout, isInBranchMode, exitToAdminHome } = useAuth();
+  const { branches, currentBranchId } = useBranch(); // Usar hook para obtener datos de sucursales
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Obtener la sucursal actual
+  const currentBranch = branches.find(branch => branch.id === currentBranchId);
 
   // Si no hay usuario, mostrar navbar básico
   if (!user) {
@@ -26,8 +31,11 @@ export default function Navbar() {
     <nav className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold text-gray-800">Sistema POS</h1>
-          <span className="text-sm text-gray-500">Tienda de Computadoras</span>
+          <h1 className="text-xl font-bold text-gray-800">CYREX STORE</h1>
+          <span className="text-sm text-gray-500">
+            {/* Mostrar nombre de sucursal si está en modo sucursal, sino mostrar texto genérico */}
+            {isInBranchMode && currentBranch ? currentBranch.name : "Tienda de Computadoras"}
+          </span>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -50,7 +58,7 @@ export default function Navbar() {
                 <div className="text-xs text-gray-500">#{user.userCode}</div>
                 {user.role === 'ADMIN' && user.branchId === null && (
                   <div className="text-xs text-blue-500">
-                    {isInBranchMode ? 'Administrador Global' : 'Modo Administración'}
+                    {isInBranchMode ? `Administrador en ${currentBranch?.name || 'Sucursal'}` : 'Modo Administración'}
                   </div>
                 )}
               </div>
@@ -64,12 +72,18 @@ export default function Navbar() {
                   <div className="text-xs text-gray-400">Código: #{user.userCode}</div>
                   {user.role === 'ADMIN' && user.branchId === null && (
                     <div className="text-xs text-blue-400">
-                      {isInBranchMode ? 'Administrador Global' : 'Modo Administración'}
+                      {isInBranchMode ? `Administrador en ${currentBranch?.name}` : 'Modo Administración'}
+                    </div>
+                  )}
+                  {/* Mostrar sucursal actual si está en modo sucursal */}
+                  {isInBranchMode && currentBranch && (
+                    <div className="text-xs text-green-600 mt-1">
+                      Sucursal: {currentBranch.name}
                     </div>
                   )}
                 </div>
                 
-                {/* Opción para volver al home admin si está en modo sucursal */}
+                {/* Opción para volver al home admin si está en modo sucursal y es admin global */}
                 {isInBranchMode && user.role === 'ADMIN' && user.branchId === null && (
                   <button
                     onClick={() => {
