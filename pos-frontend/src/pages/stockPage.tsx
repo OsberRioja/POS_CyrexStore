@@ -6,6 +6,7 @@ import {
   Filter, 
   TrendingUp,
   AlertTriangle,
+  AlertCircle,
   DollarSign,
   Wrench,
   MonitorPlay,
@@ -22,6 +23,8 @@ import ProductPrice from '../services/ProductPrice';
 import ActiveRepairsTable from '../components/ActiveRepairsTable';
 import ActiveDemosTable from '../components/ActiveDemosTable';
 import { productService } from '../services/productService';
+import SearchSalesBar from '../components/SearchSalesBar';
+import { saleService } from '../services/saleService';
 
 type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos';
 type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN';
@@ -38,6 +41,11 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true);
   const [activeRepairs, setActiveRepairs] = useState<any[]>([]);
   const [activeDemos, setActiveDemos] = useState<any[]>([]);
+
+  const [searchSaleId, setSearchSaleId] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   
   // Modales
@@ -99,6 +107,12 @@ export default function StockPage() {
       const filters: any = { limit: 50 };
       if (movementTypeFilter !== 'ALL') {
         filters.movementType = movementTypeFilter;
+      }
+
+      // Si hay búsqueda activa, usar saleId
+      if (searchSaleId) {
+        filters.saleId = searchSaleId;
+        filters.movementType = 'SALE';
       }
       
       const response = await stockService.listMovements(filters);
@@ -168,17 +182,79 @@ export default function StockPage() {
     setShowHistoryModal(true);
   };
 
+  const handleSearchSale = async (saleId: string) => {
+    setIsSearching(true);
+    setSearchError(null);
+    setSearchSaleId(saleId);
+
+    try {
+      // Primero intentamos buscar directamente la venta
+      const saleResponse = await saleService.searchById(saleId);
+
+      if (saleResponse.success && saleResponse.data) {
+        // Si encontramos la venta, buscamos sus movimientos
+        const movementsResponse = await stockService.listMovements({ 
+          saleId,
+          movementType: 'SALE'
+        });
+
+        setSearchResults(movementsResponse.data?.data || []);
+
+        // Si no hay movimientos pero sí hay venta, mostramos la info de la venta
+        if (movementsResponse.data?.data?.length === 0) {
+          setSearchResults([{ sale: saleResponse.data }]);
+        }
+      } else {
+        throw new Error(saleResponse.message || 'Venta no encontrada');
+      }
+    } catch (error: any) {
+      console.error('Error buscando venta:', error);
+      setSearchError(error.message || 'Error al buscar venta');
+      setSearchResults(null);
+
+      // También intentamos buscar movimientos directamente
+      try {
+        const movementsResponse = await stockService.listMovements({ 
+          saleId,
+          movementType: 'SALE'
+        });
+
+        if (movementsResponse.data?.data?.length > 0) {
+          setSearchResults(movementsResponse.data.data);
+          setSearchError(null);
+        }
+      } catch (movementsError) {
+        // Si ambos fallan, dejamos el error original
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // 4. Crear función para limpiar búsqueda
+  const handleClearSearch = () => {
+    setSearchSaleId(null);
+    setSearchResults(null);
+    setSearchError(null);
+    // Recargar movimientos normales
+    if (view === 'movements') {
+      loadMovements();
+    }
+  };
+
   const handleSuccess = () => {
     loadAll();
   };
 
   useEffect(() => {
-    if (movementTypeFilter !== 'ALL') {
+    if (searchSaleId && movementTypeFilter === 'SALE') {
+      loadMovements();
+    } else if (movementTypeFilter !== 'ALL') {
       loadMovements();
     } else {
       loadAll();
     }
-  }, [movementTypeFilter]);
+  }, [movementTypeFilter, searchSaleId]);
 
   if (loading) {
     return (
@@ -328,7 +404,13 @@ export default function StockPage() {
             <Filter size={20} className="text-gray-600" />
             <select
               value={movementTypeFilter}
-              onChange={(e) => setMovementTypeFilter(e.target.value as MovementTypeFilter)}
+              onChange={(e) => { 
+                setMovementTypeFilter(e.target.value as MovementTypeFilter);
+                //Si cambiamos el filtro y no es SALE limpiamos la búsqueda
+                if (e.target.value !== 'SLAE') {
+                  handleClearSearch();
+                }
+              }}
               className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">Todos los movimientos</option>
@@ -340,7 +422,32 @@ export default function StockPage() {
             </select>
           </div>
 
-          <StockMovementsTable movements={movements} />
+          {/* Componente de búsqueda condicional - SOLO para ventas */}
+          {movementTypeFilter === 'SALE' && (
+            <SearchSalesBar
+              onSearch={handleSearchSale}
+              onClear={handleClearSearch}
+              isSearching={isSearching}
+              searchResults={searchResults || undefined}
+              hasResults={!!searchSaleId}
+            />
+          )}
+
+          {/* Mostrar error de búsqueda si existe */}
+          {searchError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={20} className="text-red-600" />
+                <div>
+                  <p className="text-red-800 font-medium">Error en búsqueda</p>
+                  <p className="text-red-600 text-sm">{searchError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+          <StockMovementsTable movements={searchResults || movements} />
         </div>
       )}
 

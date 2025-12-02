@@ -20,6 +20,16 @@ interface Movement {
   };
   sale?: {
     id: string;
+    total: number;
+    createdAt: string;
+    client?: {
+      nombre: string;
+    };
+    seller?: {
+      name: string;
+      userCode: number;
+    };
+    paymentStatus?: string;
   };
   user: {
     name: string;
@@ -92,6 +102,7 @@ const StockMovementsTable: React.FC<StockMovementsTableProps> = ({ movements }) 
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venta</th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cantidad</th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Stock Anterior</th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Stock Nuevo</th>
@@ -119,6 +130,44 @@ const StockMovementsTable: React.FC<StockMovementsTableProps> = ({ movements }) 
                   {movement.movementType === 'PURCHASE' || movement.movementType === 'RETURN_IN' || (movement.movementType === 'ADJUSTMENT' && movement.quantity > 0) ? '+' : ''}
                   {movement.quantity}
                 </span>
+              </td>
+              <td className='px-6 py-4 whitespace-nowrap text-sm'>
+                {movement.sale ? (
+                  <div className='space-y-1'>
+                    <div className='flex items-center gap-1'>
+                      <span className='font-mono text-xs bg-gray-100 px-2 py-1 rounded'>
+                        {movement.sale.id.substring(0, 8)}...
+                      </span>
+                      {movement.sale.paymentStatus && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          movement.sale.paymentStatus === 'PAID'
+                          ? 'bg-green-100 text-green-800'
+                          : movement.sale.paymentStatus === 'PENDING'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {movement.sale.paymentStatus === 'PAID' ? 'Pagado' :
+                          movement.sale.paymentStatus === 'PENDING' ? 'Pendiente' : 'Parcial'}
+                        </span>
+                      )}
+                    </div>
+                    {movement.sale.client && (
+                      <div className="text-xs text-gray-500">
+                        Cliente: {movement.sale.client.nombre}
+                      </div>
+                    )}
+                    {movement.sale.seller && (
+                      <div className="text-xs text-gray-500">
+                        Vendedor: {movement.sale.seller.name} (#{movement.sale.seller.userCode})
+                      </div>
+                    )}
+                    <div className='text-xs font-medium'>
+                      Total: Bs. {movement.sale.total?.toFixed(2) || '0.00'}
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-gray-400">-</span>
+                )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600">
                 {movement.previousStock}

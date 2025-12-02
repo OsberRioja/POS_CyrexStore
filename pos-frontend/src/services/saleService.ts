@@ -80,13 +80,12 @@ class SaleServiceClass {
     return response.data;
   }
 
-  // async findByBox(cashBoxId: number) {
-  //   const response = await api.get(`${API_URL}/sales`, {
-  //     params: { cashBoxId },
-  //     headers: this.getAuthHeaders()
-  //   });
-  //   return response.data;
-  // }
+  async searchById(id: string) {
+    const response = await api.get(`/sales/search/${id}`, {
+      headers: this.getAuthHeaders()
+    });
+    return response.data;
+  }
 
   async debug() {
     console.log('SaleService.debug - Making debug request');

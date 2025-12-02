@@ -23,6 +23,7 @@ export const stockService = {
     dateTo?: string;
     page?: number;
     limit?: number;
+    saleId?: string;
   }) => {
     return axios.get(`${API_URL}/stock/movements`, {
       params,
@@ -171,5 +172,12 @@ export const stockService = {
     return axios.get(`${API_URL}/stock/summary`, {
       headers: getAuthHeaders()
     });
-  }
+  },
+
+  searchBySaleId: (saleId: string) => {
+    return axios.get(`${API_URL}/stock/movements`, {
+      params: { saleId, movementType: 'SALE' },
+      headers: getAuthHeaders()
+    });
+  },
 };
