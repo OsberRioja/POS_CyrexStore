@@ -190,6 +190,7 @@ export const StockMovementService = {
     dateTo?: string;
     page?: number;
     limit?: number;
+    saleId?: string;
   }) {
     const page = filters.page || 1;
     const limit = filters.limit || 50;
@@ -201,7 +202,8 @@ export const StockMovementService = {
       dateFrom: filters.dateFrom ? new Date(filters.dateFrom) : undefined,
       dateTo: filters.dateTo ? new Date(filters.dateTo) : undefined,
       skip,
-      take: limit
+      take: limit,
+      saleId: filters.saleId
     });
 
     return {

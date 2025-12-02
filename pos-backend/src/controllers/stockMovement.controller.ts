@@ -121,7 +121,7 @@ export const StockMovementController = {
    */
   async list(req: Request, res: Response) {
     try {
-      const { productId, movementType, dateFrom, dateTo, page, limit } = req.query;
+      const { productId, movementType, dateFrom, dateTo, page, limit, saleId } = req.query;
 
       const filters: any = {};
       if (productId) filters.productId = String(productId);
@@ -130,6 +130,7 @@ export const StockMovementController = {
       if (dateTo) filters.dateTo = String(dateTo);
       if (page) filters.page = Number(page);
       if (limit) filters.limit = Number(limit);
+      if (saleId) filters.saleId = String(saleId);
 
       const result = await StockMovementService.list(filters);
       return res.json(result);

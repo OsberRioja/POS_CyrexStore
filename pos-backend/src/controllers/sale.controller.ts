@@ -9,7 +9,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Opción 1: Todo como funciones exportadas individualmente (RECOMENDADO)
+// Todo como funciones exportadas individualmente
 export const create = async (req: Request, res: Response) => {
   try {
     const dto = req.body as CreateSaleDTO;
@@ -55,7 +55,7 @@ export const list = async (req: Request, res: Response) => {
     const dateTo = typeof req.query.dateTo === "string" ? req.query.dateTo : undefined;
     const paymentStatus = req.query.paymentStatus ? req.query.paymentStatus as PaymentStatus : undefined;
 
-    // ← NUEVO: Obtener branchId del usuario autenticado
+    // Obtener branchId del usuario autenticado
     const userBranchId = (req as any).user?.branchId;
     let targetBranchId = userBranchId;
 
@@ -95,9 +95,78 @@ export const list = async (req: Request, res: Response) => {
 export const getById = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
-    const sale = await SaleService.getById(id);
+    
+    // Obtener branchId del usuario autenticado
+    const userBranchId = (req as any).user?.branchId;
+    let targetBranchId = userBranchId;
+
+    // Si es admin global (branchId = null), buscar branchId alternativo
+    if (!targetBranchId) {
+      targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+      
+      if (!targetBranchId) {
+        return res.status(400).json({ 
+          error: "Para usuarios administradores, debe especificar una sucursal" 
+        });
+      }
+    }
+
+    console.log(`🔍 [GET BY ID] Buscando venta ${id} en sucursal ${targetBranchId}`);
+
+    const sale = await prisma.sale.findFirst({
+      where: {
+        id: id,
+        branchId: targetBranchId
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                salePrice: true
+              }
+            }
+          }
+        },
+        payments: {
+          include: {
+            paymentMethod: {
+              select: {
+                name: true,
+                isCash: true
+              }
+            }
+          }
+        },
+        seller: {
+          select: {
+            id: true,
+            name: true,
+            userCode: true
+          }
+        },
+        client: true,
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    if (!sale) {
+      console.log(`❌ [GET BY ID] Venta ${id} no encontrada en sucursal ${targetBranchId}`);
+      return res.status(404).json({ error: "Venta no encontrada" });
+    }
+
+    console.log(`✅ [GET BY ID] Venta encontrada: ${id}`);
     return res.json(sale);
   } catch (err: any) {
+    console.error("❌ [GET BY ID] Error:", err);
     return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
   }
 };
@@ -202,7 +271,7 @@ export const addPayment = async (req: Request, res: Response) => {
 };
 
 /**
- * NUEVO: Obtener ventas con saldo pendiente
+ * Obtener ventas con saldo pendiente
  */
 export const getPendingSales = async (req: Request, res: Response) => {
   try {
@@ -226,63 +295,97 @@ export const getPendingSales = async (req: Request, res: Response) => {
   }
 };
 
-// Agregar temporalmente en tu sale.controller.ts
-
-export const debugSales = async (req: Request, res: Response) => {
-  console.log('=== DEBUG SALES ENDPOINT ===');
-  
+export const searchById = async (req: Request, res: Response) => {
   try {
-    // 1. Verificar conexión directa a base de datos
-    const directQuery = await prisma.$queryRaw`
-      SELECT id, total, "totalPaid", balance, "paymentStatus", "createdAt" 
-      FROM "sales" 
-      ORDER BY "createdAt" DESC 
-      LIMIT 3
-    `;
-    console.log('Direct DB query result:', directQuery);
+    const saleId = req.params.id;
+    console.log(`🔍 Buscando venta ID: ${saleId}`);
     
-    // 2. Probar el repository directamente
-    console.log('Testing SaleRepository.findAll...');
-    const repoResult = await SaleRepository.findAll({ page: 1, limit: 10 });
-    console.log('Repository result:', {
-      total: repoResult.total,
-      dataLength: repoResult.data.length,
-      firstSale: repoResult.data[0] ? {
-        id: repoResult.data[0].id,
-        total: repoResult.data[0].total,
-        paymentStatus: (repoResult.data[0] as any).paymentStatus
-      } : null
-    });
-    
-    // 3. Probar el service
-    console.log('Testing SaleService.list...');
-    const serviceResult = await SaleService.list({ page: 1, limit: 10 });
-    console.log('Service result:', {
-      total: serviceResult.total,
-      dataLength: serviceResult.data?.length
-    });
-    
-    res.json({
-      directQuery,
-      repository: {
-        total: repoResult.total,
-        count: repoResult.data.length,
-        sample: repoResult.data.slice(0, 2)
+    if (!saleId || typeof saleId !== 'string') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de venta inválido' 
+      });
+    }
+
+    // Obtener branchId del usuario autenticado
+    const userBranchId = (req as any).user?.branchId;
+    let targetBranchId = userBranchId;
+
+    // Si es admin global (branchId = null), buscar branchId alternativo
+    if (!targetBranchId) {
+      // Para GET: buscar en query params
+      targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+      
+      if (!targetBranchId) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Para usuarios administradores, debe especificar una sucursal" 
+        });
+      }
+    }
+
+    // Buscar la venta con filtro de sucursal
+    const sale = await prisma.sale.findFirst({
+      where: {
+        id: saleId,
+        branchId: targetBranchId
       },
-      service: {
-        total: serviceResult.total,
-        count: serviceResult.data?.length,
-        sample: serviceResult.data?.slice(0, 2)
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                salePrice: true
+              }
+            }
+          }
+        },
+        payments: {
+          include: {
+            paymentMethod: {
+              select: {
+                name: true,
+                isCash: true
+              }
+            }
+          }
+        },
+        seller: {
+          select: {
+            id: true,
+            name: true,
+            userCode: true
+          }
+        },
+        client: true,
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       }
     });
-    
-  } catch (error: any) {
-    console.error('Debug error:', error);
-    res.status(500).json({ 
-      error: error?.message || 'Error desconocido',
-      stack: error?.stack || 'No stack available'
+
+    if (!sale) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Venta no encontrada' 
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: sale
+    });
+  } catch (err: any) {
+    console.error("GET /sales/search/:id:", err);
+    return res.status(err?.status || 500).json({ 
+      success: false,
+      error: err?.message || "Error interno" 
     });
   }
-  
-  console.log('=== DEBUG SALES END ===');
 };

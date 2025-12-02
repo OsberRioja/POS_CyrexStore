@@ -39,11 +39,13 @@ export const StockMovementRepository = {
     dateTo?: Date;
     skip?: number;
     take?: number;
+    saleId?: string;
   }) => {
     const where: any = {};
 
     if (filters.productId) where.productId = filters.productId;
     if (filters.movementType) where.movementType = filters.movementType;
+    if (filters.saleId) where.saleId = filters.saleId;
     
     if (filters.dateFrom || filters.dateTo) {
       where.createdAt = {};
