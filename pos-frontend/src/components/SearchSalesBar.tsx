@@ -7,6 +7,7 @@ interface SearchSalesBarProps {
   isSearching: boolean;
   searchResults?: any[];
   hasResults: boolean;
+  onViewDetails?: () => void;
 }
 
 const SearchSalesBar: React.FC<SearchSalesBarProps> = ({
@@ -14,7 +15,8 @@ const SearchSalesBar: React.FC<SearchSalesBarProps> = ({
   onClear,
   isSearching,
   searchResults,
-  hasResults
+  hasResults,
+  onViewDetails
 }) => {
   const [saleId, setSaleId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -149,18 +151,13 @@ const SearchSalesBar: React.FC<SearchSalesBarProps> = ({
                 </p>
               </div>
               {searchResults[0]?.sale && (
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Aquí podríamos abrir un modal con detalles completos de la venta
-                    console.log('Abrir detalles de venta:', searchResults[0].sale);
-                  }}
-                  className="text-sm text-blue-700 hover:text-blue-900 flex items-center gap-1"
+                <button
+                    onClick={() => onViewDetails && onViewDetails()}
+                    className='text-sm text-blue-700 hover:text-blue-900 flex items-center gap-1'
                 >
-                  Ver detalles
-                  <ExternalLink size={14} />
-                </a>
+                    Ver Detalles
+                    <ExternalLink size={14} />
+                </button>
               )}
             </div>
           </div>

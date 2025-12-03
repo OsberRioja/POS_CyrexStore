@@ -162,7 +162,7 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Navbar />
-      <div className="flex">
+      <div className="flex overflow-hidden">
         <Sidebar 
           selected={mainPage} 
           onSelect={(p) => {
@@ -176,7 +176,7 @@ function MainApp() {
         />
 
         {/* Contenedor principal */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 min-w-0 p-6">
           <div className="bg-white rounded-3xl shadow-sm min-h-[80vh] p-6 border border-gray-200">
             {mainPage === "caja" && <CashboxPage/>}
             {mainPage === "stock" && user?.role !== 'SELLER' && <StockPage />}

@@ -25,6 +25,7 @@ import ActiveDemosTable from '../components/ActiveDemosTable';
 import { productService } from '../services/productService';
 import SearchSalesBar from '../components/SearchSalesBar';
 import { saleService } from '../services/saleService';
+import SaleDetailsModal from '../components/SaleDetailModal';
 
 type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos';
 type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN';
@@ -55,6 +56,9 @@ export default function StockPage() {
   const [showPricesModal, setShowPricesModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+
+  const [selectedSaleForModal, setSelectedSaleForModal] = useState<any>(null);
+  const [showSaleDetailsModal, setShowSaleDetailsModal] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -186,12 +190,16 @@ export default function StockPage() {
     setIsSearching(true);
     setSearchError(null);
     setSearchSaleId(saleId);
+    setSelectedSaleForModal(null);
 
     try {
       // Primero intentamos buscar directamente la venta
       const saleResponse = await saleService.searchById(saleId);
 
       if (saleResponse.success && saleResponse.data) {
+        // Guardamos la venta completa
+        setSelectedSaleForModal(saleResponse.data);
+
         // Si encontramos la venta, buscamos sus movimientos
         const movementsResponse = await stockService.listMovements({ 
           saleId,
@@ -200,7 +208,7 @@ export default function StockPage() {
 
         setSearchResults(movementsResponse.data?.data || []);
 
-        // Si no hay movimientos pero sí hay venta, mostramos la info de la venta
+        // Si no hay movimientos, crear un resultado con la venta
         if (movementsResponse.data?.data?.length === 0) {
           setSearchResults([{ sale: saleResponse.data }]);
         }
@@ -231,11 +239,40 @@ export default function StockPage() {
     }
   };
 
+  const handleViewSaleDetails = async () => {
+    if (selectedSaleForModal) {
+      setShowSaleDetailsModal(true);
+      return;
+    }
+    if (searchResults && searchResults.length > 0 && searchResults[0]?.sale?.id) {
+      setIsSearching(true);
+      try {
+        const saleId = searchResults[0].sale.id;
+        const saleResponse = await saleService.searchById(saleId);
+        if (saleResponse.success) {
+          setSelectedSaleForModal(saleResponse.data);
+          setShowSaleDetailsModal(true);
+        }
+      } catch (error) {
+        console.error('Error obteniendo detalles de venta:', error);
+        // Si falla, intentar usar la venta básica que ya tenemos
+        if (searchResults[0]?.sale) {
+          setSelectedSaleForModal(searchResults[0].sale);
+          setShowSaleDetailsModal(true);
+        }
+      } finally {
+        setIsSearching(false);
+      }
+    }
+  };
+
+
   // 4. Crear función para limpiar búsqueda
   const handleClearSearch = () => {
     setSearchSaleId(null);
     setSearchResults(null);
     setSearchError(null);
+    setSelectedSaleForModal(null);
     // Recargar movimientos normales
     if (view === 'movements') {
       loadMovements();
@@ -268,7 +305,7 @@ export default function StockPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -400,14 +437,15 @@ export default function StockPage() {
       {/* Vista de Movimientos */}
       {view === 'movements' && (
         <div className="space-y-4">
+          {/* Filtros existentes */}
           <div className="flex items-center gap-4 bg-white p-4 rounded-lg shadow">
             <Filter size={20} className="text-gray-600" />
             <select
               value={movementTypeFilter}
               onChange={(e) => { 
                 setMovementTypeFilter(e.target.value as MovementTypeFilter);
-                //Si cambiamos el filtro y no es SALE limpiamos la búsqueda
-                if (e.target.value !== 'SLAE') {
+                // Si cambiamos el filtro y no es SALE limpiamos la búsqueda
+                if (e.target.value !== 'SALE') {
                   handleClearSearch();
                 }
               }}
@@ -421,15 +459,16 @@ export default function StockPage() {
               <option value="RETURN_IN">Devoluciones</option>
             </select>
           </div>
-
+            
           {/* Componente de búsqueda condicional - SOLO para ventas */}
-          {movementTypeFilter === 'SALE' && (
+          {view === 'movements' && movementTypeFilter === 'SALE' && (
             <SearchSalesBar
               onSearch={handleSearchSale}
               onClear={handleClearSearch}
               isSearching={isSearching}
               searchResults={searchResults || undefined}
               hasResults={!!searchSaleId}
+              onViewDetails={handleViewSaleDetails}
             />
           )}
 
@@ -446,8 +485,24 @@ export default function StockPage() {
             </div>
           )}
 
-
-          <StockMovementsTable movements={searchResults || movements} />
+          {/* 🎯 CONTENEDOR CON SCROLL HORIZONTAL - AQUÍ ESTÁ LA SOLUCIÓN */}
+            <StockMovementsTable
+              movements={searchResults || movements}
+              onViewSale={(sale) => {
+                saleService.searchById(sale.id)
+                  .then(response => {
+                    if (response.success) {
+                      setSelectedSaleForModal(response.data);
+                      setShowSaleDetailsModal(true);
+                    }
+                  })
+                  .catch(err => {
+                    console.error('Error obteniendo detalles de venta:', err);
+                    setSelectedSaleForModal(sale);
+                    setShowSaleDetailsModal(true);
+                  });
+              }}
+            />
         </div>
       )}
 
@@ -711,6 +766,16 @@ export default function StockPage() {
           onClose={() => {
             setShowHistoryModal(false);
             setSelectedProduct(null);
+          }}
+        />
+      )}
+
+      {showSaleDetailsModal && selectedSaleForModal && (
+        <SaleDetailsModal
+          sale={selectedSaleForModal}
+          onClose={() => {
+            setShowSaleDetailsModal(false);
+            // No limpiamos selectedSaleForModal para mantener los datos si se vuelve a abrir
           }}
         />
       )}

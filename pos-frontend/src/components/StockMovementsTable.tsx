@@ -39,15 +39,23 @@ interface Movement {
 
 interface StockMovementsTableProps {
   movements: Movement[];
+  onViewSale?: (sale: any) => void;
 }
 
-const StockMovementsTable: React.FC<StockMovementsTableProps> = ({ movements }) => {
-  // Verificar que movements sea un array
+const StockMovementsTable: React.FC<StockMovementsTableProps> = ({ movements, onViewSale }) => {
   if (!Array.isArray(movements)) {
-    console.error('Movements no es un array:', movements);
     return (
       <div className="text-center py-8 text-red-600">
         Error: Los datos de movimientos no están en el formato correcto
+      </div>
+    );
+  }
+
+  if (movements.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+        <Package size={48} className="mx-auto mb-4 text-gray-400" />
+        <p>No hay movimientos registrados</p>
       </div>
     );
   }
@@ -77,126 +85,186 @@ const StockMovementsTable: React.FC<StockMovementsTableProps> = ({ movements }) 
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('es-BO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('es-BO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Fecha inválida';
+    }
   };
 
-  if (movements.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
-        <Package size={48} className="mx-auto mb-4 text-gray-400" />
-        <p>No hay movimientos registrados</p>
-      </div>
-    );
-  }
+  const getQuantityColor = (movement: Movement) => {
+    const { movementType, quantity } = movement;
+    
+    if (movementType === 'PURCHASE' || movementType === 'RETURN_IN') {
+      return 'text-green-600';
+    }
+    
+    if (movementType === 'SALE' || movementType === 'REPAIR_OUT' || movementType === 'DEMO_OUT') {
+      return 'text-red-600';
+    }
+    
+    if (movementType === 'ADJUSTMENT') {
+      return quantity > 0 ? 'text-green-600' : 'text-red-600';
+    }
+    
+    return 'text-gray-600';
+  };
+
+  const getQuantitySign = (movement: Movement) => {
+    const { movementType, quantity } = movement;
+    
+    if (movementType === 'PURCHASE' || movementType === 'RETURN_IN') {
+      return '+';
+    }
+    
+    if (movementType === 'SALE' || movementType === 'REPAIR_OUT' || movementType === 'DEMO_OUT') {
+      return '';
+    }
+    
+    if (movementType === 'ADJUSTMENT') {
+      return quantity > 0 ? '+' : '';
+    }
+    
+    return '';
+  };
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <table className="w-full">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venta</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cantidad</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Stock Anterior</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Stock Nuevo</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notas</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {movements.map((movement) => (
-            <tr key={movement.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {formatDate(movement.createdAt)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getMovementBadge(movement.movementType)}`}>
-                  {getMovementLabel(movement.movementType)}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold">
-                <span className={
-                  movement.movementType === 'PURCHASE' || movement.movementType === 'RETURN_IN' || movement.movementType === 'ADJUSTMENT' && movement.quantity > 0
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                }>
-                  {movement.movementType === 'PURCHASE' || movement.movementType === 'RETURN_IN' || (movement.movementType === 'ADJUSTMENT' && movement.quantity > 0) ? '+' : ''}
-                  {movement.quantity}
-                </span>
-              </td>
-              <td className='px-6 py-4 whitespace-nowrap text-sm'>
-                {movement.sale ? (
-                  <div className='space-y-1'>
-                    <div className='flex items-center gap-1'>
-                      <span className='font-mono text-xs bg-gray-100 px-2 py-1 rounded'>
-                        {movement.sale.id.substring(0, 8)}...
-                      </span>
-                      {movement.sale.paymentStatus && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          movement.sale.paymentStatus === 'PAID'
-                          ? 'bg-green-100 text-green-800'
-                          : movement.sale.paymentStatus === 'PENDING'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {movement.sale.paymentStatus === 'PAID' ? 'Pagado' :
-                          movement.sale.paymentStatus === 'PENDING' ? 'Pendiente' : 'Parcial'}
-                        </span>
+    <div className="w-full border border-gray-300 rounded-lg bg-white shadow">
+      <div className='overflow-x-auto'>
+        <div className='inline-block min-w-full align-middle'>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Ant.</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Nuevo</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venta/Prov.</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notas</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {movements.map((movement) => (
+                <tr key={movement.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(movement.createdAt)}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getMovementBadge(movement.movementType)}`}>
+                      {getMovementLabel(movement.movementType)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="max-w-[180px]">
+                      <div className="font-medium text-gray-900 truncate" title={movement.product?.name || 'Sin nombre'}>
+                        {movement.product?.name || 'Sin nombre'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        SKU: {movement.product?.sku || 'N/A'}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`text-sm font-semibold ${getQuantityColor(movement)}`}>
+                      {getQuantitySign(movement)}
+                      {movement.quantity}
+                    </span>
+                    {movement.unitCost !== undefined && movement.unitCost !== null && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Costo: Bs. {movement.unitCost.toFixed(2)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-600">
+                    {movement.previousStock}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
+                    {movement.newStock}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    {movement.sale ? (
+                      <div className="space-y-1 min-w-[200px]">
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                            {movement.sale.id?.substring(0, 8) || 'ID'}
+                          </span>
+                          {movement.sale.paymentStatus && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              movement.sale.paymentStatus === 'PAID'
+                                ? 'bg-green-100 text-green-800'
+                                : movement.sale.paymentStatus === 'PENDING'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {movement.sale.paymentStatus === 'PAID' ? 'Pagado' :
+                               movement.sale.paymentStatus === 'PENDING' ? 'Pendiente' : 'Parcial'}
+                            </span>
+                          )}
+                        </div>
+                        {movement.sale.client && (
+                          <div className="text-xs text-gray-500 truncate" title={movement.sale.client.nombre}>
+                            Cliente: {movement.sale.client.nombre}
+                          </div>
+                        )}
+                        {onViewSale && movement.sale.id && (
+                          <button
+                            onClick={() => onViewSale(movement.sale)}
+                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1"
+                          >
+                            Ver detalles
+                          </button>
+                        )}
+                      </div>
+                    ) : movement.provider ? (
+                      <div>
+                        <div className="font-medium text-gray-900">{movement.provider.name}</div>
+                        <div className="text-xs text-gray-500">Proveedor</div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    <div>
+                      <div className="font-medium">{movement.user?.name || 'Sistema'}</div>
+                      {movement.user?.userCode && (
+                        <div className="text-xs text-gray-500">#{movement.user.userCode}</div>
                       )}
                     </div>
-                    {movement.sale.client && (
-                      <div className="text-xs text-gray-500">
-                        Cliente: {movement.sale.client.nombre}
-                      </div>
-                    )}
-                    {movement.sale.seller && (
-                      <div className="text-xs text-gray-500">
-                        Vendedor: {movement.sale.seller.name} (#{movement.sale.seller.userCode})
-                      </div>
-                    )}
-                    <div className='text-xs font-medium'>
-                      Total: Bs. {movement.sale.total?.toFixed(2) || '0.00'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
+                    <div className="space-y-1">
+                      {movement.notes && (
+                        <div className="truncate" title={movement.notes}>
+                          <span className="font-medium">Nota:</span> {movement.notes}
+                        </div>
+                      )}
+                      {movement.reason && (
+                        <div className="truncate text-blue-600" title={movement.reason}>
+                          <span className="font-medium">Razón:</span> {movement.reason}
+                        </div>
+                      )}
+                      {!movement.notes && !movement.reason && (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </div>
-                  </div>
-                ) : (
-                  <span className="text-gray-400">-</span>
-                )}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-600">
-                {movement.previousStock}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
-                {movement.newStock}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                <div>
-                  <div className="font-medium">{movement.user?.name || 'Sistema'}</div>
-                  {movement.user?.userCode && (
-                    <div className="text-xs text-gray-500">#{movement.user.userCode}</div>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
-                <div className="truncate" title={movement.notes}>
-                  {movement.notes || '-'}
-                </div>
-                {movement.reason && (
-                  <div className="text-xs text-blue-600 mt-1">
-                    <strong>Razón:</strong> {movement.reason}
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
