@@ -121,7 +121,7 @@ export const StockMovementController = {
    */
   async list(req: Request, res: Response) {
     try {
-      const { productId, movementType, dateFrom, dateTo, page, limit, saleId } = req.query;
+      const { productId, movementType, dateFrom, dateTo, page, limit, saleId, branchId } = req.query;
 
       const filters: any = {};
       if (productId) filters.productId = String(productId);
@@ -131,6 +131,7 @@ export const StockMovementController = {
       if (page) filters.page = Number(page);
       if (limit) filters.limit = Number(limit);
       if (saleId) filters.saleId = String(saleId);
+      if (branchId) filters.branchId = Number(branchId);
 
       const result = await StockMovementService.list(filters);
       return res.json(result);
@@ -145,15 +146,22 @@ export const StockMovementController = {
    */
   async getProductHistory(req: Request, res: Response) {
     try {
+      const userBranchId = (req as any).user?.branchId;
+      let targetBranchId = userBranchId;
+
+      // Manejar admin global
+      if (!targetBranchId) {
+        targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
+      }
       const productId = req.params.productId;
-      const history = await StockMovementService.getProductHistory(productId);
-      res.json(history);
-
-      // if (!productId) {
-      //   return res.status(400).json({ error: "productId es requerido" });
-      // }
-
-      
+      const history = await StockMovementService.getProductHistory(productId, targetBranchId);
+      res.json(history);      
     } catch (err: any) {
       console.error("GET /stock/product/:productId/history:", err);
       res.status(500).json({ error: "Error interno" });
@@ -200,11 +208,9 @@ export const StockMovementController = {
   async getPriceHistory(req: Request, res: Response) {
     try {
       const { productId } = req.params;
-      console.log(`🎯 Controlador: Obteniendo historial de precios para ${productId}`);
 
       const history = await StockMovementService.getPriceHistory(productId);
 
-      console.log(`✅ Controlador: Enviando ${history.data?.length || 0} registros de precio`);
       res.json(history);
     } catch (error: any) {
       console.error('❌ Controlador - Error en getPriceHistory:', error);
@@ -220,9 +226,29 @@ export const StockMovementController = {
    */
   async getInventorySummary(req: Request, res: Response) {
     try {
+
+      const userBranchId = (req as any).user?.branchId;
+      let targetBranchId = userBranchId;
+
+      // Si es admin global (branchId = null), buscar branchId alternativo
+      if (!targetBranchId) {
+        // Para GET: buscar en query params
+        if (req.method === 'GET') {
+          targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        } 
+        else {
+          targetBranchId = req.body.branchId;
+        }
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
+      }
       // Productos con bajo stock
       const lowStockProducts = await prisma.product.findMany({
         where: {
+          ...(targetBranchId && { branchId: targetBranchId }),
           stock: { lte: 5 }
         },
         select: {
@@ -238,14 +264,19 @@ export const StockMovementController = {
     
       // Productos sin stock
       const outOfStockProducts = await prisma.product.count({
-        where: { stock: 0 }
+        where: {
+          ...(targetBranchId && { branchId: targetBranchId }),
+          stock: 0 }
       });
     
       // Total de productos
-      const totalProducts = await prisma.product.count();
+      const totalProducts = await prisma.product.count({
+        where: targetBranchId ? { branchId: targetBranchId } : undefined
+      });
     
       // ✅ Valor total del inventario (stock * costPrice)
       const allProducts = await prisma.product.findMany({
+        where: targetBranchId ? { branchId: targetBranchId } : undefined,
         select: {
           stock: true,
           costPrice: true
@@ -277,12 +308,28 @@ export const StockMovementController = {
   */
   async getActiveRepairs(req: Request, res: Response) {
     try {
-      console.log('🔧 GET /api/stock/active-repairs - Iniciando...');
-      const repairs = await StockMovementService.getActiveRepairs();
-      console.log(`🔧 GET /api/stock/active-repairs - Encontradas: ${repairs.length} reparaciones`);
+      const userBranchId = (req as any).user?.branchId;
+      let targetBranchId = userBranchId;
+
+      // Si es admin global (branchId = null), buscar branchId alternativo
+      if (!targetBranchId) {
+        // Para GET: buscar en query params
+        if (req.method === 'GET') {
+          targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        } 
+        else {
+          targetBranchId = req.body.branchId;
+        }
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
+      }
+
+      const repairs = await StockMovementService.getActiveRepairs(targetBranchId);
       res.json(repairs);
     } catch (err: any) {
-      console.error("❌ GET /stock/active-repairs - ERROR:", err);
       console.error("❌ Stack trace:", err.stack);
       return res.status(500).json({ error: "Error interno", message: err?.message, details: process.env.NODE_ENV === 'development' ? err.stack : undefined });
     }
@@ -293,7 +340,25 @@ export const StockMovementController = {
   */
   async getActiveDemos(req: Request, res: Response) {
     try {
-      const demos = await StockMovementService.getActiveDemos();
+      const userBranchId = (req as any).user?.branchId;
+      let targetBranchId = userBranchId;
+
+      // Si es admin global (branchId = null), buscar branchId alternativo
+      if (!targetBranchId) {
+        // Para GET: buscar en query params
+        if (req.method === 'GET') {
+          targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        } 
+        else {
+          targetBranchId = req.body.branchId;
+        }
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
+      }
+      const demos = await StockMovementService.getActiveDemos(targetBranchId);
       res.json(demos);
     } catch (err: any) {
       console.error("GET /stock/active-demos:", err);

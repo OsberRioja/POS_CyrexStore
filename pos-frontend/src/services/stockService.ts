@@ -1,14 +1,12 @@
-import axios from 'axios';
+import api from "./api";
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
-};
+// const getAuthHeaders = () => {
+//   const token = localStorage.getItem('token');
+//   return {
+//     'Authorization': `Bearer ${token}`,
+//     'Content-Type': 'application/json'
+//   };
+// };
 
 export const stockService = {
   // ========== MOVIMIENTOS ==========
@@ -25,10 +23,7 @@ export const stockService = {
     limit?: number;
     saleId?: string;
   }) => {
-    return axios.get(`${API_URL}/stock/movements`, {
-      params,
-      headers: getAuthHeaders()
-    });
+    return api.get(`/stock/movements`, { params });
   },
 
   /**
@@ -41,9 +36,7 @@ export const stockService = {
     providerId?: number;
     notes?: string;
   }) => {
-    return axios.post(`${API_URL}/stock/purchase`, data, {
-      headers: getAuthHeaders()
-    });
+    return api.post(`/stock/purchase`, data);
   },
 
   /**
@@ -55,9 +48,7 @@ export const stockService = {
     reason: string;
     notes?: string;
   }) => {
-    return axios.post(`${API_URL}/stock/repair-out`, data, {
-      headers: getAuthHeaders()
-    });
+    return api.post(`/stock/repair-out`, data);
   },
 
   /**
@@ -69,9 +60,7 @@ export const stockService = {
     reason: string;
     notes?: string;
   }) => {
-    return axios.post(`${API_URL}/stock/demo-out`, data, {
-      headers: getAuthHeaders()
-    });
+    return api.post(`/stock/demo-out`, data);
   },
 
   /**
@@ -82,27 +71,21 @@ export const stockService = {
     items: Array<{ productId: string; quantity: number }>;
     notes?: string;
   }) => {
-    return axios.post(`${API_URL}/stock/return`, data, {
-      headers: getAuthHeaders()
-    });
+    return api.post(`/stock/return`, data);
   },
 
   /**
     * Obtener reparaciones activas
   */
   getActiveRepairs: () => {
-    return axios.get(`${API_URL}/stock/active-repairs`, {
-      headers: getAuthHeaders()
-    });
+    return api.get(`/stock/active-repairs`);
   },
 
   /**
     * Obtener demos activas
   */
   getActiveDemos: () => {
-    return axios.get(`${API_URL}/stock/active-demos`, {
-      headers: getAuthHeaders()
-    });
+    return api.get(`/stock/active-demos`);
   },
 
   /**
@@ -112,9 +95,7 @@ export const stockService = {
     notes?: string;
     resolution?: string;
   }) => {
-    return axios.post(`${API_URL}/stock/repair/${movementId}/complete`, data, {
-      headers: getAuthHeaders()
-    });
+    return api.post(`/stock/repair/${movementId}/complete`, data);
   },
 
   /**
@@ -124,9 +105,7 @@ export const stockService = {
     notes?: string;
     resolution?: string;
   }) => {
-    return axios.post(`${API_URL}/stock/demo/${movementId}/complete`, data, {
-      headers: getAuthHeaders()
-    });
+    return api.post(`/stock/demo/${movementId}/complete`, data);
   },
 
 
@@ -136,9 +115,7 @@ export const stockService = {
    * Historial de un producto
    */
   getProductHistory: (productId: string) => {
-    return axios.get(`${API_URL}/stock/product/${productId}/history`, {
-      headers: getAuthHeaders()
-    });
+    return api.get(`/stock/product/${productId}/history`);
   },
 
   /**
@@ -149,18 +126,14 @@ export const stockService = {
     salePrice?: number;
     notes?: string;
   }) => {
-    return axios.put(`${API_URL}/stock/product/${productId}/prices`, data, {
-      headers: getAuthHeaders()
-    });
+    return api.put(`/stock/product/${productId}/prices`, data);
   },
 
   /**
    * Historial de precios
    */
   getPriceHistory: (productId: string) => {
-    return axios.get(`${API_URL}/stock/product/${productId}/price-history`, {
-      headers: getAuthHeaders()
-    });
+    return api.get(`/stock/product/${productId}/price-history`);
   },
 
   // ========== RESUMEN ==========
@@ -169,15 +142,12 @@ export const stockService = {
    * Resumen de inventario
    */
   getSummary: () => {
-    return axios.get(`${API_URL}/stock/summary`, {
-      headers: getAuthHeaders()
-    });
+    return api.get(`/stock/summary`);
   },
 
   searchBySaleId: (saleId: string) => {
-    return axios.get(`${API_URL}/stock/movements`, {
-      params: { saleId, movementType: 'SALE' },
-      headers: getAuthHeaders()
+    return api.get(`/stock/movements`, {
+      params: { saleId, movementType: 'SALE' }
     });
   },
 };

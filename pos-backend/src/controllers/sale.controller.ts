@@ -111,7 +111,6 @@ export const getById = async (req: Request, res: Response) => {
       }
     }
 
-    console.log(`🔍 [GET BY ID] Buscando venta ${id} en sucursal ${targetBranchId}`);
 
     const sale = await prisma.sale.findFirst({
       where: {

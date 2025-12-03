@@ -191,6 +191,7 @@ export const StockMovementService = {
     page?: number;
     limit?: number;
     saleId?: string;
+    branchId?: number;
   }) {
     const page = filters.page || 1;
     const limit = filters.limit || 50;
@@ -203,7 +204,8 @@ export const StockMovementService = {
       dateTo: filters.dateTo ? new Date(filters.dateTo) : undefined,
       skip,
       take: limit,
-      saleId: filters.saleId
+      saleId: filters.saleId,
+      branchId: filters.branchId
     });
 
     return {
@@ -217,11 +219,22 @@ export const StockMovementService = {
   /**
    * Historial de un producto específico
    */
-  async getProductHistory(productId: string) {
-    console.log(`🔍 Buscando historial para producto: ${productId}`);
-    const movements = await StockMovementRepository.getProductHistory(productId);
-    console.log(`📦 Movimientos encontrados: ${movements.length}`);
-    return { data: movements }; // ← Asegurar que devuelve { data: [...] }
+  async getProductHistory(productId: string, branchId?: number) {
+    const movements = await StockMovementRepository.getProductHistory(productId, branchId);
+    // Verificar si se encontraron movimientos
+    if (movements.length === 0) {
+      console.log(`⚠️ No se encontraron movimientos para el producto ${productId} en la sucursal ${branchId}`);
+    } else {
+      console.log(`📦 Movimientos encontrados: ${movements.length}`);
+    }
+
+    return { 
+      success: true,
+      data: movements,
+      message: movements.length === 0 ? 
+        `No se encontraron movimientos para este producto${branchId ? ' en la sucursal especificada' : ''}` : 
+        `${movements.length} movimientos encontrados`
+    };
   },
 
   /**
@@ -304,16 +317,30 @@ export const StockMovementService = {
   /**
     * Obtener reparaciones activas
     */
-  async getActiveRepairs() {
+  async getActiveRepairs(branchId?: number) {
+    const where: any = {
+      movementType: 'REPAIR_OUT',
+      isCompleted: false
+    };
+
+    // Filtrar por branchId si se proporciona
+    if (branchId !== undefined) {
+      where.product = {
+        branchId: branchId
+      };
+    }
+
     return prisma.stockMovement.findMany({
-      where: {
-        movementType: 'REPAIR_OUT',
-        isCompleted: false // ← Solo reparaciones no completadas
-      },
+      where,
       include: {
         product: {
-          select: { id: true, name: true, sku: true, stock: true,
-            provider:{
+          select: { 
+            id: true, 
+            name: true, 
+            sku: true, 
+            stock: true,
+            branchId: true,
+            provider: {
               select: {
                 id_provider: true,
                 name: true,
@@ -334,15 +361,30 @@ export const StockMovementService = {
   /**
     * Obtener demos activas
   */
-  async getActiveDemos() {
+  async getActiveDemos(branchId?: number) {
+    const where: any = {
+      movementType: 'DEMO_OUT', 
+      isCompleted: false
+    };
+
+    // Filtrar por branchId si se proporciona
+    if (branchId !== undefined) {
+      where.product = {
+        branchId: branchId
+      };
+    }
+
     return prisma.stockMovement.findMany({
-      where: {
-        movementType: 'DEMO_OUT', 
-        isCompleted: false // ← Solo demos no completadas
-      },
+      where,
       include: {
         product: {
-          select: { id: true, name: true, sku: true, stock: true }
+          select: { 
+            id: true, 
+            name: true, 
+            sku: true, 
+            stock: true,
+            branchId: true
+          }
         },
         user: {
           select: { name: true, userCode: true }

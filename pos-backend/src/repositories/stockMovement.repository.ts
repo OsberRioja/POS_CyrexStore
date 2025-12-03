@@ -40,12 +40,19 @@ export const StockMovementRepository = {
     skip?: number;
     take?: number;
     saleId?: string;
+    branchId?: number;
   }) => {
     const where: any = {};
 
     if (filters.productId) where.productId = filters.productId;
     if (filters.movementType) where.movementType = filters.movementType;
     if (filters.saleId) where.saleId = filters.saleId;
+
+    if (filters.branchId !== undefined) {
+      where.product = {
+        branchId: filters.branchId
+      };
+    }
     
     if (filters.dateFrom || filters.dateTo) {
       where.createdAt = {};
@@ -61,7 +68,7 @@ export const StockMovementRepository = {
         orderBy: { createdAt: 'desc' },
         include: {
           product: {
-            select: { id: true, name: true, sku: true, stock: true }
+            select: { id: true, name: true, sku: true, stock: true, branchId: true }
           },
           provider: {
             select: { id_provider: true, name: true }
@@ -80,12 +87,29 @@ export const StockMovementRepository = {
     return { movements, total };
   },
 
-  getProductHistory: async (productId: string, limit: number = 50) => {
+  getProductHistory: async (productId: string, branchId?: number, limit: number = 50) => {
+    const where: any = { productId };
+    
+    // Filtrar directamente por branchId a través de la relación con Product
+    if (branchId !== undefined) {
+      where.product = {
+        branchId: branchId
+      };
+    }
+
     return prisma.stockMovement.findMany({
-      where: { productId },
+      where,
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
+        product: {
+          select: {
+            name: true,
+            sku: true,
+            branchId: true, // ← Incluir branchId para verificación en frontend
+            branch: { select: { name: true } } // ← Incluir información de la sucursal
+          }
+        },
         provider: {
           select: { name: true }
         },
@@ -93,21 +117,28 @@ export const StockMovementRepository = {
           select: { name: true, userCode: true }
         },
         sale: {
-          select: { id: true,
-          client: {
-            select: { nombre: true }
+          select: { 
+            id: true,
+            total: true,
+            createdAt: true,
+            client: {
+              select: { nombre: true }
+            },
+            seller: {
+              select: { name: true, userCode: true }
+            },
+            paymentStatus: true
+          }
+        },
+        return: {
+          select: {
+            id: true,
+            reason: true
           }
         }
-      },
-      return: {
-        select: {
-          id: true,
-          reason: true
-        }
       }
-    }
     });
-  }
+  },
 };
 
 export const PriceHistoryRepository = {
