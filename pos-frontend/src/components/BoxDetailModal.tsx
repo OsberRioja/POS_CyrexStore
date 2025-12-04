@@ -14,7 +14,7 @@ export default function BoxDetailsModal({ boxId, onClose, token }: { boxId: numb
   async function load() {
     setLoading(true);
     try {
-      const r = await cashboxService.getById(boxId, token);
+      const r = await cashboxService.getById(boxId);
       const data = r.data;
       setBox(data.box ?? data);
       setSales(data.sales ?? []);
