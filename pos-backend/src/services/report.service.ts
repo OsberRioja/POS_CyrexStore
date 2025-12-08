@@ -16,6 +16,8 @@ export const reportService = {
                   select: {
                     name: true,
                     sku: true,
+                    costPrice: true,
+                    priceCurrency: true
                   }
                 }
               }
@@ -764,9 +766,21 @@ export const reportService = {
                 product: {
                   select: {
                     name: true,
-                    sku: true
+                    sku: true,
+                    costPrice: true,
+                    priceCurrency: true
                   }
                 }
+              },
+              select: {
+                id: true,
+                quantity: true,
+                unitPrice: true,
+                subtotal: true,
+                originalPrice: true,
+                originalCurrency: true,
+                conversionRate: true,
+                product: true
               }
             }
           }

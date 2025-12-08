@@ -5,8 +5,8 @@ import { productService } from "../services/productService";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
-import { useAuth } from "../context/authContext"; // ← NUEVO: importar useAuth
-import { useBranch } from "../hooks/useBranch"; // ← NUEVO: importar useBranch
+import { useAuth } from "../context/authContext"; // ← importar useAuth
+import { useBranch } from "../hooks/useBranch"; // ← importar useBranch
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -16,8 +16,8 @@ export default function ProductsPage() {
   const [showInactive, setShowInactive] = useState(false);
 
   const { hasPermission } = usePermissions();
-  const { currentBranchId } = useAuth(); // ← NUEVO: obtener currentBranchId
-  const { branches, currentBranchId: branchId } = useBranch(); // ← NUEVO: usar hook de sucursal
+  const { currentBranchId } = useAuth(); // ← obtener currentBranchId
+  const { branches, currentBranchId: branchId } = useBranch(); // usar hook de sucursal
 
   // Obtener nombre de la sucursal actual
   const currentBranchName = branches.find(b => b.id === branchId)?.name;

@@ -17,6 +17,7 @@ export type ProductPayload = {
 export type ProductSearchParams = {
   q?: string;
   onlyActive?: boolean;
+  branchId?: number;
 };
 
 export const productService = {

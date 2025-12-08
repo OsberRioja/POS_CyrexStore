@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, CheckCircle, TrendingUp, TrendingDown, FileText, Download } from 'lucide-react';
 import { useCurrency } from '../context/currencyContext';
-import { reportService } from '../services/reportService'; // Nueva importación
+import { reportService } from '../services/reportService';
+import { useBulkCostConverter } from '../hooks/useBulkCostConverter';
+
 
 interface CashboxReportModalProps {
   cashbox: any;
   onClose: () => void;
 }
+interface BulkConversionItem {
+  id: string;
+  costPrice: number;
+  priceCurrency: string;
+  itemData?: {
+    originalPrice?: number;
+    originalCurrency?: string;
+    conversionRate?: number;
+  };
+}
+
 
 // Definir interfaces para los tipos
 interface CashCount {
@@ -20,6 +33,7 @@ interface CashCount {
 const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClose }) => {
   const { formatCurrency } = useCurrency();
   const [downloading, setDownloading] = useState(false); // Estado para descarga
+  const [profitData, setProfitData] = useState<any>(null);
 
   // Determinar el estado del cuadre
   const getStatusInfo = () => {
@@ -94,6 +108,161 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
       monto
     }));
   };
+
+  // Preparar datos para conversión masiva
+  const conversionItems = useMemo(() => {
+    const items: BulkConversionItem[] = [];
+    
+    cashbox.sales?.forEach((sale: any, saleIndex: number) => {
+      sale.items?.forEach((item: any, itemIndex: number) => {
+        const uniqueId = `${sale.id}-${itemIndex}`;
+        items.push({
+          id: uniqueId,
+          costPrice: item.product?.costPrice || 0,
+          priceCurrency: item.product?.priceCurrency || 'BOB',
+          itemData: {
+            originalPrice: item.originalPrice,
+            originalCurrency: item.originalCurrency,
+            conversionRate: item.conversionRate
+          }
+        });
+      });
+    });
+
+    return items;
+  }, [cashbox]);
+
+  const { convertedItems, loading: converting } = useBulkCostConverter(conversionItems);
+
+  // Calcular ganancias cuando los costos convertidos estén listos
+  useEffect(() => {
+    if (!converting && Object.keys(convertedItems).length > 0) {
+      calcularGanancias();
+    }
+  }, [converting, convertedItems]);
+
+  const calcularGanancias = () => {
+    let gananciaBruta = 0;
+    let ventasTotales = 0;
+    let costosTotales = 0;
+    let itemIndex = 0;
+
+    cashbox.sales?.forEach((sale: any) => {
+      sale.items?.forEach((item: any) => {
+        const cantidad = item.quantity || 1;
+        const precioVenta = item.unitPrice || 0;
+        const uniqueId = `${sale.id}-${itemIndex}`;
+        
+        // Obtener costo convertido
+        const costoEnBOB = convertedItems[uniqueId] || item.product?.costPrice || 0;
+
+        ventasTotales += precioVenta * cantidad;
+        costosTotales += costoEnBOB * cantidad;
+        gananciaBruta += (precioVenta - costoEnBOB) * cantidad;
+        
+        itemIndex++;
+      });
+    });
+    const totalGastos = cashbox.expenses?.reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0;
+    
+    setProfitData({
+      gananciaBruta,
+      ventasTotales,
+      costosTotales,
+      totalGastos,
+      gananciaNeta: gananciaBruta - totalGastos,
+      margenGanancia: ventasTotales > 0 ? (gananciaBruta / ventasTotales) * 100 : 0
+    });
+    console.log("Datos completos de caja:", cashbox);
+    console.log("Items de la primera venta:", cashbox.sales?.[0]?.items?.[0]);
+  };
+
+  // Si necesitas un cálculo simple mientras se convierte
+  // const calcularGananciasSimple = () => {
+  //   let gananciaBruta = 0;
+  //   let ventasTotales = 0;
+  //   let costosTotales = 0;
+
+  //   cashbox.sales?.forEach((sale: any) => {
+  //     sale.items?.forEach((item: any) => {
+  //       const cantidad = item.quantity || 1;
+  //       const precioVenta = item.unitPrice || 0;
+  //       const costoProducto = item.product?.costPrice || 0;
+  //       const monedaCosto = item.product?.priceCurrency || 'BOB';
+        
+  //       let costoEnBOB = costoProducto;
+        
+  //       // Conversión básica mientras se cargan las tasas
+  //       if (monedaCosto === 'USD') {
+  //         costoEnBOB = costoProducto * 6.91;
+  //       } else if (monedaCosto === 'CNY') {
+  //         costoEnBOB = costoProducto * 0.95;
+  //       }
+
+  //       ventasTotales += precioVenta * cantidad;
+  //       costosTotales += costoEnBOB * cantidad;
+  //       gananciaBruta += (precioVenta - costoEnBOB) * cantidad;
+  //     });
+  //   });
+
+  //   const totalGastos = cashbox.expenses?.reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0;
+    
+  //   return {
+  //     gananciaBruta,
+  //     ventasTotales,
+  //     costosTotales,
+  //     totalGastos,
+  //     gananciaNeta: gananciaBruta - totalGastos,
+  //     margenGanancia: ventasTotales > 0 ? (gananciaBruta / ventasTotales) * 100 : 0
+  //   };
+  // };
+
+
+  // Calcular ganancias por producto
+  // const calcularGananciasProductos = () => {
+  //   let gananciaBruta = 0;
+  //   let ventasTotales = 0;
+  //   let costosTotales = 0;
+    
+  //   cashbox.sales?.forEach((sale: any) => {
+  //     sale.items?.forEach((item: any) => {
+  //       const cantidad = item.quantity || 1;
+  //       const precioVenta = item.unitPrice || 0; // Ya está en BOB
+        
+  //       // Obtener el costo del producto en su moneda original
+  //       const costoProductoOriginal = item.product?.costPrice || 0;
+  //       const monedaCosto = item.product?.priceCurrency || 'BOB';
+        
+  //       let costoProductoEnBOB = costoProductoOriginal;
+        
+  //       // Si la moneda del costo es USD, convertir a BOB usando la tasa guardada
+  //       if (monedaCosto === 'USD') {
+  //         // Usar la tasa de cambio guardada en el item de venta
+  //         const tasa = item.conversionRate || 1;
+  //         costoProductoEnBOB = costoProductoOriginal * tasa;
+  //       }
+      
+  //       ventasTotales += precioVenta * cantidad;
+  //       costosTotales += costoProductoEnBOB * cantidad;
+  //       gananciaBruta += (precioVenta - costoProductoEnBOB) * cantidad;
+  //     });
+  //   });
+  
+  //   return {
+  //     gananciaBruta,
+  //     ventasTotales,
+  //     costosTotales,
+  //     margenGanancia: ventasTotales > 0 ? (gananciaBruta / ventasTotales) * 100 : 0
+  //   };
+  // };
+
+  // // Función para calcular ganancia neta (ya usa la función corregida)
+  // const calcularGananciaNeta = () => {
+  //   const { gananciaBruta } = calcularGananciasProductos();
+  //   const totalGastos = cashbox.expenses?.reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0;
+
+  //   return gananciaBruta - totalGastos;
+  // };
 
   const statusInfo = getStatusInfo();
   const StatusIcon = statusInfo.icon;
@@ -317,6 +486,59 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Nueva sección: Ganancias Netas */}
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <h3 className="font-semibold mb-3 text-purple-800">📊 Ganancias Netas</h3>
+
+            {converting ? (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Calculando costos convertidos...</p>
+              </div>
+            ) : profitData ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-purple-700">Ventas Totales:</span>
+                  <span className="font-medium">{formatCurrency(profitData.ventasTotales)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-purple-700">Costos Totales:</span>
+                  <span className="font-medium text-orange-600">{formatCurrency(profitData.costosTotales)}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-purple-700 font-semibold">Ganancia Bruta (Ventas - Costos):</span>
+                  <span className={`font-semibold ${
+                    profitData.gananciaBruta >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {formatCurrency(profitData.gananciaBruta)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-purple-700">Margen de Ganancia:</span>
+                  <span className={`font-semibold ${
+                    profitData.margenGanancia >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {profitData.margenGanancia.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-purple-700">Gastos Totales:</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(profitData.totalGastos)}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-purple-700 font-bold text-base">GANANCIA NETA:</span>
+                  <span className={`font-bold text-lg ${
+                    profitData.gananciaNeta >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {profitData.gananciaNeta >= 0 ? '+' : ''}{formatCurrency(profitData.gananciaNeta)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-red-500">No se pudieron calcular las ganancias</div>
+            )}
           </div>
 
           {/* Observaciones */}

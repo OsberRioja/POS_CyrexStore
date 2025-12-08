@@ -4,6 +4,9 @@ export type SaleItemDTO = {
   productId: string;
   quantity: number;
   unitPrice?: number; // opcional, se puede tomar del producto
+  originalPrice?: number;
+  originalCurrency?: string;
+  conversionRate?: number;
 };
 
 export type SalePaymentDTO = {

@@ -5,6 +5,7 @@ import type { AddPaymentDTO } from "../dtos/sale.dto";
 import { CashBoxRepository } from "../repositories/cashBox.repository";
 import { PaymentMethodRepository } from "../repositories/paymentMethod.repository";
 import { CommissionCalculationService } from "./commissionCalculation.service";
+import  { ExchangeRateService }  from "./exchangeRate.service";
 
 const prisma = new PrismaClient();
 
@@ -67,7 +68,10 @@ export const SaleService = {
       itemsData.push({ 
         productId: String(it.productId), 
         quantity, 
-        unitPrice // ← Usar el precio que viene del frontend (ya convertido a BOB)
+        unitPrice, // ← Usar el precio que viene del frontend (ya convertido a BOB)
+        originalPrice: Number(it.originalPrice) || unitPrice, // Precio en moneda original
+        originalCurrency: it.originalCurrency || 'BOB', // Moneda Original
+        conversionRate: Number(it.conversionRate) || 1 // Tasa de cambio
       });
     }
 
@@ -153,12 +157,36 @@ export const SaleService = {
         const unitPrice = Number(it.unitPrice);
         const subtotal = unitPrice * Number(it.quantity);
         calculatedTotal += subtotal;
+
+        let conversionRate = 1;
+        const originalPrice = it.originalPrice;
+        const originalCurrency = it.originalCurrency || 'BOB';
+
+        // Si el producto está en otra moneda
+        if (product.priceCurrency !== 'BOB') {
+          // Si tenemos originalPrice, calcular tasa implícita
+          if (originalPrice && originalPrice > 0 && originalCurrency !== 'BOB') {
+            conversionRate = unitPrice / originalPrice;
+          } else {
+            // Si no hay originalPrice, obtener tasa actual
+            try {
+              // getRate devuelve un número directamente
+              conversionRate = await ExchangeRateService.getRate(product.priceCurrency, 'BOB');
+            } catch (error) {
+              console.error(`Error obteniendo tasa para ${product.priceCurrency}:`, error);
+              conversionRate = 1;
+            }
+          }
+        }
         
         itemsToCreate.push({
           productId: it.productId,
           quantity: it.quantity,
           unitPrice, //usa el precio del frontend
           subtotal,
+          originalPrice: it.originalPrice,
+          originalCurrency: it.originalCurrency,
+          conversionRate: conversionRate
         });
       }
       
@@ -313,7 +341,7 @@ export const SaleService = {
   },
   
   /**
-   * NUEVO: Método para completar un pago pendiente
+   * Método para completar un pago pendiente
    */
   async addPayment(addPaymentDto: AddPaymentDTO, actorUserId: string) {
     return await prisma.$transaction(async (tx) => {

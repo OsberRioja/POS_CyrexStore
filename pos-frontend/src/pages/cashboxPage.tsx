@@ -50,7 +50,7 @@ export default function CashboxPage() {
 
   async function loadExpenses(boxId: number) {
     try {
-      const r = await expenseService.listByBox(boxId, _token);
+      const r = await expenseService.listByBox(boxId);
       setExpenses(Array.isArray(r?.data) ? r.data : []);
     } catch {
       setExpenses([]);

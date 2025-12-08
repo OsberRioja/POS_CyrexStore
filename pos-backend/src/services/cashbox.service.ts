@@ -4,6 +4,51 @@ import type { OpenCashBoxDTO, CloseCashBoxDTO } from "../dtos/cashBox.dto";
 
 const prisma = new PrismaClient();
 
+function calculateProfitData(box: any) {
+  let totalSales = 0;
+  let totalCost = 0;
+  let totalGrossProfit = 0;
+  let totalExpenses = 0;
+  let totalNetProfit = 0;
+
+  // Calcular total de ventas y costos
+  if (box.sales && box.sales.length > 0) {
+    box.sales.forEach((sale: any) => {
+      totalSales += sale.total || 0;
+      
+      // Calcular costo de los productos vendidos
+      if (sale.items && sale.items.length > 0) {
+        sale.items.forEach((item: any) => {
+          const itemCost = (item.product?.costPrice || 0) * item.quantity;
+          totalCost += itemCost;
+        });
+      }
+    });
+    
+    totalGrossProfit = totalSales - totalCost;
+  }
+
+  // Calcular total de gastos
+  if (box.expenses && box.expenses.length > 0) {
+    box.expenses.forEach((expense: any) => {
+      totalExpenses += expense.amount || 0;
+    });
+  }
+
+  // Calcular ganancia neta
+  totalNetProfit = totalGrossProfit - totalExpenses;
+
+  return {
+    totalSales: Number(totalSales.toFixed(2)),
+    totalCost: Number(totalCost.toFixed(2)),
+    totalGrossProfit: Number(totalGrossProfit.toFixed(2)),
+    totalExpenses: Number(totalExpenses.toFixed(2)),
+    totalNetProfit: Number(totalNetProfit.toFixed(2)),
+    marginPercentage: totalSales > 0 ? Number(((totalGrossProfit / totalSales) * 100).toFixed(2)) : 0,
+    profitPerSale: box.sales?.length > 0 ? Number((totalGrossProfit / box.sales.length).toFixed(2)) : 0
+  };
+}
+
 export const CashBoxService = {
   async open(openDto: OpenCashBoxDTO, actorUserId: string, branchId: number) {
     if (!openDto || typeof openDto.initialAmount !== "number" || Number.isNaN(openDto.initialAmount)) {
@@ -142,7 +187,20 @@ export const CashBoxService = {
         branch: { select: { name: true } },
         sales: {
           include: {
-            items: true,
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    sku: true,
+                    costPrice: true,
+                    salePrice: true,
+                    priceCurrency: true
+                  }
+                }
+              }
+            },
             payments: {
               include: { paymentMethod: true }
             },
@@ -168,7 +226,13 @@ export const CashBoxService = {
 
     if (!box) throw { status: 404, message: "Caja no encontrada" };
 
-    return box;
+    // NUEVO: Calcular ganancias netas
+    const profitData = calculateProfitData(box);
+
+    return {
+      ...box,
+      profitData 
+    };
   },
 
   async list(params?: { page?: number; limit?: number; status?: 'OPEN' | 'CLOSED'; branchId?: number }) {

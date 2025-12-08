@@ -150,7 +150,7 @@ export default function SaleFormModal({
 
       try {
         // userService.getUsers acepta q opcional (ya lo tienes implementado)
-        const r = await userService.getUsers(q);
+        const r = await userService.getUsers();
         const data = Array.isArray(r.data) ? r.data : r.data?.data ?? r.data ?? [];
         setSellerResults(data);
         setShowSellerResults(true);
@@ -373,7 +373,7 @@ export default function SaleFormModal({
       sellerUserCode: sellerSelected ? sellerSelected.userCode : undefined,
       sellerId: sellerSelected ? sellerSelected.id : undefined,
       client: { id_cliente: clientSelected.id_cliente },
-      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice })),
+      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice, originalPrice: it.originalPrice, originalCurrency: it.originalCurrency, conversionRate: it.conversionRate })),
       payments: payments.map((p) => ({ paymentMethodId: p.paymentMethodId, amount: p.amount })),
       allowPartialPayment: allowPartialPayment, // NUEVO: enviar flag
       cashBoxId,

@@ -158,6 +158,10 @@ model SaleItem {
   quantity  Int
   unitPrice Float
   subtotal  Float
+  originalPrice    Float?
+  originalCurrency String?
+  conversionRate   Float?
+
   product   Product @relation(fields: [productId], references: [id])
   sale      Sale    @relation(fields: [saleId], references: [id])
 
