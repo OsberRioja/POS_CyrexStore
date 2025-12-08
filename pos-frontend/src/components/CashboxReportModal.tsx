@@ -13,6 +13,7 @@ interface BulkConversionItem {
   id: string;
   costPrice: number;
   priceCurrency: string;
+  unitPrice: number;
   itemData?: {
     originalPrice?: number;
     originalCurrency?: string;
@@ -120,6 +121,7 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
           id: uniqueId,
           costPrice: item.product?.costPrice || 0,
           priceCurrency: item.product?.priceCurrency || 'BOB',
+          unitPrice: item.unitPrice || 0,
           itemData: {
             originalPrice: item.originalPrice,
             originalCurrency: item.originalCurrency,
@@ -146,16 +148,16 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
     let ventasTotales = 0;
     let costosTotales = 0;
     let itemIndex = 0;
-
+    
     cashbox.sales?.forEach((sale: any) => {
       sale.items?.forEach((item: any) => {
         const cantidad = item.quantity || 1;
         const precioVenta = item.unitPrice || 0;
-        const uniqueId = `${sale.id}-${itemIndex}`;
+        const uniqueId = `${sale.id}-${itemIndex}`; // Mismo patrón que en useMemo
         
         // Obtener costo convertido
         const costoEnBOB = convertedItems[uniqueId] || item.product?.costPrice || 0;
-
+      
         ventasTotales += precioVenta * cantidad;
         costosTotales += costoEnBOB * cantidad;
         gananciaBruta += (precioVenta - costoEnBOB) * cantidad;
@@ -163,6 +165,7 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
         itemIndex++;
       });
     });
+  
     const totalGastos = cashbox.expenses?.reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0;
     
     setProfitData({
@@ -173,8 +176,6 @@ const CashboxReportModal: React.FC<CashboxReportModalProps> = ({ cashbox, onClos
       gananciaNeta: gananciaBruta - totalGastos,
       margenGanancia: ventasTotales > 0 ? (gananciaBruta / ventasTotales) * 100 : 0
     });
-    console.log("Datos completos de caja:", cashbox);
-    console.log("Items de la primera venta:", cashbox.sales?.[0]?.items?.[0]);
   };
 
   // Si necesitas un cálculo simple mientras se convierte

@@ -5,6 +5,7 @@ interface BulkConversionItem {
   id: string;
   costPrice: number;
   priceCurrency: string;
+  unitPrice: number;
   itemData?: {
     originalPrice?: number;
     originalCurrency?: string;
@@ -15,31 +16,28 @@ interface BulkConversionItem {
 export const useBulkCostConverter = (items: BulkConversionItem[]) => {
   const [convertedItems, setConvertedItems] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+
   const getDefaultRate = (currency: string): number => {
-      // Estos valores por defecto SOLO se usan si falla la API
-      // Deberían ser los valores más recientes que manejas en tu sistema
-      const defaults: Record<string, number> = {
-        USD: 6.91, // Cambia esto al último valor que manejes
-        CNY: 0.95,
-        EUR: 7.40
-      };
-      return defaults[currency] || 1;
+    const defaults: Record<string, number> = {
+      USD: 6.91,
+      CNY: 0.95,
+      EUR: 7.40
+    };
+    return defaults[currency] || 1;
+  };
+
+  const isReasonableRate = (rate: number, currency: string): boolean => {
+    const ranges: Record<string, { min: number; max: number }> = {
+      USD: { min: 6.0, max: 8.0 },
+      CNY: { min: 0.8, max: 1.2 },
+      EUR: { min: 7.0, max: 8.0 }
     };
 
-    const isReasonableRate = (rate: number, currency: string): boolean => {
-      // Validar que la tasa calculada sea razonable
-      const ranges: Record<string, { min: number; max: number }> = {
-        USD: { min: 6.0, max: 8.0 },
-        CNY: { min: 0.8, max: 1.2 },
-        EUR: { min: 7.0, max: 8.0 }
-      };
-      
-      const range = ranges[currency];
-      if (!range) return rate > 0 && rate < 100; // Rango amplio para monedas desconocidas
-      
-      return rate >= range.min && rate <= range.max;
-    };
-  
+    const range = ranges[currency];
+    if (!range) return rate > 0 && rate < 100;
+
+    return rate >= range.min && rate <= range.max;
+  };
 
   useEffect(() => {
     const convertAllCosts = async () => {
