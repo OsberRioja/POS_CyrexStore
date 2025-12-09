@@ -3,6 +3,7 @@ export interface BranchDashboardDTO {
   date: string;
   branchId: number;
   branchName: string;
+  period: string;
   
   // Métricas principales
   salesToday: {
@@ -67,6 +68,7 @@ export interface BranchDashboardDTO {
 // Dashboard general (admin)
 export interface GeneralDashboardDTO {
   date: string;
+  period: string;
   
   // Resumen global
   globalSummary: {
@@ -90,8 +92,8 @@ export interface GeneralDashboardDTO {
   globalTopProducts: Array<{
     productId: string;
     productName: string;
-    totalQuantity: number;
-    totalAmount: number;
+    quantity: number;
+    amount: number;
     branches: string[]; // Sucursales donde se vendió
   }>;
   

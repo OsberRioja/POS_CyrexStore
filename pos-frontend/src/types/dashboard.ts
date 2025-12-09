@@ -79,8 +79,8 @@ export interface GeneralDashboardDTO {
   globalTopProducts: Array<{
     productId: string;
     productName: string;
-    totalQuantity: number;
-    totalAmount: number;
+    quantity: number;
+    amount: number;
     branches: string[];
   }>;
   

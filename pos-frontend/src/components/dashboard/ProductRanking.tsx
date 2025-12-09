@@ -4,21 +4,23 @@ interface ProductRankingProps {
   products: Array<{
     productId: string;
     productName: string;
-    quantity: number;
+    quantity: number; // Cantidad vendida
     amount: number;
+    currentStock?: number; // Stock actual (opcional)
   }>;
   title?: string;
   maxItems?: number;
+  showStock?: boolean; // Nueva prop para mostrar stock
 }
 
 const ProductRanking: React.FC<ProductRankingProps> = ({ 
-  products = [],  // Valor por defecto array vacío
+  products = [],
   title = "Productos Más Vendidos",
-  maxItems = 5
+  maxItems = 5,
+  showStock = false // Por defecto no mostrar stock
 }) => {
   const displayedProducts = (products || []).slice(0, maxItems);
 
-  // Si no hay productos, mostrar mensaje
   if (displayedProducts.length === 0) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -42,11 +44,18 @@ const ProductRanking: React.FC<ProductRankingProps> = ({
               </div>
               <div>
                 <p className="font-medium text-gray-800">{product.productName || "Producto sin nombre"}</p>
-                <p className="text-sm text-gray-500">{product.quantity || 0} unidades</p>
+                {/* Mostrar cantidad vendida en lugar de stock */}
+                <p className="text-sm text-gray-500">
+                  {product.quantity || 0} unidades vendidas
+                  {showStock && product.currentStock !== undefined && (
+                    <span className="ml-2 text-gray-400">
+                      • Stock: {product.currentStock}
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
             <div className="text-right">
-              {/* CORRECCIÓN: Verificar que amount sea un número antes de toFixed */}
               <p className="font-semibold text-gray-800">
                 Bs. {typeof product.amount === 'number' ? product.amount.toFixed(2) : '0.00'}
               </p>

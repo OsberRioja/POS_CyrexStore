@@ -2,11 +2,44 @@ import { prisma } from "../prismaClient";
 import { BranchDashboardDTO, GeneralDashboardDTO } from "../dtos/dashboard.dto";
 
 export const dashboardService = {
-  // Dashboard por sucursal
-  async getBranchDashboard(branchId: number, date?: Date): Promise<BranchDashboardDTO> {
+  // Helper para calcular fechas según el período
+  getDateRange(period: string = 'day') {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = now;
+
+    switch (period.toLowerCase()) {
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case 'year':
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      case 'all':
+      case 'historical':
+        startDate = new Date(0); // Fecha muy antigua
+        break;
+      case 'day':
+      default:
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
+    }
+
+    return { startDate, endDate };
+  },
+
+  // Dashboard por sucursal con período
+  async getBranchDashboard(branchId: number, period: string = 'day', date?: Date): Promise<BranchDashboardDTO> {
     const targetDate = date || new Date();
-    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+    const { startDate, endDate } = this.getDateRange(period);
 
     // Obtener información de la sucursal
     const branch = await prisma.branch.findUnique({
@@ -18,13 +51,13 @@ export const dashboardService = {
       throw { status: 404, message: "Sucursal no encontrada o inactiva" };
     }
 
-    // 1. Ventas del día
-    const salesToday = await prisma.sale.findMany({
+    // 1. Ventas en el período
+    const salesInPeriod = await prisma.sale.findMany({
       where: {
         branchId,
         createdAt: {
-          gte: startOfDay,
-          lte: endOfDay
+          gte: startDate,
+          lte: endDate
         }
       },
       include: {
@@ -39,14 +72,14 @@ export const dashboardService = {
     });
 
     // Calcular métricas de ventas
-    const salesCount = salesToday.length;
-    const salesAmount = salesToday.reduce((sum, sale) => sum + sale.total, 0);
+    const salesCount = salesInPeriod.length;
+    const salesAmount = salesInPeriod.reduce((sum, sale) => sum + sale.total, 0);
     
     // Calcular ganancias (costo vs venta)
     let totalCost = 0;
     let totalRevenue = 0;
     
-    for (const sale of salesToday) {
+    for (const sale of salesInPeriod) {
       totalRevenue += sale.total;
       for (const item of sale.items) {
         totalCost += (item.product.costPrice * item.quantity);
@@ -56,13 +89,13 @@ export const dashboardService = {
     const grossEarnings = totalRevenue - totalCost;
     const averageTicket = salesCount > 0 ? salesAmount / salesCount : 0;
 
-    // 2. Estado de caja
+    // 2. Estado de caja (siempre del día actual)
     const cashBox = await prisma.cashBox.findFirst({
       where: {
         branchId,
         status: "OPEN",
         openedAt: {
-          lte: endOfDay
+          lte: new Date()
         }
       },
       include: {
@@ -71,17 +104,18 @@ export const dashboardService = {
       orderBy: { openedAt: 'desc' }
     });
 
-    // 3. Productos más vendidos del día
+    // 3. Productos más vendidos en el período
     const productSalesMap = new Map();
     
-    for (const sale of salesToday) {
+    for (const sale of salesInPeriod) {
       for (const item of sale.items) {
         const productId = item.productId;
         const current = productSalesMap.get(productId) || {
           productId,
           productName: item.product.name,
           quantity: 0,
-          amount: 0
+          amount: 0,
+          currentStock: item.product.stock // Agregar stock actual
         };
         
         current.quantity += item.quantity;
@@ -94,10 +128,10 @@ export const dashboardService = {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
 
-    // 4. Vendedores destacados
+    // 4. Vendedores destacados en el período
     const sellerMap = new Map();
     
-    for (const sale of salesToday) {
+    for (const sale of salesInPeriod) {
       const sellerId = sale.sellerId;
       const current = sellerMap.get(sellerId) || {
         userId: sellerId,
@@ -115,7 +149,7 @@ export const dashboardService = {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3);
 
-    // 5. Productos con stock bajo (< 10 unidades)
+    // 5. Productos con stock bajo (< 10 unidades) - siempre actual
     const lowStockProducts = await prisma.product.findMany({
       where: {
         branchId,
@@ -144,7 +178,7 @@ export const dashboardService = {
       take: 5
     });
 
-    // 7. Totales de la sucursal
+    // 7. Totales de la sucursal (siempre actuales)
     const totalClients = await prisma.cliente.count();
     const totalProducts = await prisma.product.count({
       where: { branchId, isActive: true }
@@ -155,6 +189,7 @@ export const dashboardService = {
 
     return {
       date: targetDate.toISOString().split('T')[0],
+      period, // Agregar el período al DTO
       branchId: branch.id,
       branchName: branch.name,
       salesToday: {
@@ -163,7 +198,7 @@ export const dashboardService = {
       },
       earningsToday: {
         grossEarnings,
-        netEarnings: grossEarnings // Por ahora netEarnings = grossEarnings
+        netEarnings: grossEarnings
       },
       averageTicket,
       cashBoxStatus: {
@@ -194,11 +229,10 @@ export const dashboardService = {
     };
   },
 
-  // Dashboard general (admin)
-  async getGeneralDashboard(date?: Date): Promise<GeneralDashboardDTO> {
+  // Dashboard general (admin) con período
+  async getGeneralDashboard(period: string = 'day', date?: Date): Promise<GeneralDashboardDTO> {
     const targetDate = date || new Date();
-    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+    const { startDate, endDate } = this.getDateRange(period);
 
     // 1. Obtener todas las sucursales activas
     const branches = await prisma.branch.findMany({
@@ -210,12 +244,12 @@ export const dashboardService = {
     const activeBranches = branches.length;
     const totalBranches = await prisma.branch.count();
 
-    // Ventas totales del día en todas las sucursales
-    const salesToday = await prisma.sale.findMany({
+    // Ventas totales en el período en todas las sucursales
+    const salesInPeriod = await prisma.sale.findMany({
       where: {
         createdAt: {
-          gte: startOfDay,
-          lte: endOfDay
+          gte: startDate,
+          lte: endDate
         }
       },
       include: {
@@ -228,17 +262,17 @@ export const dashboardService = {
       }
     });
 
-    const totalSalesToday = salesToday.length;
-    const totalAmountToday = salesToday.reduce((sum, sale) => sum + sale.total, 0);
+    const totalSalesInPeriod = salesInPeriod.length;
+    const totalAmountInPeriod = salesInPeriod.reduce((sum, sale) => sum + sale.total, 0);
 
-    // Usuarios activos hoy (que hayan realizado al menos una venta)
-    const activeUsersToday = await prisma.user.findMany({
+    // Usuarios activos en el período (que hayan realizado al menos una venta)
+    const activeUsersInPeriod = await prisma.user.findMany({
       where: {
         Sale: {
           some: {
             createdAt: {
-              gte: startOfDay,
-              lte: endOfDay
+              gte: startDate,
+              lte: endDate
             }
           }
         }
@@ -246,10 +280,10 @@ export const dashboardService = {
       distinct: ['id']
     });
 
-    // 3. Ranking de sucursales por ventas del día
+    // 3. Ranking de sucursales por ventas en el período
     const branchSalesMap = new Map();
     
-    for (const sale of salesToday) {
+    for (const sale of salesInPeriod) {
       const branchId = sale.branchId;
       const current = branchSalesMap.get(branchId) || {
         branchId,
@@ -272,22 +306,22 @@ export const dashboardService = {
       }))
       .sort((a, b) => b.totalAmount - a.totalAmount);
 
-    // 4. Productos más vendidos globalmente
+    // 4. Productos más vendidos globalmente en el período
     const globalProductMap = new Map();
     
-    for (const sale of salesToday) {
+    for (const sale of salesInPeriod) {
       for (const item of sale.items) {
         const productId = item.productId;
         const current = globalProductMap.get(productId) || {
           productId,
           productName: item.product.name,
-          totalQuantity: 0,
-          totalAmount: 0,
+          quantity: 0,
+          amount: 0,
           branches: new Set<string>()
         };
         
-        current.totalQuantity += item.quantity;
-        current.totalAmount += item.subtotal;
+        current.quantity += item.quantity;
+        current.amount += item.subtotal;
         if (sale.branch?.name) {
           current.branches.add(sale.branch.name);
         }
@@ -303,7 +337,7 @@ export const dashboardService = {
       .sort((a, b) => b.totalQuantity - a.totalQuantity)
       .slice(0, 10);
 
-    // 5. Evolución de ventas (últimos 7 días)
+    // 5. Evolución de ventas (últimos 7 días) - Mantenemos esto fijo para gráfico
     const salesEvolution = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
@@ -327,7 +361,7 @@ export const dashboardService = {
       });
     }
 
-    // 6. Sucursales con alertas
+    // 6. Sucursales con alertas (siempre actual)
     const branchesWithAlerts = [];
     
     for (const branch of branches) {
@@ -346,7 +380,21 @@ export const dashboardService = {
       }
       
       // Verificar si hay ventas hoy
-      const hasSalesToday = salesToday.some(sale => sale.branchId === branch.id);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      
+      const hasSalesToday = await prisma.sale.findFirst({
+        where: {
+          branchId: branch.id,
+          createdAt: {
+            gte: todayStart,
+            lte: todayEnd
+          }
+        }
+      });
+      
       if (!hasSalesToday) {
         alerts.push("Sin ventas hoy");
       }
@@ -375,12 +423,13 @@ export const dashboardService = {
 
     return {
       date: targetDate.toISOString().split('T')[0],
+      period, // Agregar período al DTO
       globalSummary: {
         totalBranches,
         activeBranches,
-        totalSalesToday,
-        totalAmountToday,
-        activeUsersToday: activeUsersToday.length
+        totalSalesToday: totalSalesInPeriod,
+        totalAmountToday: totalAmountInPeriod,
+        activeUsersToday: activeUsersInPeriod.length
       },
       branchRanking,
       globalTopProducts,

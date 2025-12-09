@@ -7,7 +7,8 @@ import { dashboardService } from "../services/dashboardService";
 import MetricCard from "../components/dashboard/MetricCard";
 import BranchRanking from "../components/dashboard/BranchRanking";
 import ProductRanking from "../components/dashboard/ProductRanking";
-import { Building2, Users, DollarSign, AlertTriangle } from "lucide-react";
+import PeriodFilter from "../components/dashboard/PeriodFilter"; // ← NUEVO IMPORT
+import { Building2, Users, DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AdminHomePage() {
   const { user } = useAuth();
@@ -24,13 +25,15 @@ export default function AdminHomePage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string>('day'); // ← NUEVO: Estado para el período
+  const [refreshing, setRefreshing] = useState(false); // ← NUEVO: Estado para refrescar
 
-  // NUEVO: Efecto para cargar dashboard general
+  // NUEVO: Efecto para cargar dashboard general con período
   useEffect(() => {
     async function loadGeneralDashboard() {
       try {
         setLoadingDashboard(true);
-        const data = await dashboardService.getGeneralDashboard();
+        const data = await dashboardService.getGeneralDashboard(period);
         setDashboardData(data);
         setDashboardError(null);
       } catch (err: any) {
@@ -38,11 +41,12 @@ export default function AdminHomePage() {
         setDashboardError(err.message || "Error al cargar el dashboard general");
       } finally {
         setLoadingDashboard(false);
+        setRefreshing(false);
       }
     }
 
     loadGeneralDashboard();
-  }, []);
+  }, [period]); // ← Agregar period como dependencia
 
   // Efecto para ingresar automáticamente a la sucursal recién creada
   useEffect(() => {
@@ -63,6 +67,24 @@ export default function AdminHomePage() {
   const handleSelectBranch = (branchId: number) => {
     console.log('🎯 Seleccionando sucursal:', branchId);
     enterBranch(branchId);
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    // El useEffect se ejecutará de nuevo porque refreshing cambió
+  };
+
+  // Función para obtener el título del período
+  const getPeriodTitle = () => {
+    const titles: { [key: string]: string } = {
+      day: 'Hoy',
+      week: 'Esta semana',
+      month: 'Este mes',
+      year: 'Este año',
+      all: 'Histórico',
+      historical: 'Histórico'
+    };
+    return titles[period] || 'Hoy';
   };
 
   const isLoading = branchesLoading || loadingDashboard;
@@ -101,15 +123,35 @@ export default function AdminHomePage() {
     <div className="space-y-8">
       {/* Dashboard General */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+          <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-gray-800">Dashboard General</h1>
-            <p className="text-gray-600">Resumen de todas las sucursales</p>
+            <p className="text-gray-600">
+              Resumen de todas las sucursales
+              {dashboardData?.period && (
+                <span className="ml-2 text-blue-600 font-medium">
+                  • Período: {getPeriodTitle()}
+                </span>
+              )}
+            </p>
           </div>
-          <div className="text-sm text-gray-500">
-            <span className="font-medium">Admin:</span> {user?.name}
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-500">
+              <span className="font-medium">Admin:</span> {user?.name}
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </button>
           </div>
         </div>
+
+        {/* Filtro de período */}
+        <PeriodFilter period={period} onPeriodChange={setPeriod} />
 
         {/* Métricas globales */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -122,7 +164,7 @@ export default function AdminHomePage() {
           />
           
           <MetricCard
-            title="Ventas Hoy"
+            title={`Ventas ${getPeriodTitle()}`}
             value={dashboardData?.globalSummary.totalSalesToday || 0}
             subtitle={`Bs. ${(dashboardData?.globalSummary.totalAmountToday || 0).toFixed(2)}`}
             icon={<DollarSign className="h-6 w-6" />}
@@ -130,9 +172,9 @@ export default function AdminHomePage() {
           />
           
           <MetricCard
-            title="Usuarios Activos"
+            title={`Usuarios Activos ${getPeriodTitle()}`}
             value={dashboardData?.globalSummary.activeUsersToday || 0}
-            subtitle="Hoy"
+            subtitle="Con ventas en el período"
             icon={<Users className="h-6 w-6" />}
             color="purple"
           />
@@ -150,13 +192,14 @@ export default function AdminHomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <BranchRanking
             branches={dashboardData?.branchRanking || []}
-            title="Ranking de Sucursales (Hoy)"
+            title={`Ranking de Sucursales (${getPeriodTitle()})`}
           />
           
           <ProductRanking
             products={dashboardData?.globalTopProducts || []}
-            title="Productos Más Vendidos (Global)"
+            title={`Productos Más Vendidos ${getPeriodTitle()}`}
             maxItems={5}
+            showStock={false} // ← Cambiado a false para no mostrar stock
           />
         </div>
 

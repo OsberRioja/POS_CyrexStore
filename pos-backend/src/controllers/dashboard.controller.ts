@@ -23,11 +23,20 @@ export const dashboardController = {
         }
       }
 
-      // Fecha opcional (por defecto hoy)
+      // Parámetros: período y fecha opcional
+      const period = (req.query.period as string) || 'day';
       const dateParam = req.query.date as string;
       const date = dateParam ? new Date(dateParam) : new Date();
 
-      const dashboard = await dashboardService.getBranchDashboard(targetBranchId, date);
+      // Validar período
+      const validPeriods = ['day', 'week', 'month', 'year', 'all', 'historical'];
+      if (!validPeriods.includes(period)) {
+        return res.status(400).json({ 
+          error: `Período no válido. Debe ser uno de: ${validPeriods.join(', ')}` 
+        });
+      }
+
+      const dashboard = await dashboardService.getBranchDashboard(targetBranchId, period, date);
       return res.json(dashboard);
     } catch (err: any) {
       console.error("GET /dashboard/branch error:", err);
@@ -47,11 +56,20 @@ export const dashboardController = {
         return res.status(403).json({ error: "Solo administradores globales pueden acceder al dashboard general" });
       }
 
-      // Fecha opcional (por defecto hoy)
+      // Parámetros: período y fecha opcional
+      const period = (req.query.period as string) || 'day';
       const dateParam = req.query.date as string;
       const date = dateParam ? new Date(dateParam) : new Date();
 
-      const dashboard = await dashboardService.getGeneralDashboard(date);
+      // Validar período
+      const validPeriods = ['day', 'week', 'month', 'year', 'all', 'historical'];
+      if (!validPeriods.includes(period)) {
+        return res.status(400).json({ 
+          error: `Período no válido. Debe ser uno de: ${validPeriods.join(', ')}` 
+        });
+      }
+
+      const dashboard = await dashboardService.getGeneralDashboard(period, date);
       return res.json(dashboard);
     } catch (err: any) {
       console.error("GET /dashboard/general error:", err);

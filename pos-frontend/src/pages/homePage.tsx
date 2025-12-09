@@ -4,7 +4,8 @@ import { useBranch } from "../hooks/useBranch";
 import { dashboardService } from "../services/dashboardService";
 import MetricCard from "../components/dashboard/MetricCard";
 import ProductRanking from "../components/dashboard/ProductRanking";
-import { DollarSign, ShoppingBag, Users, Package, TrendingUp, AlertCircle } from "lucide-react";
+import PeriodFilter from "../components/dashboard/PeriodFilter";
+import { DollarSign, ShoppingBag, Users, Package, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -13,6 +14,8 @@ export default function HomePage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string>('day');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Obtener nombre de la sucursal actual
   const currentBranchName = branches.find(b => b.id === currentBranchId)?.name;
@@ -31,7 +34,7 @@ export default function HomePage() {
       
       try {
         setLoading(true);
-        const data = await dashboardService.getBranchDashboard(currentBranchId);
+        const data = await dashboardService.getBranchDashboard(currentBranchId, period);
         setDashboardData(data);
         setError(null);
       } catch (err: any) {
@@ -39,13 +42,20 @@ export default function HomePage() {
         setError(err.message || "Error al cargar el dashboard");
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     }
 
     if (currentBranchId) {
       loadDashboard();
     }
-  }, [currentBranchId]);
+  }, [currentBranchId, period]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    // El useEffect se ejecutará de nuevo porque refreshing cambió
+  };
+
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('es-ES', {
@@ -62,6 +72,19 @@ export default function HomePage() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Función para obtener el título del período
+  const getPeriodTitle = () => {
+    const titles: { [key: string]: string } = {
+      day: 'Hoy',
+      week: 'Esta semana',
+      month: 'Este mes',
+      year: 'Este año',
+      all: 'Histórico',
+      historical: 'Histórico'
+    };
+    return titles[period] || 'Hoy';
   };
 
   if (loading) {
@@ -104,9 +127,22 @@ export default function HomePage() {
             </h1>
             <p className="text-gray-600">
               {formatDate(currentTime)} • {formatTime(currentTime)}
+              {dashboardData?.period && (
+                <span className="ml-2 text-blue-600 font-medium">
+                  • Período: {getPeriodTitle()}
+                </span>
+              )}
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex items-center gap-3">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </button>
             <div className="text-sm text-gray-500">
               <div className="flex items-center space-x-4">
                 <span>Código: #{user?.userCode}</span>
@@ -119,43 +155,45 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+        {/* Filtro de período */}
+        <PeriodFilter period={period} onPeriodChange={setPeriod} />
       </div>
 
       {/* Métricas principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
-        title="Ventas Hoy"
-        value={dashboardData?.salesToday?.count || 0}
-        subtitle={`Bs. ${(dashboardData?.salesToday?.amount || 0).toFixed(2)}`}
-        icon={<ShoppingBag className="h-6 w-6" />}
-        color="blue"
-      />
+          title={`Ventas ${getPeriodTitle()}`}
+          value={dashboardData?.salesToday?.count || 0}
+          subtitle={`Bs. ${(dashboardData?.salesToday?.amount || 0).toFixed(2)}`}
+          icon={<ShoppingBag className="h-6 w-6" />}
+          color="blue"
+        />
       
-      <MetricCard
-        title="Ganancias Hoy"
-        value={`Bs. ${(dashboardData?.earningsToday?.grossEarnings || 0).toFixed(2)}`}
-        subtitle={`${dashboardData?.salesToday?.count || 0} ventas`}
-        icon={<DollarSign className="h-6 w-6" />}
-        color="green"
-      />
+        <MetricCard
+          title={`Ganancias ${getPeriodTitle()}`}
+          value={`Bs. ${(dashboardData?.earningsToday?.grossEarnings || 0).toFixed(2)}`}
+          subtitle={`${dashboardData?.salesToday?.count || 0} ventas`}
+          icon={<DollarSign className="h-6 w-6" />}
+          color="green"
+        />
       
-      <MetricCard
-        title="Ticket Promedio"
-        value={`Bs. ${(dashboardData?.averageTicket || 0).toFixed(2)}`}
-        subtitle="Por venta"
-        icon={<TrendingUp className="h-6 w-6" />}
-        color="purple"
-      />
+        <MetricCard
+          title="Ticket Promedio"
+          value={`Bs. ${(dashboardData?.averageTicket || 0).toFixed(2)}`}
+          subtitle="Por venta"
+          icon={<TrendingUp className="h-6 w-6" />}
+          color="purple"
+        />
       
-      <MetricCard
-        title="Estado Caja"
-        value={dashboardData?.cashBoxStatus?.isOpen ? "Abierta" : "Cerrada"}
-        subtitle={dashboardData?.cashBoxStatus?.isOpen 
-          ? `Bs. ${(dashboardData?.cashBoxStatus?.currentAmount || 0).toFixed(2)}`
-          : "Abrir caja para ventas"}
-        icon={<AlertCircle className="h-6 w-6" />}
-        color={dashboardData?.cashBoxStatus?.isOpen ? "green" : "red"}
-      />
+        <MetricCard
+          title="Estado Caja"
+          value={dashboardData?.cashBoxStatus?.isOpen ? "Abierta" : "Cerrada"}
+          subtitle={dashboardData?.cashBoxStatus?.isOpen 
+            ? `Bs. ${(dashboardData?.cashBoxStatus?.currentAmount || 0).toFixed(2)}`
+            : "Abrir caja para ventas"}
+          icon={<AlertCircle className="h-6 w-6" />}
+          color={dashboardData?.cashBoxStatus?.isOpen ? "green" : "red"}
+        />
       </div>
 
       {/* Segunda fila de métricas */}
@@ -163,12 +201,15 @@ export default function HomePage() {
         <div className="md:col-span-2">
           <ProductRanking
             products={dashboardData?.topProducts || []}
-            title="Productos Más Vendidos Hoy"
+            title={`Productos Más Vendidos ${getPeriodTitle()}`}
+            showStock={false} // ← Cambiado a false para no mostrar stock
           />
         </div>
         
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Vendedores Destacados</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            Vendedores Destacados {getPeriodTitle()}
+          </h3>
           <div className="space-y-4">
             {(dashboardData?.topSellers || []).map((seller: any, index: number) => (
               <div key={seller.userId} className="flex items-center justify-between">
