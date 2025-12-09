@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/authContext";
 import { useBranch } from "../hooks/useBranch";
+import { dashboardService } from "../services/dashboardService";
+import MetricCard from "../components/dashboard/MetricCard";
+import ProductRanking from "../components/dashboard/ProductRanking";
+import { DollarSign, ShoppingBag, Users, Package, TrendingUp, AlertCircle } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const { branches, currentBranchId } = useBranch(); // ← usar hook de sucursal
+  const { branches, currentBranchId } = useBranch();
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Obtener nombre de la sucursal actual
   const currentBranchName = branches.find(b => b.id === currentBranchId)?.name;
@@ -17,6 +24,28 @@ export default function HomePage() {
 
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      if (!currentBranchId) return;
+      
+      try {
+        setLoading(true);
+        const data = await dashboardService.getBranchDashboard(currentBranchId);
+        setDashboardData(data);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error loading dashboard:", err);
+        setError(err.message || "Error al cargar el dashboard");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (currentBranchId) {
+      loadDashboard();
+    }
+  }, [currentBranchId]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('es-ES', {
@@ -35,109 +64,206 @@ export default function HomePage() {
     });
   };
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-700">Dashboard</h2>
-        <div className="text-sm text-gray-500">
-          {formatTime(currentTime)}
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-lg text-gray-600">Cargando dashboard...</div>
         </div>
       </div>
+    );
+  }
 
-      {/* Mensaje de bienvenida principal */}
-      <div className="bg-white rounded-lg shadow-md p-8 mb-6">
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            ¡Bienvenido, {user?.name || "Usuario"}!
-          </h1>
-          <p className="text-gray-600 mb-2">
-            Sistema de Punto de Venta para Tienda de Computadoras
-          </p>
-          <div className="text-sm text-gray-500">
-            {user && (
-              <div className="flex items-center justify-center space-x-4 mb-2">
-                <span>Código: #{user.userCode}</span>
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-semibold text-red-600 mb-2">Error al cargar el dashboard</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header con información */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">
+              Dashboard - {currentBranchName || "Sucursal"}
+            </h1>
+            <p className="text-gray-600">
+              {formatDate(currentTime)} • {formatTime(currentTime)}
+            </p>
+          </div>
+          <div className="mt-4 md:mt-0">
+            <div className="text-sm text-gray-500">
+              <div className="flex items-center space-x-4">
+                <span>Código: #{user?.userCode}</span>
                 <span>•</span>
                 <span className="capitalize">
-                  {user.role === "ADMIN" ? "Administrador" : 
-                   user.role === "SUPERVISOR" ? "Supervisor" : "Vendedor"}
+                  {user?.role === "ADMIN" ? "Administrador" : 
+                   user?.role === "SUPERVISOR" ? "Supervisor" : "Vendedor"}
                 </span>
-                {/* ← NUEVO: Mostrar sucursal si existe */}
-                {currentBranchName && (
-                  <>
-                    <span>•</span>
-                    <span>Sucursal: {currentBranchName}</span>
-                  </>
-                )}
               </div>
-            )}
-            {formatDate(currentTime)}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Cards de acceso rápido */}
+      {/* Métricas principales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+        title="Ventas Hoy"
+        value={dashboardData?.salesToday?.count || 0}
+        subtitle={`Bs. ${(dashboardData?.salesToday?.amount || 0).toFixed(2)}`}
+        icon={<ShoppingBag className="h-6 w-6" />}
+        color="blue"
+      />
+      
+      <MetricCard
+        title="Ganancias Hoy"
+        value={`Bs. ${(dashboardData?.earningsToday?.grossEarnings || 0).toFixed(2)}`}
+        subtitle={`${dashboardData?.salesToday?.count || 0} ventas`}
+        icon={<DollarSign className="h-6 w-6" />}
+        color="green"
+      />
+      
+      <MetricCard
+        title="Ticket Promedio"
+        value={`Bs. ${(dashboardData?.averageTicket || 0).toFixed(2)}`}
+        subtitle="Por venta"
+        icon={<TrendingUp className="h-6 w-6" />}
+        color="purple"
+      />
+      
+      <MetricCard
+        title="Estado Caja"
+        value={dashboardData?.cashBoxStatus?.isOpen ? "Abierta" : "Cerrada"}
+        subtitle={dashboardData?.cashBoxStatus?.isOpen 
+          ? `Bs. ${(dashboardData?.cashBoxStatus?.currentAmount || 0).toFixed(2)}`
+          : "Abrir caja para ventas"}
+        icon={<AlertCircle className="h-6 w-6" />}
+        color={dashboardData?.cashBoxStatus?.isOpen ? "green" : "red"}
+      />
+      </div>
+
+      {/* Segunda fila de métricas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 hover:bg-blue-100 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-800">Usuarios</h3>
-              <p className="text-blue-600 text-sm">Gestionar usuarios del sistema</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">👥</span>
-            </div>
-          </div>
+        <div className="md:col-span-2">
+          <ProductRanking
+            products={dashboardData?.topProducts || []}
+            title="Productos Más Vendidos Hoy"
+          />
         </div>
-
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 hover:bg-green-100 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-green-800">Productos</h3>
-              <p className="text-green-600 text-sm">Administrar inventario</p>
-            </div>
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">📦</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 hover:bg-purple-100 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-purple-800">Clientes</h3>
-              <p className="text-purple-600 text-sm">Gestionar base de clientes</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">👤</span>
-            </div>
+        
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Vendedores Destacados</h3>
+          <div className="space-y-4">
+            {(dashboardData?.topSellers || []).map((seller: any, index: number) => (
+              <div key={seller.userId} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className={`w-8 h-8 flex items-center justify-center rounded-full mr-3 ${
+                    index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                    index === 1 ? 'bg-gray-100 text-gray-800' :
+                    'bg-orange-100 text-orange-800'
+                  }`}>
+                    <span className="text-sm font-bold">#{index + 1}</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">{seller.userName}</p>
+                    <p className="text-sm text-gray-500">{seller.salesCount} ventas</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-gray-800">Bs. {seller.amount.toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Sección de información del sistema */}
-      <div className="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-700 mb-3">Información del Sistema</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-          <div>
-            <span className="font-medium">Versión:</span> 1.0.0
+      {/* Tercera fila: Alertas y resumen */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Alertas de stock bajo */}
+        <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Alertas de Stock</h3>
+            {dashboardData?.lowStockProducts.length > 0 && (
+              <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                {dashboardData.lowStockProducts.length} alertas
+              </span>
+            )}
           </div>
-          <div>
-            <span className="font-medium">Estado:</span> 
-            <span className="ml-1 text-green-600 font-medium">Activo</span>
-          </div>
-          <div>
-            <span className="font-medium">Módulos:</span> Usuarios, Clientes, Productos
-          </div>
-          <div>
-            <span className="font-medium">Tipo:</span> Sistema Multi-sucursal
-          </div>
-          {/* ← NUEVO: Mostrar sucursal actual */}
-          {currentBranchName && (
-            <div>
-              <span className="font-medium">Sucursal Actual:</span> {currentBranchName}
+          {dashboardData?.lowStockProducts.length > 0 ? (
+            <div className="space-y-3">
+              {dashboardData.lowStockProducts.map((product: any) => (
+                <div key={product.productId} className="flex items-center justify-between p-3 bg-red-50 rounded">
+                  <div>
+                    <p className="font-medium text-gray-800">{product.productName}</p>
+                    <p className="text-sm text-gray-600">Stock actual: {product.currentStock} unidades</p>
+                  </div>
+                  <div className="text-red-600 font-semibold">
+                    <Package className="h-5 w-5 inline mr-1" />
+                    Stock bajo
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>No hay productos con stock bajo</p>
             </div>
           )}
+        </div>
+
+        {/* Resumen de la sucursal */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Resumen de Sucursal</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Users className="h-5 w-5 text-gray-400 mr-2" />
+                <span className="text-gray-600">Clientes registrados</span>
+              </div>
+              <span className="font-semibold">{dashboardData?.summary.totalClients || 0}</span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Package className="h-5 w-5 text-gray-400 mr-2" />
+                <span className="text-gray-600">Productos activos</span>
+              </div>
+              <span className="font-semibold">{dashboardData?.summary.totalProducts || 0}</span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Users className="h-5 w-5 text-gray-400 mr-2" />
+                <span className="text-gray-600">Usuarios activos</span>
+              </div>
+              <span className="font-semibold">{dashboardData?.summary.totalUsers || 0}</span>
+            </div>
+            
+            <div className="pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Última actualización:</span>
+                <span className="text-sm text-gray-500">{formatTime(new Date())}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

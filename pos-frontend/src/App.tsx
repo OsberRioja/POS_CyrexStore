@@ -178,6 +178,7 @@ function MainApp() {
         {/* Contenedor principal */}
         <main className="flex-1 min-w-0 p-6">
           <div className="bg-white rounded-3xl shadow-sm min-h-[80vh] p-6 border border-gray-200">
+            {mainPage === "dashboard" && <HomePage />}
             {mainPage === "caja" && <CashboxPage/>}
             {mainPage === "stock" && user?.role !== 'SELLER' && <StockPage />}
             {mainPage === "stock" && user?.role === 'SELLER' && (
@@ -229,7 +230,7 @@ function MainApp() {
             )}
 
             {mainPage === "salir" && <HomePage />}
-            {mainPage === null && <HomePage />}
+            {(mainPage === null || mainPage === "dashboard") && <HomePage />}
           </div>
         </main>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { User } from "../context/authContext";
-import { useAuth } from '../context/authContext'; // Importar useAuth
+import { useAuth } from '../context/authContext';
 
 interface SidebarProps {
   selected: string | null;
@@ -9,7 +9,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
-  const { exitToAdminHome, isInBranchMode } = useAuth(); // Usar hook para acceder a funciones
+  const { exitToAdminHome, isInBranchMode } = useAuth();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
   // Determinar qué elementos mostrar según el rol
@@ -18,7 +18,10 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
   const showProviders = user?.role !== 'SELLER';
   const showConfiguration = user?.role === 'ADMIN';
   const showReports = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR'; 
-  const showExitButton = user?.role === 'ADMIN' && user?.branchId === null && isInBranchMode; // Solo admin global en modo sucursal
+  const showExitButton = user?.role === 'ADMIN' && user?.branchId === null && isInBranchMode;
+  
+  // Mostrar Dashboard si el usuario tiene una sucursal asignada o está en modo sucursal
+  const showDashboard = user && (user.branchId !== null || isInBranchMode);
 
   const toggleSubmenu = (menu: string) => {
     setOpenSubmenu(openSubmenu === menu ? null : menu);
@@ -26,19 +29,16 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
 
   const handleSelect = (page: string | null) => {
     onSelect(page);
-    // Cerrar submenús al seleccionar una página
     setOpenSubmenu(null);
   };
 
-  // Función para manejar el botón de salir (volver al home admin)
   const handleExitToAdminHome = () => {
     exitToAdminHome();
-    onSelect(null); // Limpiar selección
+    onSelect(null);
   };
 
   return (
     <aside className="w-48 bg-transparent flex flex-col items-center py-8">
-      {/* Mostrar información del usuario si está disponible */}
       {user && (
         <div className="mb-6 text-center">
           <div className="text-sm font-medium text-gray-700">{user.name}</div>
@@ -52,6 +52,18 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
       )}
 
       <div className="w-full flex flex-col items-start pl-2 space-y-1">
+        {/* NUEVO: Botón de Dashboard */}
+        {showDashboard && (
+          <button
+            onClick={() => handleSelect("dashboard")}
+            className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+              selected === "dashboard" ? "bg-blue-600" : "bg-gray-500/90"
+            }`}
+          >
+            📊 DASHBOARD
+          </button>
+        )}
+        
         <button
           onClick={() => handleSelect("caja")}
           className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
@@ -61,7 +73,6 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
           💰 CAJA
         </button>
         
-        {/* STOCK - Solo para ADMIN y SUPERVISOR */}
         {showStock && (
           <button
             onClick={() => handleSelect("stock")}
@@ -73,7 +84,6 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
           </button>
         )}
 
-        {/* USUARIOS - Solo para ADMIN */}
         {showUsers && (
           <button
             onClick={() => handleSelect("usuarios")}
@@ -94,7 +104,6 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
           👥 CLIENTES
         </button>
 
-        {/* PROVEEDORES - Solo para ADMIN y SUPERVISOR */}
         {showProviders && (
           <button
             onClick={() => handleSelect('proveedores')}
@@ -105,6 +114,7 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
             🏢 PROVEEDORES
           </button>
         )}
+        
         <button
           onClick={() => handleSelect('productos')}
           className={`w-40 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
@@ -114,12 +124,9 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
           📦 PRODUCTOS
         </button>
 
-        {/* NUEVA SECCIÓN DE INFORMES PARA ADMIN Y SUPERVISOR */}
         {showReports && (
           <>
             <div className="w-full border-t border-gray-300 my-2" />
-            
-            {/* Botón de Informes con submenú */}
             <div className="w-full">
               <button
                 onClick={() => toggleSubmenu('informes')}
@@ -131,7 +138,6 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
                 <span>{openSubmenu === 'informes' ? '▲' : '▼'}</span>
               </button>
               
-              {/* Submenú de Informes */}
               {openSubmenu === 'informes' && (
                 <div className="ml-4 mt-1 space-y-1">
                   <button
@@ -142,19 +148,15 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
                   >
                     💰 Comisiones
                   </button>
-                  {/* Aquí puedes agregar más opciones de informes en el futuro */}
                 </div>
               )}
             </div>
           </>
         )}
 
-        {/* NUEVA SECCIÓN DE AJUSTES SOLO PARA ADMIN */}
         {showConfiguration && (
           <>
             <div className="w-full border-t border-gray-300 my-2" />
-            
-            {/* Botón de Ajustes con submenú */}
             <div className="w-full">
               <button
                 onClick={() => toggleSubmenu('ajustes')}
@@ -166,7 +168,6 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
                 <span>{openSubmenu === 'ajustes' ? '▲' : '▼'}</span>
               </button>
               
-              {/* Submenú de Ajustes */}
               {openSubmenu === 'ajustes' && (
                 <div className="ml-4 mt-1 space-y-1">
                   <button
@@ -193,14 +194,12 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
                   >
                     🔧 General
                   </button>
-                  {/* Aquí puedes agregar más opciones de ajustes en el futuro */}
                 </div>
               )}
             </div>
           </>
         )}
 
-        {/* Botón SALIR - Solo para administradores globales en modo sucursal */}
         {showExitButton && (
           <>
             <div className="w-full border-t border-gray-300 my-2" />
@@ -216,7 +215,6 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
         )}
       </div>
 
-      {/* línea vertical separadora */}
       <div className="absolute left-48 inset-y-0 my-auto h-3/4 w-px bg-gray-300" />
     </aside>
   );
