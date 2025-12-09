@@ -26,6 +26,7 @@ import commissionReportRoutes from './routes/commissionReport.routes';
 import { emailService } from './services/email.service';
 import { startTokenCleanupCron } from './jobs/cleanupExpiredTokens';
 import branchRoutes from "./routes/branch.routes"
+import dashboardRoutes from "./routes/dashboard.routes";
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use('/api/reports',reportRoutes);
 app.use('/api/commission-config', commissionRoutes);
 app.use('/api/commission-reports', commissionReportRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);
