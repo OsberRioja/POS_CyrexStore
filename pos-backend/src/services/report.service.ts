@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { prisma } from '../prismaClient';
 import { PaymentStatus } from '@prisma/client'; // Importar el enum
+import { MonthlyReportFilters, PeriodReportFilters } from '../dtos/report.dto';
 
 export const reportService = {
   async generateSalesReport(cashBoxId: number) {
@@ -1127,5 +1128,755 @@ export const reportService = {
     // Generar buffer
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
+  },
+  async generateMonthlySalesReport(filters: MonthlyReportFilters) {
+    const { year, month, branchId } = filters;
+    
+    // Calcular fechas del mes
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    // Obtener ventas del mes
+    const sales = await prisma.sale.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate
+        },
+        ...(branchId && { branchId })
+      },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        },
+        payments: {
+          include: {
+            paymentMethod: true
+          }
+        },
+        client: true,
+        seller: true,
+        branch: true
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // Crear workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sistema POS';
+    workbook.created = new Date();
+
+    // Estilos
+    const headerStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF2E86AB' }
+      },
+      font: {
+        color: { argb: 'FFFFFFFF' },
+        bold: true
+      },
+      border: {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      }
+    };
+
+    // Hoja de Resumen
+    const summarySheet = workbook.addWorksheet('RESUMEN MENSUAL');
+
+    // Título
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const monthName = monthNames[month - 1];
+    
+    summarySheet.mergeCells('A1:F1');
+    const titleCell = summarySheet.getCell('A1');
+    titleCell.value = `REPORTE DE VENTAS MENSUAL - ${monthName.toUpperCase()} ${year}`;
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { horizontal: 'center' };
+    titleCell.fill = headerStyle.fill;
+    titleCell.font = headerStyle.font;
+
+    // Información del período
+    summarySheet.mergeCells('A3:F3');
+    const periodCell = summarySheet.getCell('A3');
+    periodCell.value = `PERÍODO: ${startDate.toLocaleDateString('es-BO')} - ${endDate.toLocaleDateString('es-BO')}`;
+    periodCell.font = { bold: true };
+    periodCell.alignment = { horizontal: 'center' };
+
+    // Calcular resumen
+    const totalSales = sales.length;
+    const totalAmount = sales.reduce((sum, sale) => sum + sale.total, 0);
+    const totalPaid = sales.reduce((sum, sale) => 
+      sum + sale.payments.reduce((paidSum, payment) => paidSum + payment.amount, 0), 0);
+    const totalBalance = totalAmount - totalPaid;
+    const averageTicket = totalSales > 0 ? totalAmount / totalSales : 0;
+    const totalItems = sales.reduce((sum, sale) => 
+      sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+
+    // Resumen General
+    const summaryData = [
+      ['TOTAL VENTAS:', totalSales],
+      ['MONTO TOTAL VENTAS:', `Bs. ${totalAmount.toFixed(2)}`],
+      ['TOTAL PAGADO:', `Bs. ${totalPaid.toFixed(2)}`],
+      ['SALDO PENDIENTE:', `Bs. ${totalBalance.toFixed(2)}`],
+      ['TICKET PROMEDIO:', `Bs. ${averageTicket.toFixed(2)}`],
+      ['UNIDADES VENDIDAS:', totalItems]
+    ];
+
+    summaryData.forEach(([label, value], index) => {
+      summarySheet.getCell(`A${index + 5}`).value = label;
+      summarySheet.getCell(`B${index + 5}`).value = value;
+      summarySheet.getCell(`A${index + 5}`).font = { bold: true };
+    });
+
+    // Resumen por Método de Pago
+    const paymentMethodsMap = new Map();
+    
+    sales.forEach(sale => {
+      sale.payments.forEach(payment => {
+        const methodName = payment.paymentMethod.name;
+        const current = paymentMethodsMap.get(methodName) || { amount: 0, count: 0 };
+        current.amount += payment.amount;
+        current.count += 1;
+        paymentMethodsMap.set(methodName, current);
+      });
+    });
+
+    let paymentRow = 12;
+    summarySheet.getCell(`A${paymentRow}`).value = 'RESUMEN POR MÉTODO DE PAGO';
+    summarySheet.getCell(`A${paymentRow}`).font = { bold: true, size: 12 };
+    summarySheet.mergeCells(`A${paymentRow}:F${paymentRow}`);
+
+    paymentRow++;
+    paymentMethodsMap.forEach((data, methodName) => {
+      const percentage = totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0;
+      summarySheet.getCell(`A${paymentRow}`).value = methodName;
+      summarySheet.getCell(`B${paymentRow}`).value = `Bs. ${data.amount.toFixed(2)}`;
+      summarySheet.getCell(`C${paymentRow}`).value = `${percentage.toFixed(2)}%`;
+      summarySheet.getCell(`D${paymentRow}`).value = data.count;
+      paymentRow++;
+    });
+
+    // Resumen por Vendedor
+    const sellersMap = new Map();
+    
+    sales.forEach(sale => {
+      const sellerId = sale.sellerId;
+      const sellerName = sale.seller.name;
+      const current = sellersMap.get(sellerId) || { name: sellerName, count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += sale.total;
+      sellersMap.set(sellerId, current);
+    });
+
+    let sellerRow = paymentRow + 2;
+    summarySheet.getCell(`A${sellerRow}`).value = 'RESUMEN POR VENDEDOR';
+    summarySheet.getCell(`A${sellerRow}`).font = { bold: true, size: 12 };
+    summarySheet.mergeCells(`A${sellerRow}:F${sellerRow}`);
+
+    sellerRow++;
+    sellersMap.forEach((data, sellerId) => {
+      const average = data.count > 0 ? data.amount / data.count : 0;
+      summarySheet.getCell(`A${sellerRow}`).value = data.name;
+      summarySheet.getCell(`B${sellerRow}`).value = data.count;
+      summarySheet.getCell(`C${sellerRow}`).value = `Bs. ${data.amount.toFixed(2)}`;
+      summarySheet.getCell(`D${sellerRow}`).value = `Bs. ${average.toFixed(2)}`;
+      sellerRow++;
+    });
+
+    // Hoja de Detalle de Ventas
+    const salesSheet = workbook.addWorksheet('DETALLE VENTAS');
+
+    salesSheet.columns = [
+      { header: 'FECHA', key: 'date', width: 20 },
+      { header: 'ID VENTA', key: 'id', width: 15 },
+      { header: 'CLIENTE', key: 'client', width: 25 },
+      { header: 'VENDEDOR', key: 'seller', width: 20 },
+      { header: 'PRODUCTOS', key: 'products', width: 40 },
+      { header: 'CANTIDAD', key: 'quantity', width: 12 },
+      { header: 'TOTAL', key: 'total', width: 15 },
+      { header: 'PAGADO', key: 'paid', width: 15 },
+      { header: 'SALDO', key: 'balance', width: 15 },
+      { header: 'MÉTODOS PAGO', key: 'paymentMethods', width: 30 }
+    ];
+
+    // Aplicar estilo a encabezados
+    const salesHeader = salesSheet.getRow(1);
+    salesHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+
+    // Agregar datos
+    sales.forEach((sale, index) => {
+      const products = sale.items.map(item => 
+        `${item.product.name} (x${item.quantity})`
+      ).join(', ');
+
+      const totalQuantity = sale.items.reduce((sum, item) => sum + item.quantity, 0);
+      const paidAmount = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      const balance = sale.total - paidAmount;
+      
+      const paymentMethods = sale.payments.map(payment => 
+        `${payment.paymentMethod.name}: Bs. ${payment.amount.toFixed(2)}`
+      ).join('\n');
+
+      salesSheet.addRow({
+        date: sale.createdAt.toLocaleString('es-BO'),
+        id: sale.id.substring(0, 8),
+        client: sale.client?.nombre || 'N/A',
+        seller: sale.seller.name,
+        products: products,
+        quantity: totalQuantity,
+        total: `Bs. ${sale.total.toFixed(2)}`,
+        paid: `Bs. ${paidAmount.toFixed(2)}`,
+        balance: `Bs. ${balance.toFixed(2)}`,
+        paymentMethods: paymentMethods
+      });
+
+      // Aplicar bordes
+      const row = salesSheet.getRow(index + 2);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    // Hoja de Evolución Diaria (opcional)
+    const dailySheet = workbook.addWorksheet('EVOLUCIÓN DIARIA');
+    
+    // Agrupar ventas por día
+    const salesByDay = new Map();
+    
+    sales.forEach(sale => {
+      const dayKey = sale.createdAt.toISOString().split('T')[0];
+      const current = salesByDay.get(dayKey) || { count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += sale.total;
+      salesByDay.set(dayKey, current);
+    });
+
+    dailySheet.columns = [
+      { header: 'FECHA', key: 'date', width: 15 },
+      { header: 'VENTAS', key: 'sales', width: 10 },
+      { header: 'MONTO', key: 'amount', width: 15 },
+      { header: 'TICKET PROMEDIO', key: 'average', width: 18 }
+    ];
+
+    const dailyHeader = dailySheet.getRow(1);
+    dailyHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+
+    let dayRow = 2;
+    salesByDay.forEach((data, dayKey) => {
+      const date = new Date(dayKey);
+      const average = data.count > 0 ? data.amount / data.count : 0;
+      
+      dailySheet.addRow({
+        date: date.toLocaleDateString('es-BO'),
+        sales: data.count,
+        amount: `Bs. ${data.amount.toFixed(2)}`,
+        average: `Bs. ${average.toFixed(2)}`
+      });
+
+      dayRow++;
+    });
+
+    // Generar buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
+  },
+
+  async generatePeriodSalesReport(filters: PeriodReportFilters) {
+    const { startDate, endDate, branchId, sellerId, paymentMethodId } = filters;
+    
+    // Ajustar horas para cubrir todo el día
+    const adjustedStartDate = new Date(startDate);
+    adjustedStartDate.setHours(0, 0, 0, 0);
+    
+    const adjustedEndDate = new Date(endDate);
+    adjustedEndDate.setHours(23, 59, 59, 999);
+
+    // Obtener ventas del período
+    const sales = await prisma.sale.findMany({
+      where: {
+        createdAt: {
+          gte: adjustedStartDate,
+          lte: adjustedEndDate
+        },
+        ...(branchId && { branchId }),
+        ...(sellerId && { sellerId }),
+        ...(paymentMethodId && {
+          payments: {
+            some: {
+              paymentMethodId: paymentMethodId
+            }
+          }
+        })
+      },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        },
+        payments: {
+          include: {
+            paymentMethod: true
+          }
+        },
+        client: true,
+        seller: true,
+        branch: true
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // Crear workbook similar a generateMonthlySalesReport pero más genérico
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sistema POS';
+    workbook.created = new Date();
+
+    // Estilos (mismos que en generateMonthlySalesReport)
+    const headerStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF2E86AB' }
+      },
+      font: {
+        color: { argb: 'FFFFFFFF' },
+        bold: true
+      },
+      border: {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      }
+    };
+
+    // Hoja de Resumen
+    const summarySheet = workbook.addWorksheet('RESUMEN PERÍODO');
+
+    // Título
+    const startStr = startDate.toLocaleDateString('es-BO');
+    const endStr = endDate.toLocaleDateString('es-BO');
+    
+    summarySheet.mergeCells('A1:F1');
+    const titleCell = summarySheet.getCell('A1');
+    titleCell.value = `REPORTE DE VENTAS - DEL ${startStr} AL ${endStr}`;
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { horizontal: 'center' };
+    titleCell.fill = headerStyle.fill;
+    titleCell.font = headerStyle.font;
+
+    // Información del período
+    summarySheet.mergeCells('A3:F3');
+    const periodCell = summarySheet.getCell('A3');
+    periodCell.value = `PERÍODO: ${startStr} - ${endStr}`;
+    periodCell.font = { bold: true };
+    periodCell.alignment = { horizontal: 'center' };
+    
+    // Calcular resumen
+    const totalSales = sales.length;
+    const totalAmount = sales.reduce((sum, sale) => sum + sale.total, 0);
+    const totalPaid = sales.reduce((sum, sale) => 
+      sum + sale.payments.reduce((paidSum, payment) => paidSum + payment.amount, 0), 0);
+    const totalBalance = totalAmount - totalPaid;
+    const averageTicket = totalSales > 0 ? totalAmount / totalSales : 0;
+    const totalItems = sales.reduce((sum, sale) => 
+      sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+  
+    // Resumen General
+    const summaryData = [
+      ['TOTAL VENTAS:', totalSales],
+      ['MONTO TOTAL VENTAS:', `Bs. ${totalAmount.toFixed(2)}`],
+      ['TOTAL PAGADO:', `Bs. ${totalPaid.toFixed(2)}`],
+      ['SALDO PENDIENTE:', `Bs. ${totalBalance.toFixed(2)}`],
+      ['TICKET PROMEDIO:', `Bs. ${averageTicket.toFixed(2)}`],
+      ['UNIDADES VENDIDAS:', totalItems]
+    ];
+  
+    summaryData.forEach(([label, value], index) => {
+      summarySheet.getCell(`A${index + 5}`).value = label;
+      summarySheet.getCell(`B${index + 5}`).value = value;
+      summarySheet.getCell(`A${index + 5}`).font = { bold: true };
+    });
+  
+    // Resumen por Método de Pago
+    const paymentMethodsMap = new Map();
+    
+    sales.forEach(sale => {
+      sale.payments.forEach(payment => {
+        const methodName = payment.paymentMethod.name;
+        const current = paymentMethodsMap.get(methodName) || { amount: 0, count: 0 };
+        current.amount += payment.amount;
+        current.count += 1;
+        paymentMethodsMap.set(methodName, current);
+      });
+    });
+  
+    let paymentRow = 12;
+    summarySheet.getCell(`A${paymentRow}`).value = 'RESUMEN POR MÉTODO DE PAGO';
+    summarySheet.getCell(`A${paymentRow}`).font = { bold: true, size: 12 };
+    summarySheet.mergeCells(`A${paymentRow}:F${paymentRow}`);
+  
+    paymentRow++;
+    paymentMethodsMap.forEach((data, methodName) => {
+      const percentage = totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0;
+      summarySheet.getCell(`A${paymentRow}`).value = methodName;
+      summarySheet.getCell(`B${paymentRow}`).value = `Bs. ${data.amount.toFixed(2)}`;
+      summarySheet.getCell(`C${paymentRow}`).value = `${percentage.toFixed(2)}%`;
+      summarySheet.getCell(`D${paymentRow}`).value = data.count;
+      paymentRow++;
+    });
+  
+    // Resumen por Vendedor
+    const sellersMap = new Map();
+    
+    sales.forEach(sale => {
+      const sellerId = sale.sellerId;
+      const sellerName = sale.seller.name;
+      const current = sellersMap.get(sellerId) || { name: sellerName, count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += sale.total;
+      sellersMap.set(sellerId, current);
+    });
+  
+    let sellerRow = paymentRow + 2;
+    summarySheet.getCell(`A${sellerRow}`).value = 'RESUMEN POR VENDEDOR';
+    summarySheet.getCell(`A${sellerRow}`).font = { bold: true, size: 12 };
+    summarySheet.mergeCells(`A${sellerRow}:F${sellerRow}`);
+  
+    sellerRow++;
+    sellersMap.forEach((data, sellerId) => {
+      const average = data.count > 0 ? data.amount / data.count : 0;
+      summarySheet.getCell(`A${sellerRow}`).value = data.name;
+      summarySheet.getCell(`B${sellerRow}`).value = data.count;
+      summarySheet.getCell(`C${sellerRow}`).value = `Bs. ${data.amount.toFixed(2)}`;
+      summarySheet.getCell(`D${sellerRow}`).value = `Bs. ${average.toFixed(2)}`;
+      sellerRow++;
+    });
+  
+    // Hoja de Detalle de Ventas
+    const salesSheet = workbook.addWorksheet('DETALLE VENTAS');
+  
+    salesSheet.columns = [
+      { header: 'FECHA', key: 'date', width: 20 },
+      { header: 'ID VENTA', key: 'id', width: 15 },
+      { header: 'CLIENTE', key: 'client', width: 25 },
+      { header: 'VENDEDOR', key: 'seller', width: 20 },
+      { header: 'PRODUCTOS', key: 'products', width: 40 },
+      { header: 'CANTIDAD', key: 'quantity', width: 12 },
+      { header: 'TOTAL', key: 'total', width: 15 },
+      { header: 'PAGADO', key: 'paid', width: 15 },
+      { header: 'SALDO', key: 'balance', width: 15 },
+      { header: 'MÉTODOS PAGO', key: 'paymentMethods', width: 30 }
+    ];
+  
+    // Aplicar estilo a encabezados
+    const salesHeader = salesSheet.getRow(1);
+    salesHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+  
+    // Agregar datos
+    sales.forEach((sale, index) => {
+      const products = sale.items.map(item => 
+        `${item.product.name} (x${item.quantity})`
+      ).join(', ');
+    
+      const totalQuantity = sale.items.reduce((sum, item) => sum + item.quantity, 0);
+      const paidAmount = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      const balance = sale.total - paidAmount;
+      
+      const paymentMethods = sale.payments.map(payment => 
+        `${payment.paymentMethod.name}: Bs. ${payment.amount.toFixed(2)}`
+      ).join('\n');
+    
+      salesSheet.addRow({
+        date: sale.createdAt.toLocaleString('es-BO'),
+        id: sale.id.substring(0, 8),
+        client: sale.client?.nombre || 'N/A',
+        seller: sale.seller.name,
+        products: products,
+        quantity: totalQuantity,
+        total: `Bs. ${sale.total.toFixed(2)}`,
+        paid: `Bs. ${paidAmount.toFixed(2)}`,
+        balance: `Bs. ${balance.toFixed(2)}`,
+        paymentMethods: paymentMethods
+      });
+    
+      // Aplicar bordes
+      const row = salesSheet.getRow(index + 2);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+  
+    // Hoja de Evolución Diaria
+    const dailySheet = workbook.addWorksheet('EVOLUCIÓN DIARIA');
+    
+    // Agrupar ventas por día
+    const salesByDay = new Map();
+    
+    sales.forEach(sale => {
+      const dayKey = sale.createdAt.toISOString().split('T')[0];
+      const current = salesByDay.get(dayKey) || { count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += sale.total;
+      salesByDay.set(dayKey, current);
+    });
+  
+    dailySheet.columns = [
+      { header: 'FECHA', key: 'date', width: 15 },
+      { header: 'VENTAS', key: 'sales', width: 10 },
+      { header: 'MONTO', key: 'amount', width: 15 },
+      { header: 'TICKET PROMEDIO', key: 'average', width: 18 }
+    ];
+  
+    const dailyHeader = dailySheet.getRow(1);
+    dailyHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+  
+    let dayRow = 2;
+    salesByDay.forEach((data, dayKey) => {
+      const date = new Date(dayKey);
+      const average = data.count > 0 ? data.amount / data.count : 0;
+      
+      dailySheet.addRow({
+        date: date.toLocaleDateString('es-BO'),
+        sales: data.count,
+        amount: `Bs. ${data.amount.toFixed(2)}`,
+        average: `Bs. ${average.toFixed(2)}`
+      });
+    
+      dayRow++;
+    });
+
+    // Generar buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
+  },
+
+  async generatePeriodExpensesReport(filters: PeriodReportFilters) {
+    const { startDate, endDate, branchId, paymentMethodId } = filters;
+    
+    // Ajustar horas para cubrir todo el día
+    const adjustedStartDate = new Date(startDate);
+    adjustedStartDate.setHours(0, 0, 0, 0);
+    
+    const adjustedEndDate = new Date(endDate);
+    adjustedEndDate.setHours(23, 59, 59, 999);
+
+    // Obtener gastos del período
+    const expenses = await prisma.expense.findMany({
+      where: {
+        createdAt: {
+          gte: adjustedStartDate,
+          lte: adjustedEndDate
+        },
+        ...(branchId && { branchId }),
+        ...(paymentMethodId && { paymentMethodId })
+      },
+      include: {
+        paymentMethod: true,
+        user: true,
+        branch: true
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // Crear workbook para gastos (similar estructura)
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sistema POS';
+    workbook.created = new Date();
+
+    // Estilos
+    const headerStyle = {
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF2E86AB' }
+      },
+      font: {
+        color: { argb: 'FFFFFFFF' },
+        bold: true
+      },
+      border: {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      }
+    };
+  
+    // Hoja de Resumen
+    const summarySheet = workbook.addWorksheet('RESUMEN GASTOS');
+  
+    // Título
+    const startStr = startDate.toLocaleDateString('es-BO');
+    const endStr = endDate.toLocaleDateString('es-BO');
+    
+    summarySheet.mergeCells('A1:F1');
+    const titleCell = summarySheet.getCell('A1');
+    titleCell.value = `REPORTE DE GASTOS - DEL ${startStr} AL ${endStr}`;
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { horizontal: 'center' };
+    titleCell.fill = headerStyle.fill;
+    titleCell.font = headerStyle.font;
+  
+    // Información del período
+    summarySheet.mergeCells('A3:F3');
+    const periodCell = summarySheet.getCell('A3');
+    periodCell.value = `PERÍODO: ${startStr} - ${endStr}`;
+    periodCell.font = { bold: true };
+    periodCell.alignment = { horizontal: 'center' };
+  
+    // Calcular resumen
+    const totalExpenses = expenses.length;
+    const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const averageExpense = totalExpenses > 0 ? totalAmount / totalExpenses : 0;
+  
+    // Resumen General
+    const summaryData = [
+      ['TOTAL GASTOS:', totalExpenses],
+      ['MONTO TOTAL:', `Bs. ${totalAmount.toFixed(2)}`],
+      ['GASTO PROMEDIO:', `Bs. ${averageExpense.toFixed(2)}`]
+    ];
+  
+    summaryData.forEach(([label, value], index) => {
+      summarySheet.getCell(`A${index + 5}`).value = label;
+      summarySheet.getCell(`B${index + 5}`).value = value;
+      summarySheet.getCell(`A${index + 5}`).font = { bold: true };
+    });
+  
+    // Resumen por Método de Pago
+    const paymentMethodsMap = new Map();
+    
+    expenses.forEach(expense => {
+      const methodName = expense.paymentMethod.name;
+      const current = paymentMethodsMap.get(methodName) || { amount: 0, count: 0 };
+      current.amount += expense.amount;
+      current.count += 1;
+      paymentMethodsMap.set(methodName, current);
+    });
+  
+    let paymentRow = 9;
+    summarySheet.getCell(`A${paymentRow}`).value = 'RESUMEN POR MÉTODO DE PAGO';
+    summarySheet.getCell(`A${paymentRow}`).font = { bold: true, size: 12 };
+    summarySheet.mergeCells(`A${paymentRow}:F${paymentRow}`);
+  
+    paymentRow++;
+    paymentMethodsMap.forEach((data, methodName) => {
+      const percentage = totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0;
+      summarySheet.getCell(`A${paymentRow}`).value = methodName;
+      summarySheet.getCell(`B${paymentRow}`).value = `Bs. ${data.amount.toFixed(2)}`;
+      summarySheet.getCell(`C${paymentRow}`).value = `${percentage.toFixed(2)}%`;
+      summarySheet.getCell(`D${paymentRow}`).value = data.count;
+      paymentRow++;
+    });
+  
+    // Resumen por Usuario
+    const usersMap = new Map();
+    
+    expenses.forEach(expense => {
+      const userId = expense.createdBy;
+      const userName = expense.user?.name || 'N/A';
+      const current = usersMap.get(userId) || { name: userName, count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += expense.amount;
+      usersMap.set(userId, current);
+    });
+  
+    let userRow = paymentRow + 2;
+    summarySheet.getCell(`A${userRow}`).value = 'RESUMEN POR USUARIO';
+    summarySheet.getCell(`A${userRow}`).font = { bold: true, size: 12 };
+    summarySheet.mergeCells(`A${userRow}:F${userRow}`);
+  
+    userRow++;
+    usersMap.forEach((data, userId) => {
+      const average = data.count > 0 ? data.amount / data.count : 0;
+      summarySheet.getCell(`A${userRow}`).value = data.name;
+      summarySheet.getCell(`B${userRow}`).value = data.count;
+      summarySheet.getCell(`C${userRow}`).value = `Bs. ${data.amount.toFixed(2)}`;
+      summarySheet.getCell(`D${userRow}`).value = `Bs. ${average.toFixed(2)}`;
+      userRow++;
+    });
+  
+    // Hoja de Detalle de Gastos
+    const expensesSheet = workbook.addWorksheet('DETALLE GASTOS');
+  
+    expensesSheet.columns = [
+      { header: 'FECHA', key: 'date', width: 20 },
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'CONCEPTO', key: 'concept', width: 40 },
+      { header: 'MONTO', key: 'amount', width: 15 },
+      { header: 'MÉTODO DE PAGO', key: 'paymentMethod', width: 20 },
+      { header: 'USUARIO', key: 'user', width: 25 },
+      { header: 'SUCURSAL', key: 'branch', width: 25 }
+    ];
+  
+    // Aplicar estilo a encabezados
+    const expensesHeader = expensesSheet.getRow(1);
+    expensesHeader.eachCell((cell) => {
+      cell.fill = headerStyle.fill;
+      cell.font = headerStyle.font;
+      cell.border = headerStyle.border;
+    });
+  
+    // Agregar datos
+    expenses.forEach((expense, index) => {
+      expensesSheet.addRow({
+        date: expense.createdAt.toLocaleString('es-BO'),
+        id: expense.id,
+        concept: expense.concept,
+        amount: `Bs. ${expense.amount.toFixed(2)}`,
+        paymentMethod: expense.paymentMethod.name,
+        user: expense.user?.name || 'N/A',
+        branch: expense.branch?.name || 'N/A'
+      });
+    
+      // Aplicar bordes
+      const row = expensesSheet.getRow(index + 2);
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
   }
+
 };
