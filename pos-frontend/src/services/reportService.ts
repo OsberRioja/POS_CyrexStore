@@ -200,6 +200,163 @@ class ReportService {
       }
     }
   }
+
+  // Reporte mensual de ventas
+  async downloadMonthlySalesReport(year: number, month: number, branchId?: number) {
+    try {
+      let url = `${API_URL}/reports/monthly-sales/${year}/${month}`;
+      if (branchId) {
+        url += `?branchId=${branchId}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: this.getAuthHeaders(),
+        responseType: 'blob'
+      });
+
+      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const monthName = monthNames[month - 1];
+      const fileName = `reporte-ventas-${monthName.toLowerCase()}-${year}.xlsx`;
+
+      // Crear URL para descarga
+      const urlBlob = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      link.remove();
+      window.URL.revokeObjectURL(urlBlob);
+
+      return true;
+    } catch (error: any) {
+      console.error('Error descargando reporte mensual:', error);
+      throw new Error(error.response?.data?.error || 'Error descargando reporte mensual');
+    }
+  }
+
+  // Reporte de ventas por período
+  async downloadPeriodSalesReport(startDate: string, endDate: string, branchId?: number, sellerId?: string, paymentMethodId?: number) {
+    try {
+      const params: any = {
+        startDate,
+        endDate
+      };
+
+      if (branchId) params.branchId = branchId;
+      if (sellerId) params.sellerId = sellerId;
+      if (paymentMethodId) params.paymentMethodId = paymentMethodId;
+
+      const response = await axios.get(`${API_URL}/reports/period-sales`, {
+        headers: this.getAuthHeaders(),
+        responseType: 'blob',
+        params
+      });
+
+      const startStr = startDate.split('T')[0];
+      const endStr = endDate.split('T')[0];
+      const fileName = `reporte-ventas-${startStr}-al-${endStr}.xlsx`;
+
+      // Crear URL para descarga
+      const urlBlob = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      link.remove();
+      window.URL.revokeObjectURL(urlBlob);
+
+      return true;
+    } catch (error: any) {
+      console.error('Error descargando reporte por período:', error);
+      throw new Error(error.response?.data?.error || 'Error descargando reporte por período');
+    }
+  }
+
+  // Reporte de gastos por período
+  async downloadPeriodExpensesReport(startDate: string, endDate: string, branchId?: number, paymentMethodId?: number) {
+    try {
+      const params: any = {
+        startDate,
+        endDate
+      };
+
+      if (branchId) params.branchId = branchId;
+      if (paymentMethodId) params.paymentMethodId = paymentMethodId;
+
+      const response = await axios.get(`${API_URL}/reports/period-expenses`, {
+        headers: this.getAuthHeaders(),
+        responseType: 'blob',
+        params
+      });
+
+      const startStr = startDate.split('T')[0];
+      const endStr = endDate.split('T')[0];
+      const fileName = `reporte-gastos-${startStr}-al-${endStr}.xlsx`;
+
+      // Crear URL para descarga
+      const urlBlob = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      link.remove();
+      window.URL.revokeObjectURL(urlBlob);
+
+      return true;
+    } catch (error: any) {
+      console.error('Error descargando reporte de gastos por período:', error);
+      throw new Error(error.response?.data?.error || 'Error descargando reporte de gastos por período');
+    }
+  }
+
+  // Reporte combinado
+  async downloadCombinedReport(startDate: string, endDate: string, branchId?: number) {
+    try {
+      const params: any = {
+        startDate,
+        endDate
+      };
+
+      if (branchId) params.branchId = branchId;
+
+      const response = await axios.get(`${API_URL}/reports/combined-report`, {
+        headers: this.getAuthHeaders(),
+        responseType: 'blob',
+        params
+      });
+
+      const startStr = startDate.split('T')[0];
+      const endStr = endDate.split('T')[0];
+      const fileName = `reporte-combinado-${startStr}-al-${endStr}.xlsx`;
+
+      // Crear URL para descarga
+      const urlBlob = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      link.remove();
+      window.URL.revokeObjectURL(urlBlob);
+
+      return true;
+    } catch (error: any) {
+      console.error('Error descargando reporte combinado:', error);
+      throw new Error(error.response?.data?.error || 'Error descargando reporte combinado');
+    }
+  }
 }
 
 export const reportService = new ReportService();

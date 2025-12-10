@@ -148,6 +148,14 @@ export default function Sidebar({ selected, onSelect, user }: SidebarProps) {
                   >
                     💰 Comisiones
                   </button>
+                  <button
+                    onClick={() => handleSelect('reportes-avanzados')}
+                    className={`w-36 text-sm font-semibold px-3 py-2 rounded-md shadow-sm text-white ${
+                      selected === "reportes-avanzados" ? "bg-blue-500" : "bg-gray-400/90"
+                    }`}
+                  >
+                    📊 Reportes
+                  </button>
                 </div>
               )}
             </div>
