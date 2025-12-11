@@ -161,9 +161,9 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900">
       <Navbar />
-      <div className="flex overflow-hidden">
+      <div className="flex pt-16">
         <Sidebar 
           selected={mainPage} 
           onSelect={(p) => {
@@ -177,8 +177,8 @@ function MainApp() {
         />
 
         {/* Contenedor principal */}
-        <main className="flex-1 min-w-0 p-6">
-          <div className="bg-white rounded-3xl shadow-sm min-h-[80vh] p-6 border border-gray-200">
+        <main className="flex-1 ml-64 p-6 min-h-[calc(100vh-4rem)]">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg min-h-full p-8 border border-gray-200/50">
             {mainPage === "dashboard" && <HomePage />}
             {mainPage === "caja" && <CashboxPage/>}
             {mainPage === "stock" && user?.role !== 'SELLER' && <StockPage />}
