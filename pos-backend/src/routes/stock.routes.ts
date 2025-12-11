@@ -28,6 +28,18 @@ router.post('/return', StockMovementController.registerReturn);
 // Historial de cambios de precio de un producto
 router.get('/price-history/:productId', StockMovementController.getPriceHistory);
 
+// Registrar ajuste de stock
+router.post('/adjustment', StockMovementController.registerAdjustment);
+
+// Registrar uso interno
+router.post('/internal-use-out', StockMovementController.registerInternalUseOut);
+
+// Obtener usos internos activos
+router.get('/active-internal-uses', StockMovementController.getActiveInternalUses);
+
+// Retornar producto de uso interno
+router.post('/internal-use/:movementId/return', StockMovementController.returnInternalUse);
+
 // ========== PRODUCTOS ==========
 
 // Historial de movimientos de un producto específico

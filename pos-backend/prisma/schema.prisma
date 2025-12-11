@@ -210,16 +210,20 @@ model StockMovement {
   notes         String?
   reason        String?
   createdBy     String
+  branchId      Int?
   createdAt     DateTime     @default(now())
   returnId      Int?
   isCompleted   Boolean      @default(false)
   completedAt   DateTime?
   completedBy   String?
+  destination   String?
+  expectedReturnDate    DateTime?
   user          User         @relation(fields: [createdBy], references: [id])
   product       Product      @relation(fields: [productId], references: [id])
   provider      Provider?    @relation(fields: [providerId], references: [id_provider])
   return        Return?      @relation(fields: [returnId], references: [id], onDelete: Cascade)
   sale          Sale?        @relation(fields: [saleId], references: [id])
+  branch        Branch?      @relation(fields: [branchId], references: [id])
 
   @@map("stock_movements")
 }
@@ -369,6 +373,7 @@ model Branch {
   sales      Sale[]
   cashBoxes  CashBox[]
   expenses   Expense[]
+  stockMovements StockMovement[]
 }
 
 enum CommissionType {
@@ -408,14 +413,16 @@ enum PaymentStatus {
 }
 
 enum MovementType {
-  PURCHASE
-  SALE
-  REPAIR_OUT
-  REPAIR_RETURN
-  DEMO_OUT
-  DEMO_RETURN
-  RETURN_IN
-  ADJUSTMENT
+  PURCHASE                //COMPRA
+  SALE                    //VENTA
+  REPAIR_OUT              //ENVÍO A REPARACIÓN
+  REPAIR_RETURN           //RETORNO DE REPARACIÓN
+  DEMO_OUT                //ENVIO A DEMO
+  DEMO_RETURN             //RETORNO DE DEMO
+  RETURN_IN               //DEVOLUCIÓN
+  ADJUSTMENT              //AJUSTE MANUAL DE STOCK
+  INTERNAL_USE_OUT        //USO INTERNO
+  INTERNAL_USE_RETURN     //RETORNO DE USO INTERNO
 }
 
 enum ReturnStatus {

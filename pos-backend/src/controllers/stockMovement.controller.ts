@@ -410,5 +410,125 @@ export const StockMovementController = {
         error: err?.message || "Error interno" 
       });
     }
+  },
+
+    /**
+   * Registrar ajuste de stock
+   */
+  async registerAdjustment(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { productId, quantity, reason, notes } = req.body;
+    
+      if (!productId || quantity === undefined || !reason) {
+        return res.status(400).json({ 
+          error: "productId, quantity y reason son requeridos" 
+        });
+      }
+    
+      const movement = await StockMovementService.registerAdjustment(
+        { productId, quantity, reason, notes },
+        userId
+      );
+    
+      return res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/adjustment:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+  
+  /**
+   * Registrar salida por uso interno
+   */
+  async registerInternalUseOut(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { 
+        productId, 
+        quantity, 
+        reason, 
+        destination, 
+        expectedReturnDate, 
+        notes 
+      } = req.body;
+    
+      if (!productId || !quantity || !reason) {
+        return res.status(400).json({ 
+          error: "productId, quantity y reason son requeridos" 
+        });
+      }
+    
+      const movement = await StockMovementService.registerInternalUseOut(
+        { 
+          productId, 
+          quantity, 
+          reason, 
+          destination, 
+          expectedReturnDate: expectedReturnDate ? new Date(expectedReturnDate) : undefined, 
+          notes 
+        },
+        userId
+      );
+    
+      return res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/internal-use-out:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
+  },
+  
+  /**
+   * Obtener usos internos activos
+   */
+  async getActiveInternalUses(req: Request, res: Response) {
+    try {
+      const userBranchId = (req as any).user?.branchId;
+      let targetBranchId = userBranchId;
+    
+      // Si es admin global (branchId = null), buscar branchId alternativo
+      if (!targetBranchId) {
+        targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+        if (!targetBranchId) {
+          return res.status(400).json({ 
+            error: "Para usuarios administradores, debe especificar una sucursal" 
+          });
+        }
+      }
+    
+      const internalUses = await StockMovementService.getActiveInternalUses(targetBranchId);
+      res.json(internalUses);
+    } catch (err: any) {
+      console.error("GET /stock/active-internal-uses:", err);
+      return res.status(500).json({ error: "Error interno" });
+    }
+  },
+  
+  /**
+   * Retornar producto de uso interno
+   */
+  async returnInternalUse(req: Request, res: Response) {
+    try {
+      const { movementId } = req.params;
+      const { notes, condition } = req.body;
+      const userId = (req as any).userId;
+      
+      const movement = await StockMovementService.returnInternalUse(
+        parseInt(movementId),
+        { notes, condition },
+        userId
+      );
+      
+      res.status(201).json(movement);
+    } catch (err: any) {
+      console.error("POST /stock/internal-use/:movementId/return:", err);
+      return res.status(err?.status || 500).json({ 
+        error: err?.message || "Error interno" 
+      });
+    }
   }
 };

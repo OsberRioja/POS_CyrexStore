@@ -546,4 +546,272 @@ export const StockMovementService = {
       return returnMovement;
     });
   },
+  /**
+   * Registrar ajuste manual de stock
+   */
+  async registerAdjustment(data: {
+    productId: string;
+    quantity: number; // Positivo para aumento, negativo para disminución
+    reason: string; // Justificación obligatoria
+    notes?: string;
+  }, userId: string) {
+    if (data.quantity === 0) {
+      throw { status: 400, message: "La cantidad no puede ser 0" };
+    }
+  
+    if (!data.reason || data.reason.trim() === '') {
+      throw { status: 400, message: "La razón/justificación es obligatoria" };
+    }
+  
+    return prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUnique({
+        where: { id: data.productId }
+      });
+    
+      if (!product) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+    
+      const previousStock = product.stock;
+      const newStock = previousStock + data.quantity;
+    
+      // Validar que el stock no sea negativo después del ajuste
+      if (newStock < 0) {
+        throw { 
+          status: 400, 
+          message: `Stock insuficiente. Stock actual: ${previousStock}, ajuste: ${data.quantity}` 
+        };
+      }
+    
+      // Actualizar stock del producto
+      await tx.product.update({
+        where: { id: data.productId },
+        data: { stock: newStock }
+      });
+    
+      // Registrar movimiento de ajuste
+      const movement = await tx.stockMovement.create({
+        data: {
+          productId: data.productId,
+          movementType: 'ADJUSTMENT',
+          quantity: data.quantity,
+          previousStock,
+          newStock,
+          reason: data.reason,
+          notes: data.notes,
+          createdBy: userId,
+        },
+        include: {
+          product: { 
+            select: { 
+              name: true, 
+              sku: true,
+              branch: {
+                select: { name: true }
+              }
+            } 
+          },
+          user: { select: { name: true, userCode: true } }
+        }
+      });
+    
+      return movement;
+    });
+  },
+  
+  /**
+   * Registrar salida por uso interno
+   */
+  async registerInternalUseOut(data: {
+    productId: string;
+    quantity: number;
+    reason: string;
+    destination?: string;
+    expectedReturnDate?: Date;
+    notes?: string;
+  }, userId: string) {
+    if (data.quantity <= 0) {
+      throw { status: 400, message: "La cantidad debe ser mayor a 0" };
+    }
+  
+    if (!data.reason || data.reason.trim() === '') {
+      throw { status: 400, message: "La razón/justificación es obligatoria" };
+    }
+  
+    return prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUnique({
+        where: { id: data.productId }
+      });
+    
+      if (!product) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+    
+      if (product.stock < data.quantity) {
+        throw { status: 400, message: "Stock insuficiente" };
+      }
+    
+      const previousStock = product.stock;
+      const newStock = previousStock - data.quantity;
+    
+      // Actualizar stock del producto
+      await tx.product.update({
+        where: { id: data.productId },
+        data: { stock: newStock }
+      });
+    
+      // Registrar movimiento de salida por uso interno
+      const movement = await tx.stockMovement.create({
+        data: {
+          productId: data.productId,
+          movementType: 'INTERNAL_USE_OUT',
+          quantity: -data.quantity, // Negativo para salidas
+          previousStock,
+          newStock,
+          reason: data.reason,
+          notes: data.notes,
+          destination: data.destination,
+          expectedReturnDate: data.expectedReturnDate,
+          createdBy: userId,
+          isCompleted: false // ← Para poder rastrear si fue devuelto
+        },
+        include: {
+          product: { 
+            select: { 
+              name: true, 
+              sku: true,
+              branch: {
+                select: { name: true }
+              }
+            } 
+          },
+          user: { select: { name: true, userCode: true } }
+        }
+      });
+    
+      return movement;
+    });
+  },
+  
+  /**
+   * Obtener usos internos activos
+   */
+  async getActiveInternalUses(branchId?: number) {
+    const where: any = {
+      movementType: 'INTERNAL_USE_OUT',
+      isCompleted: false
+    };
+  
+    if (branchId !== undefined) {
+      where.product = {
+        branchId: branchId
+      };
+    }
+  
+    return prisma.stockMovement.findMany({
+      where,
+      include: {
+        product: {
+          select: { 
+            id: true, 
+            name: true, 
+            sku: true, 
+            stock: true,
+            branchId: true,
+            branch: {
+              select: { name: true }
+            }
+          }
+        },
+        user: {
+          select: { name: true, userCode: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  },
+  
+  /**
+   * Retornar producto de uso interno
+   */
+  async returnInternalUse(internalUseMovementId: number, data: {
+    notes?: string;
+    condition?: string;
+  }, userId: string) {
+    return prisma.$transaction(async (tx) => {
+      // Obtener el movimiento original de uso interno
+      const internalUseMovement = await tx.stockMovement.findUnique({
+        where: { id: internalUseMovementId }
+      });
+    
+      if (!internalUseMovement) {
+        throw { status: 404, message: "Movimiento de uso interno no encontrado" };
+      }
+    
+      if (internalUseMovement.movementType !== 'INTERNAL_USE_OUT') {
+        throw { status: 400, message: "El movimiento no es de tipo INTERNAL_USE_OUT" };
+      }
+    
+      if (internalUseMovement.isCompleted) {
+        throw { status: 400, message: "Este uso interno ya fue devuelto" };
+      }
+    
+      const product = await tx.product.findUnique({
+        where: { id: internalUseMovement.productId }
+      });
+    
+      if (!product) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+    
+      const quantity = Math.abs(internalUseMovement.quantity);
+      const previousStock = product.stock;
+      const newStock = previousStock + quantity;
+    
+      // Actualizar stock del producto
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stock: newStock }
+      });
+    
+      // Marcar el movimiento original como completado
+      await tx.stockMovement.update({
+        where: { id: internalUseMovementId },
+        data: {
+          isCompleted: true,
+          completedAt: new Date(),
+          completedBy: userId
+        }
+      });
+    
+      // Registrar el movimiento de retorno
+      const returnMovement = await tx.stockMovement.create({
+        data: {
+          productId: product.id,
+          movementType: 'INTERNAL_USE_RETURN',
+          quantity: quantity,
+          previousStock,
+          newStock,
+          notes: data.notes,
+          reason: data.condition || 'Producto devuelto de uso interno',
+          createdBy: userId,
+          isCompleted: true
+        },
+        include: {
+          product: { 
+            select: { 
+              name: true, 
+              sku: true,
+              branch: {
+                select: { name: true }
+              }
+            } 
+          },
+          user: { select: { name: true } }
+        }
+      });
+    
+      return returnMovement;
+    });
+  }
 };

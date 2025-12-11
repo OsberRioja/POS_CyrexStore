@@ -10,7 +10,9 @@ import {
   DollarSign,
   Wrench,
   MonitorPlay,
-  History
+  History,
+  Building,
+  BarChart3
 } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import StockMovementsTable from '../components/StockMovementsTable';
@@ -26,9 +28,12 @@ import { productService } from '../services/productService';
 import SearchSalesBar from '../components/SearchSalesBar';
 import { saleService } from '../services/saleService';
 import SaleDetailsModal from '../components/SaleDetailModal';
+import AdjustStockModal from '../components/AdjustStockModal';
+import ActiveInternalUsesTable from '../components/ActiveInternalUsesTable';
+import InternalUseModal from '../components/InternalUseModal';
 
-type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos';
-type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN';
+type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos' | 'active-internal-uses';
+type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN' | 'ADJUSMENT' | 'INTERNAL_USE_OUT' | 'INTERNAL_USE_RETURN';
 
 export default function StockPage() {
   const [view, setView] = useState<ViewType>('movements');
@@ -42,6 +47,9 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true);
   const [activeRepairs, setActiveRepairs] = useState<any[]>([]);
   const [activeDemos, setActiveDemos] = useState<any[]>([]);
+  const [activeInternalUses, setActiveInternalUses] = useState<any[]>([]);
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [showInternalUseModal, setShowInternalUseModal] = useState(false);
 
   const [searchSaleId, setSearchSaleId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -73,6 +81,15 @@ export default function StockPage() {
       loadActiveRepairs();
     } else if (view === 'active-demos') {
       loadActiveDemos();
+    } else if (view === 'active-internal-uses') {
+      loadActiveInternalUses();
+    }
+  }, [view]);
+
+  // useEffect para cargar usos internos
+  useEffect(() => {
+    if (view === 'active-internal-uses') {
+      loadActiveInternalUses();
     }
   }, [view]);
 
@@ -161,6 +178,16 @@ export default function StockPage() {
     setFilteredProducts(filtered);
   };
 
+  // Función para cargar usos internos
+  const loadActiveInternalUses = async () => {
+    try {
+      const response = await stockService.getActiveInternalUses();
+      setActiveInternalUses(response.data || []);
+    } catch (error) {
+      console.error('Error loading active internal uses:', error);
+    }
+  };
+
   const handlePurchase = (product: any) => {
     setSelectedProduct(product);
     setShowPurchaseModal(true);
@@ -185,6 +212,17 @@ export default function StockPage() {
     setSelectedProduct(product);
     setShowHistoryModal(true);
   };
+
+  const handleAdjustment = (product: any) => {
+    setSelectedProduct(product);
+    setShowAdjustmentModal(true);
+  };
+
+  const handleInternalUse = (product: any) => {
+    setSelectedProduct(product);
+    setShowInternalUseModal(true);
+  };
+
 
   const handleSearchSale = async (saleId: string) => {
     setIsSearching(true);
@@ -395,7 +433,7 @@ export default function StockPage() {
       )}
 
       {/* Navegación de vistas */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-2">
         <button
           onClick={() => setView('movements')}
           className={`px-4 py-2 rounded-lg font-medium ${
@@ -432,6 +470,16 @@ export default function StockPage() {
                 : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
           🎮 Demos
         </button>
+        <button
+          onClick={() => setView('active-internal-uses')}
+          className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+            view === 'active-internal-uses'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          🏢 Uso Interno
+        </button>
       </div>
 
       {/* Vista de Movimientos */}
@@ -457,6 +505,9 @@ export default function StockPage() {
               <option value="REPAIR_OUT">Reparaciones</option>
               <option value="DEMO_OUT">Demos</option>
               <option value="RETURN_IN">Devoluciones</option>
+              <option value="ADJUSMENT">Ajustes</option>
+              <option value="INTERNAL_USE_OUT">Uso Interno</option>
+              <option value="INTERNAL_USE_RETURN">Retorno Uso Interno</option>
             </select>
           </div>
             
@@ -547,6 +598,26 @@ export default function StockPage() {
           />
         </div>
       )}
+      {view === 'active-internal-uses' && (
+        <div className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Building size={20} className="text-indigo-600" />
+              <h2 className="text-lg font-semibold text-indigo-800">Usos Internos Activos</h2>
+            </div>
+            <p className="text-sm text-indigo-700 mt-1">
+              Productos utilizados internamente (eventos, taller, etc.)
+            </p>
+          </div>
+          <ActiveInternalUsesTable 
+            internalUses={activeInternalUses} 
+            onReturn={() => {
+              loadActiveInternalUses();
+              loadAll();
+            }}
+          />
+        </div>
+      )}
 
       {/* Vista de Productos */}
       {view === 'products' && (
@@ -595,7 +666,7 @@ export default function StockPage() {
                               {product.category}
                             </span>
                           )}
-                          {/* ← NUEVO: Badge de moneda */}
+                          {/* ← Badge de moneda */}
                           {product.priceCurrency && product.priceCurrency !== 'BOB' && (
                             <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
                               {product.priceCurrency === 'USD' ? '🇺🇸 Dólares' : '🇨🇳 Yuanes'}
@@ -689,6 +760,20 @@ export default function StockPage() {
                             <DollarSign size={18} />
                           </button>
                           <button
+                            onClick={() => handleAdjustment(product)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Ajustar stock"
+                          >
+                            <BarChart3 size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleInternalUse(product)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Registrar uso interno"
+                          >
+                            <Building size={18} />
+                          </button>
+                          <button
                             onClick={() => handleViewHistory(product)}
                             className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                             title="Ver historial"
@@ -777,6 +862,27 @@ export default function StockPage() {
             setShowSaleDetailsModal(false);
             // No limpiamos selectedSaleForModal para mantener los datos si se vuelve a abrir
           }}
+        />
+      )}
+      {showAdjustmentModal && selectedProduct && (
+        <AdjustStockModal
+          product={selectedProduct}
+          onClose={() => {
+            setShowAdjustmentModal(false);
+            setSelectedProduct(null);
+          }}
+          onSuccess={handleSuccess}
+        />
+      )}
+
+      {showInternalUseModal && selectedProduct && (
+        <InternalUseModal
+          product={selectedProduct}
+          onClose={() => {
+            setShowInternalUseModal(false);
+            setSelectedProduct(null);
+          }}
+          onSuccess={handleSuccess}
         />
       )}
     </div>

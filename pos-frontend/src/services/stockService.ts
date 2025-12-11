@@ -1,13 +1,5 @@
 import api from "./api";
 
-// const getAuthHeaders = () => {
-//   const token = localStorage.getItem('token');
-//   return {
-//     'Authorization': `Bearer ${token}`,
-//     'Content-Type': 'application/json'
-//   };
-// };
-
 export const stockService = {
   // ========== MOVIMIENTOS ==========
   
@@ -150,4 +142,47 @@ export const stockService = {
       params: { saleId, movementType: 'SALE' }
     });
   },
-};
+
+  /**
+   * Registrar ajuste de stock
+   */
+  registerAdjustment: (data: {
+    productId: string;
+    quantity: number; // Positivo o negativo
+    reason: string;
+    notes?: string;
+  }) => {
+    return api.post(`/stock/adjustment`, data);
+  },
+
+  /**
+   * Registrar salida por uso interno
+   */
+  registerInternalUseOut: (data: {
+    productId: string;
+    quantity: number;
+    reason: string;
+    destination?: string;
+    expectedReturnDate?: string;
+    notes?: string;
+  }) => {
+    return api.post(`/stock/internal-use-out`, data);
+  },
+
+  /**
+   * Obtener usos internos activos
+   */
+  getActiveInternalUses: () => {
+    return api.get(`/stock/active-internal-uses`);
+  },
+
+  /**
+   * Retornar producto de uso interno
+   */
+  returnInternalUse: (movementId: number, data: {
+    notes?: string;
+    condition?: string;
+  }) => {
+    return api.post(`/stock/internal-use/${movementId}/return`, data);
+  },
+};  
