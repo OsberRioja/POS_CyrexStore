@@ -111,7 +111,7 @@ const SidebarProfessional: React.FC<SidebarProps> = ({ selected, onSelect, user 
   const settingItems = [
     {
       id: 'config-comisiones',
-      label: 'Config. Comisiones',
+      label: 'Comisiones',
       icon: <ClipboardCheck size={18} />,
       color: 'text-amber-500'
     },
@@ -123,7 +123,7 @@ const SidebarProfessional: React.FC<SidebarProps> = ({ selected, onSelect, user 
     },
     {
       id: 'config-comprobante',
-      label: 'Config. General',
+      label: 'Comprobante',
       icon: <Receipt size={18} />,
       color: 'text-gray-500'
     }
