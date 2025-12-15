@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, TrendingUp, TrendingDown, DollarSign, Image as ImageIcon } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import StockMovementsTable from './StockMovementsTable';
+import ProductPrice from '../services/ProductPrice';
 
 interface ProductHistoryModalProps {
   product: any;
@@ -51,12 +52,25 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-BO', {
-      style: 'currency',
-      currency: 'BOB',
-      minimumFractionDigits: 2,
-    }).format(amount);
+  // NUEVA función para formatear moneda según el tipo
+  const formatCurrency = (amount: number, currency: string = 'BOB') => {
+    if (currency === 'USD') {
+      return `$us ${amount.toFixed(2)}`;
+    } else if (currency === 'CNY') {
+      return `¥ ${amount.toFixed(2)}`;
+    } else {
+      return `Bs. ${amount.toFixed(2)}`;
+    }
+  };
+
+  // Función para obtener el símbolo de moneda
+  const getCurrencySymbol = (currency: string = 'BOB') => {
+    const symbols: {[key: string]: string} = {
+      'BOB': 'Bs.',
+      'USD': '$us',
+      'CNY': '¥'
+    };
+    return symbols[currency] || 'Bs.';
   };
 
   const formatDate = (dateString: string) => {
@@ -127,10 +141,28 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                   </p>
                 )}
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Precio de venta:</span> {formatCurrency(product.salePrice)}
+                  <span className="font-medium">Precio de venta:</span>{' '}
+                  <ProductPrice
+                    product={{
+                      salePrice: product.salePrice,
+                      costPrice: product.costPrice,
+                      priceCurrency: product.priceCurrency || 'BOB'
+                    }}
+                    showCost={false}
+                    showOriginal={true}
+                  />
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Precio de costo:</span> {formatCurrency(product.costPrice)}
+                  <span className="font-medium">Precio de costo:</span>{' '}
+                  <ProductPrice
+                    product={{
+                      salePrice: product.costPrice, // Usamos salePrice para mostrar costo
+                      costPrice: product.costPrice,
+                      priceCurrency: product.priceCurrency || 'BOB'
+                    }}
+                    showCost={false}
+                    showOriginal={true}
+                  />
                 </p>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Stock actual:</span> 
@@ -138,6 +170,12 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                     {product.stock} unidades
                   </span>
                 </p>
+                {/* Mostrar moneda del producto */}
+                {product.priceCurrency && product.priceCurrency !== 'BOB' && (
+                  <p className="text-sm text-blue-600 font-medium">
+                    <span className="font-bold">Moneda:</span> {getCurrencySymbol(product.priceCurrency)}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -200,13 +238,23 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-blue-600">Precio de Costo:</span>
-                    <p className="text-xl font-bold text-blue-800">{formatCurrency(product.costPrice)}</p>
+                    <div className="text-xl font-bold text-blue-800">
+                      {formatCurrency(product.costPrice, product.priceCurrency)}
+                    </div>
                   </div>
                   <div>
                     <span className="text-sm text-blue-600">Precio de Venta:</span>
-                    <p className="text-xl font-bold text-blue-800">{formatCurrency(product.salePrice)}</p>
+                    <div className="text-xl font-bold text-blue-800">
+                      {formatCurrency(product.salePrice, product.priceCurrency)}
+                    </div>
                   </div>
                 </div>
+                {/* Indicador de moneda */}
+                {product.priceCurrency && product.priceCurrency !== 'BOB' && (
+                  <p className="text-xs text-blue-600 mt-2">
+                    Precios en {product.priceCurrency === 'USD' ? 'Dólares Estadounidenses' : 'Yuanes Chinos'}
+                  </p>
+                )}
               </div>
 
               {/* Historial de Cambios de Precio */}
@@ -220,6 +268,11 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                 <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                   <div className="bg-gray-50 px-6 py-3 border-b">
                     <h3 className="text-lg font-semibold text-gray-800">Historial de Cambios de Precio</h3>
+                    {product.priceCurrency && product.priceCurrency !== 'BOB' && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Todos los precios en {getCurrencySymbol(product.priceCurrency)}
+                      </p>
+                    )}
                   </div>
                   <table className="w-full">
                     <thead className="bg-gray-50">
@@ -258,7 +311,7 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-gray-700 font-medium">
-                              {formatCurrency(history.oldPrice)}
+                              {formatCurrency(history.oldPrice, product.priceCurrency)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               {difference !== 0 ? (
@@ -272,7 +325,7 @@ const ProductHistoryModal: React.FC<ProductHistoryModalProps> = ({ product, onCl
                               )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900">
-                              {formatCurrency(history.newPrice)}
+                              {formatCurrency(history.newPrice, product.priceCurrency)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               {difference !== 0 ? (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import { stockService } from '../services/stockService';
+import ProductPrice from '../services/ProductPrice';
 
 interface UpdatePricesModalProps {
   product: any;
@@ -14,6 +15,26 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Función para obtener el símbolo de moneda
+  const getCurrencySymbol = (currency: string = 'BOB') => {
+    const symbols: {[key: string]: string} = {
+      'BOB': 'Bs.',
+      'USD': '$us',
+      'CNY': '¥'
+    };
+    return symbols[currency] || 'Bs.';
+  };
+
+  // Función para formatear moneda
+  const formatCurrency = (amount: number, currency: string = 'BOB') => {
+    return `${getCurrencySymbol(currency)} ${amount.toFixed(2)}`;
+  };
+
+  // Obtener símbolo de moneda actual
+  const currencySymbol = getCurrencySymbol(product.priceCurrency);
+  const currencyName = product.priceCurrency === 'USD' ? 'Dólares' : 
+                      product.priceCurrency === 'CNY' ? 'Yuanes' : 'Bolivianos';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,10 +55,10 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
 
     if (newSalePrice < newCostPrice) {
       const confirmed = confirm(
-        '⚠️ ADVERTENCIA:\n\n' +
-        'El precio de venta es menor que el precio de costo.\n' +
-        'Esto generará pérdidas.\n\n' +
-        '¿Deseas continuar?'
+        `⚠️ ADVERTENCIA:\n\n` +
+        `El precio de venta es menor que el precio de costo.\n` +
+        `Esto generará pérdidas.\n\n` +
+        `¿Deseas continuar?`
       );
       if (!confirmed) return;
     }
@@ -79,6 +100,11 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
             <div>
               <h2 className="text-xl font-bold">Actualizar Precios</h2>
               <p className="text-sm text-gray-600">{product.name}</p>
+              {product.priceCurrency && product.priceCurrency !== 'BOB' && (
+                <p className="text-xs text-blue-600">
+                  Moneda: {currencyName} ({currencySymbol})
+                </p>
+              )}
             </div>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -93,11 +119,31 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500">Costo</p>
-                <p className="text-lg font-bold text-gray-800">Bs. {product.costPrice.toFixed(2)}</p>
+                <div className="text-lg font-bold text-gray-800">
+                  <ProductPrice
+                    product={{
+                      salePrice: product.costPrice,
+                      costPrice: product.costPrice,
+                      priceCurrency: product.priceCurrency || 'BOB'
+                    }}
+                    showCost={false}
+                    showOriginal={true}
+                  />
+                </div>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Venta</p>
-                <p className="text-lg font-bold text-gray-800">Bs. {product.salePrice.toFixed(2)}</p>
+                <div className="text-lg font-bold text-gray-800">
+                  <ProductPrice
+                    product={{
+                      salePrice: product.salePrice,
+                      costPrice: product.costPrice,
+                      priceCurrency: product.priceCurrency || 'BOB'
+                    }}
+                    showCost={false}
+                    showOriginal={true}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -105,7 +151,7 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
           {/* Precio de costo */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precio de Costo (Bs) *
+              Precio de Costo ({currencySymbol}) *
             </label>
             <input
               type="number"
@@ -116,12 +162,15 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Ingrese el nuevo precio en {currencyName}
+            </p>
           </div>
 
           {/* Precio de venta */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precio de Venta (Bs) *
+              Precio de Venta ({currencySymbol}) *
             </label>
             <input
               type="number"
@@ -132,6 +181,9 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Ingrese el nuevo precio en {currencyName}
+            </p>
           </div>
 
           {/* Cálculo de margen */}
@@ -141,7 +193,7 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
                 <div>
                   <p className="text-xs text-gray-600">Ganancia</p>
                   <p className={`text-lg font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    Bs. {profit.toFixed(2)}
+                    {formatCurrency(profit, product.priceCurrency)}
                   </p>
                 </div>
                 <div>
@@ -151,6 +203,9 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
                   </p>
                 </div>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Cálculo basado en {currencyName}
+              </p>
             </div>
           )}
 
@@ -164,7 +219,7 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={2}
-              placeholder="Ej: Ajuste por inflación, promoción..."
+              placeholder="Ej: Ajuste por inflación, promoción, cambio de tasa de cambio..."
             />
           </div>
 
