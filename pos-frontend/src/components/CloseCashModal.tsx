@@ -110,7 +110,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
         bgColor: 'bg-green-50',
         borderColor: 'border-green-300'
       };
-    } else if (difference > 0) {
+    } else if (difference < 0) {
       return {
         type: 'shortage',
         icon: AlertCircle,

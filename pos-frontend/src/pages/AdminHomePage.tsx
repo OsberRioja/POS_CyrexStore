@@ -7,7 +7,7 @@ import { dashboardService } from "../services/dashboardService";
 import MetricCard from "../components/dashboard/MetricCard";
 import BranchRanking from "../components/dashboard/BranchRanking";
 import ProductRanking from "../components/dashboard/ProductRanking";
-import PeriodFilter from "../components/dashboard/PeriodFilter"; // ← NUEVO IMPORT
+import PeriodFilter from "../components/dashboard/PeriodFilter";
 import { Building2, Users, DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AdminHomePage() {
@@ -25,10 +25,10 @@ export default function AdminHomePage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<string>('day'); // ← NUEVO: Estado para el período
-  const [refreshing, setRefreshing] = useState(false); // ← NUEVO: Estado para refrescar
+  const [period, setPeriod] = useState<string>('day');
+  const [refreshing, setRefreshing] = useState(false);
 
-  // NUEVO: Efecto para cargar dashboard general con período
+  // Efecto para cargar dashboard general con período
   useEffect(() => {
     async function loadGeneralDashboard() {
       try {
@@ -46,7 +46,7 @@ export default function AdminHomePage() {
     }
 
     loadGeneralDashboard();
-  }, [period]); // ← Agregar period como dependencia
+  }, [period]);
 
   // Efecto para ingresar automáticamente a la sucursal recién creada
   useEffect(() => {
@@ -71,7 +71,16 @@ export default function AdminHomePage() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    // El useEffect se ejecutará de nuevo porque refreshing cambió
+    // Forzar recarga
+    dashboardService.getGeneralDashboard(period)
+      .then(data => {
+        setDashboardData(data);
+        setRefreshing(false);
+      })
+      .catch(err => {
+        console.error("Error refreshing dashboard:", err);
+        setRefreshing(false);
+      });
   };
 
   // Función para obtener el título del período
@@ -92,7 +101,7 @@ export default function AdminHomePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="pt-16 min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           <div className="text-lg text-gray-600">Cargando información...</div>
@@ -103,7 +112,7 @@ export default function AdminHomePage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="pt-16 min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h3 className="text-xl font-semibold text-red-600 mb-2">Error al cargar</h3>
@@ -120,7 +129,7 @@ export default function AdminHomePage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="pt-16 space-y-8 min-h-[calc(100vh-4rem)]">
       {/* Dashboard General */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
@@ -199,7 +208,7 @@ export default function AdminHomePage() {
             products={dashboardData?.globalTopProducts || []}
             title={`Productos Más Vendidos ${getPeriodTitle()}`}
             maxItems={5}
-            showStock={false} // ← Cambiado a false para no mostrar stock
+            showStock={false}
           />
         </div>
 

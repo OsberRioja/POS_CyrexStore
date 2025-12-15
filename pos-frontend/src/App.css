@@ -56,3 +56,38 @@
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Estilos para scrollbar en el sidebar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: rgba(243, 241, 241, 0.05);
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(252, 248, 248, 0.2);
+  border-radius: 10px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Transiciones suaves */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Mejorar el backdrop blur para Firefox */
+@supports (-moz-appearance: none) {
+  .backdrop-blur-sm {
+    background-color: rgba(255, 255, 255, 0.95);
+  }
+}
+
+.admin-page-fix {
+  padding-top: 4rem; /* 64px para el navbar fijo */
+  min-height: calc(100vh - 4rem);
+}
