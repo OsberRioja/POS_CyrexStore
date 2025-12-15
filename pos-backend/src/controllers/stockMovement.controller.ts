@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { StockMovementService } from "../services/stockMovement.service";
 import { MovementType } from "@prisma/client";
 import { prisma } from "../prismaClient";
+import { CurrencyConversionService } from "../services/currencyConversion.service";
 
 export const StockMovementController = {
   /**
@@ -226,13 +227,10 @@ export const StockMovementController = {
    */
   async getInventorySummary(req: Request, res: Response) {
     try {
-
       const userBranchId = (req as any).user?.branchId;
       let targetBranchId = userBranchId;
 
-      // Si es admin global (branchId = null), buscar branchId alternativo
       if (!targetBranchId) {
-        // Para GET: buscar en query params
         if (req.method === 'GET') {
           targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
         } 
@@ -245,11 +243,14 @@ export const StockMovementController = {
           });
         }
       }
-      // Productos con bajo stock
-      const lowStockProducts = await prisma.product.findMany({
-        where: {
-          ...(targetBranchId && { branchId: targetBranchId }),
-          stock: { lte: 5 }
+
+      // Obtener todos los productos activos de una vez
+      const allProducts = await prisma.product.findMany({
+        where: targetBranchId ? { 
+          branchId: targetBranchId,
+          isActive: true
+        } : { 
+          isActive: true 
         },
         select: {
           id: true,
@@ -257,45 +258,58 @@ export const StockMovementController = {
           name: true,
           stock: true,
           salePrice: true,
-          costPrice: true
-        },
-        orderBy: { stock: 'asc' }
-      });
-    
-      // Productos sin stock
-      const outOfStockProducts = await prisma.product.count({
-        where: {
-          ...(targetBranchId && { branchId: targetBranchId }),
-          stock: 0 }
-      });
-    
-      // Total de productos
-      const totalProducts = await prisma.product.count({
-        where: targetBranchId ? { branchId: targetBranchId } : undefined
-      });
-    
-      // ✅ Valor total del inventario (stock * costPrice)
-      const allProducts = await prisma.product.findMany({
-        where: targetBranchId ? { branchId: targetBranchId } : undefined,
-        select: {
-          stock: true,
-          costPrice: true
+          costPrice: true,
+          priceCurrency: true
         }
       });
-    
-      const totalInventoryValue = allProducts.reduce(
-        (sum, product) => sum + (product.stock * product.costPrice),
-        0
-      );
-    
+
+      // Filtrar productos con bajo stock (stock ≤ 5 y > 0)
+      const lowStockProducts = allProducts
+        .filter(p => p.stock <= 5 && p.stock > 0)
+        .slice(0, 50); // Limitar para respuesta
+
+      // Contar productos sin stock
+      const outOfStockCount = allProducts.filter(p => p.stock === 0).length;
+
+      // Calcular valor total del inventario con conversión
+      let totalInventoryValue = 0;
+
+      // Preparar datos para conversión en lote
+      const productsForConversion = allProducts.map(p => ({
+        id: p.id,
+        costPrice: p.costPrice,
+        priceCurrency: p.priceCurrency || 'BOB',
+        stock: p.stock
+      }));
+
+      // Usar servicio en lote para conversión
+      const conversions = await CurrencyConversionService.convertProductsCostToBOB(productsForConversion);
+
+      // Calcular valor total
+      allProducts.forEach(product => {
+        const key = `${product.costPrice}:${product.priceCurrency || 'BOB'}:BOB`;
+        const costInBOB = conversions.get(key) || product.costPrice;
+        totalInventoryValue += product.stock * costInBOB;
+      });
+
+      totalInventoryValue = parseFloat(totalInventoryValue.toFixed(2));
+
       return res.json({
         summary: {
-          totalProducts,
-          outOfStockCount: outOfStockProducts,
+          totalProducts: allProducts.length,
+          outOfStockCount,
           lowStockCount: lowStockProducts.length,
           totalInventoryValue
         },
-        lowStockProducts
+        lowStockProducts: lowStockProducts.map(p => ({
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          stock: p.stock,
+          salePrice: p.salePrice,
+          costPrice: p.costPrice,
+          priceCurrency: p.priceCurrency
+        }))
       });
     } catch (err: any) {
       console.error("GET /stock/summary:", err);
