@@ -1,4 +1,3 @@
-// src/repositories/sale.repository.ts
 import { PrismaClient, PaymentStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -30,15 +29,15 @@ export const SaleRepository = {
             }
           }
         },
-        payments: { 
-          include: { 
+        payments: {
+          include: {
             paymentMethod: {
               select: {
                 name: true,
                 isCash: true
               }
             }
-          } 
+          }
         },
         seller: {
           select: {
@@ -65,7 +64,7 @@ export const SaleRepository = {
     branchId?: number; // ← NUEVO: Filtrar por sucursal
   }) {
     const { page = 1, limit = 20, sellerId, cashBoxId, dateFrom, dateTo, paymentStatus, branchId } = opts;
-    
+
     const where: any = {};
 
     if (sellerId) where.sellerId = sellerId;
@@ -78,7 +77,7 @@ export const SaleRepository = {
       if (dateFrom) where.createdAt.gte = new Date(dateFrom);
       if (dateTo) where.createdAt.lte = new Date(dateTo);
     }
-    
+
     // ← NUEVO: Filtrar por sucursal
     if (branchId !== undefined) {
       where.branchId = branchId;
@@ -94,9 +93,9 @@ export const SaleRepository = {
         prisma.sale.count({ where }),
         prisma.sale.findMany({
           where,
-          include: { 
-            items: { 
-              include: { 
+          include: {
+            items: {
+              include: {
                 product: {
                   select: {
                     name: true,
@@ -104,25 +103,25 @@ export const SaleRepository = {
                     salePrice: true
                   }
                 }
-              } 
-            }, 
-            payments: { 
-              include: { 
+              }
+            },
+            payments: {
+              include: {
                 paymentMethod: {
                   select: {
                     name: true,
                     isCash: true
                   }
                 }
-              } 
-            }, 
+              }
+            },
             seller: {
-              select: { 
-                id: true, 
+              select: {
+                id: true,
                 name: true,
-                userCode: true 
-              } 
-            }, 
+                userCode: true
+              }
+            },
             client: true,
             branch: { select: { name: true } } // ← NUEVO
           },
@@ -133,7 +132,7 @@ export const SaleRepository = {
       ]);
 
       console.log(`SaleRepository.findAll - Found ${data.length} sales, total: ${total}`);
-      
+
       return { total, data };
     } catch (error) {
       console.error('SaleRepository.findAll - ERROR:', error);
@@ -143,13 +142,13 @@ export const SaleRepository = {
 
   async findById(id: string) {
     console.log(`SaleRepository.findById - ID: ${id}`);
-    
+
     try {
       const sale = await prisma.sale.findUnique({
         where: { id },
         include: {
-          items: { 
-            include: { 
+          items: {
+            include: {
               product: {
                 select: {
                   name: true,
@@ -157,17 +156,17 @@ export const SaleRepository = {
                   salePrice: true
                 }
               }
-            } 
+            }
           },
-          payments: { 
-            include: { 
+          payments: {
+            include: {
               paymentMethod: {
                 select: {
                   name: true,
                   isCash: true
                 }
               }
-            } 
+            }
           },
           seller: {
             select: {
@@ -191,30 +190,30 @@ export const SaleRepository = {
 
   async findByBox(cashBoxId: number) {
     console.log(`SaleRepository.findByBox - cashBoxId: ${cashBoxId}`);
-    
+
     try {
       const sales = await prisma.sale.findMany({
         where: { cashBoxId: cashBoxId },
         include: {
-          items: { 
-            include: { 
+          items: {
+            include: {
               product: {
                 select: {
                   name: true,
                   sku: true
                 }
               }
-            } 
+            }
           },
-          payments: { 
-            include: { 
+          payments: {
+            include: {
               paymentMethod: {
                 select: {
                   name: true,
                   isCash: true
                 }
               }
-            } 
+            }
           },
           seller: {
             select: {
@@ -240,7 +239,7 @@ export const SaleRepository = {
   // NUEVO: Método específico para ventas pendientes
   async findPendingSales(params: { page?: number; limit?: number; branchId?: number } = {}) {
     const { page = 1, limit = 50, branchId } = params;
-    
+
     const where = {
       OR: [
         { paymentStatus: PaymentStatus.PENDING },
@@ -258,32 +257,32 @@ export const SaleRepository = {
           where,
           include: {
             client: true,
-            seller: { 
-              select: { 
+            seller: {
+              select: {
                 id: true,
-                name: true, 
-                userCode: true 
-              } 
+                name: true,
+                userCode: true
+              }
             },
-            items: { 
-              include: { 
-                product: { 
-                  select: { 
-                    name: true, 
-                    sku: true 
-                  } 
-                } 
-              } 
+            items: {
+              include: {
+                product: {
+                  select: {
+                    name: true,
+                    sku: true
+                  }
+                }
+              }
             },
-            payments: { 
-              include: { 
-                paymentMethod: { 
-                  select: { 
-                    name: true, 
-                    isCash: true 
-                  } 
-                } 
-              } 
+            payments: {
+              include: {
+                paymentMethod: {
+                  select: {
+                    name: true,
+                    isCash: true
+                  }
+                }
+              }
             },
             branch: { select: { name: true } } // ← NUEVO
           },
@@ -296,10 +295,10 @@ export const SaleRepository = {
 
       console.log(`SaleRepository.findPendingSales - Found ${sales.length} pending sales`);
 
-      return { 
-        data: sales, 
-        total, 
-        page, 
+      return {
+        data: sales,
+        total,
+        page,
         limit,
         totalPages: Math.ceil(total / limit)
       };
