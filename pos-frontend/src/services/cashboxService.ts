@@ -1,7 +1,9 @@
 import api from './api';
 
 export const cashboxService = {
-  list: () => api.get('/cashbox'),
+  list: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get('/cashbox', { params }),
+
   getOpen: () => api.get('/cashbox/open'),
   getById: (id: number) => api.get(`/cashbox/${id}`),
 

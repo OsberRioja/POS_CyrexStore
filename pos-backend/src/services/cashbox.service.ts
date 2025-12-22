@@ -226,7 +226,7 @@ export const CashBoxService = {
 
     if (!box) throw { status: 404, message: "Caja no encontrada" };
 
-    // NUEVO: Calcular ganancias netas
+    // Calcular ganancias netas
     const profitData = calculateProfitData(box);
 
     return {
@@ -243,7 +243,6 @@ export const CashBoxService = {
     const where: any = {};
 
     if (params?.status) where.status = params.status;
-    // Filtrar por sucursal
     if (params?.branchId !== undefined) where.branchId = params.branchId;
 
     const [boxes, total] = await Promise.all([
@@ -255,10 +254,24 @@ export const CashBoxService = {
           openedByUser: { select: { name: true, userCode: true } },
           closedByUser: { select: { name: true, userCode: true } },
           branch: { select: { name: true } },
-          _count: {
+          sales: {
             select: {
-              sales: true,
-              expenses: true
+              total: true,
+              items: {
+                include: {
+                  product: {
+                    select: {
+                      costPrice: true,
+                      salePrice: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          expenses: {
+            select: {
+              amount: true
             }
           }
         },
@@ -267,9 +280,39 @@ export const CashBoxService = {
       prisma.cashBox.count({ where })
     ]);
 
+    // Calcular ventas totales y gastos totales (sin costo)
+    const boxesWithSimpleTotals = boxes.map(box => {
+      // Calcular ventas totales (sin restar costos)
+      const totalSales = box.sales.reduce((sum, sale) => {
+        return sum + (sale.total || 0);
+      }, 0);
+
+      // Calcular gastos totales
+      const totalExpenses = box.expenses.reduce((sum, expense) => {
+        return sum + (expense.amount || 0);
+      }, 0);
+
+      // Calcular ganancia bruta simple (ventas - gastos)
+      const simpleGrossProfit = totalSales - totalExpenses;
+
+      return {
+        ...box,
+        // Mantener los datos originales pero agregar los simples
+        _count: {
+          sales: box.sales.length,
+          expenses: box.expenses.length
+        },
+        simpleTotals: {
+          totalSales,
+          totalExpenses,
+          simpleGrossProfit
+        }
+      };
+    });
+
     return {
       total,
-      data: boxes,
+      data: boxesWithSimpleTotals,
       page,
       limit
     };
@@ -327,10 +370,20 @@ export const CashBoxService = {
 
   // Reabrir cajas
   async reopen(boxId: number, actorUserId: string) {
-    // verificar que la caja exista y esté cerrada
+    // Verificar que la caja exista y esté cerrada
     const box = await CashBoxRepository.findById(boxId);
     if (!box) throw { status: 404, message: "Caja no encontrada" };
     if (box.status !== "CLOSED") throw { status: 400, message: "La caja ya está abierta" };
+
+    // VERIFICACIÓN MODIFICADA: Solo verificar si hay caja abierta en la MISMA sucursal
+    const openCashboxInBranch = await CashBoxRepository.findOpenByBranch(box.branchId);
+    if (openCashboxInBranch) {
+      throw {
+        status: 400,
+        message: `Ya hay una caja abierta en la sucursal ${box.branchId}. 
+                  Debe cerrar la caja actual (ID: ${openCashboxInBranch.id}) antes de reabrir otra.`
+      };
+    }
 
     return await prisma.$transaction(async (tx) => {
       return await tx.cashBox.update({

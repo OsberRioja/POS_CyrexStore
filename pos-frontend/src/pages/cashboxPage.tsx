@@ -23,6 +23,7 @@ export default function CashboxPage() {
   const [openCashbox, setOpenCashbox] = useState<any | null>(null);
   const [selectedCashbox, setSelectedCashbox] = useState<any | null>(null);
   const [cashboxes, setCashboxes] = useState<any[]>([]);
+  const [totalCashboxes, setTotalCashboxes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState<string | null>(null);
   const [sales, setSales] = useState<any[]>([]);
@@ -41,12 +42,15 @@ export default function CashboxPage() {
   const [showEditExpenseModal, setShowEditExpenseModal] = useState(false);
   const [selectedExpenseForEdit, setSelectedExpenseForEdit] = useState<any | null>(null);
 
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const HISTORY_PER_PAGE = 10;
+
   const { hasPermission } = usePermissions();
  
-
   useEffect(() => {
     loadAll();
-  }, [_token]);
+  }, [_token, historyPage, showAllHistory]);
   
   async function loadSales(cashBoxId: number) {
     try {
@@ -86,27 +90,52 @@ export default function CashboxPage() {
       console.error('❌ Error loading open cashbox:', error);
       setOpenCashbox(null);
     }
+    
+    // Cargar historial de cajas
     try {
-      //solo intentar cargar si el usuario tiene permiso
       if(hasPermission(Permission.CASHBOX_READ)) {
-        const rList = await cashboxService.list();
-        // Axios envuelve en .data, y tu backend devuelve { total, data }
-        const boxes = rList.data?.data || rList.data || [];
-        setCashboxes(Array.isArray(boxes) ? boxes : []);
+        const params: any = {
+          page: historyPage,
+          limit: showAllHistory ? HISTORY_PER_PAGE : 5
+        };
+        
+        const rList = await cashboxService.list(params);
+        const data = rList.data;
+        
+        if (data && data.data) {
+          setCashboxes(Array.isArray(data.data) ? data.data : []);
+          setTotalCashboxes(data.total || 0);
+        } else {
+          setCashboxes([]);
+          setTotalCashboxes(0);
+        }
       } else {
         setCashboxes([]);
+        setTotalCashboxes(0);
       }
     } catch(error) {
       console.error('❌ Error loading cashbox history:', error);
-      // solo mostar el warning si el usuario SI deberia tener acceso
       if (hasPermission(Permission.CASHBOX_READ)){
         setWarning("Error cargando historial de cajas.");
       }
       setCashboxes([]);
+      setTotalCashboxes(0);
     } finally {
       setLoading(false);
     }
   }
+
+  const shouldShowReopenButton = (box: any) => {
+    if (!hasPermission(Permission.CASHBOX_REOPEN)) return false;
+    if (box.status !== 'CLOSED') return false;
+    
+    // Verificar si hay caja abierta en la MISMA sucursal
+    if (openCashbox && openCashbox.branchId === box.branchId) {
+      return false; // No mostrar si hay caja abierta en la misma sucursal
+    }
+    
+    return true;
+  };
 
   const handleViewDetails = async (box: any) => {
     setSelectedCashbox(box);
@@ -253,82 +282,305 @@ export default function CashboxPage() {
   if (loading) return <div className="p-6">Cargando caja...</div>;
 
 
-  // Vista de historial de cajas
-  if (view === "history") {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Historial de Cajas</h1>
-          <button 
-            onClick={() => setView(null)} 
-            className="px-3 py-2 bg-gray-600 text-white rounded"
-          >
-            Volver
-          </button>
-        </div>
+  const TableHistorialCajas = ({ 
+    boxes, 
+    onViewDetails, 
+    onReopen,
+    showReopen = true,
+    compact = false 
+  }: { 
+    boxes: any[], 
+    onViewDetails: (box: any) => void, 
+    onReopen: (box: any) => void,
+    showReopen: boolean,
+    compact: boolean 
+  }) => {
+    // Función para formatear números
+    const formatNumber = (num: number) => {
+      return new Intl.NumberFormat('es-BO', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(num || 0);
+    };
 
-        {cashboxes.length > 0 ? (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Abierta</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cerrada</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicial</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {cashboxes.map((box: any) => (
-                  <tr key={box.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">#{box.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {new Date(box.openedAt).toLocaleString('es-BO')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {box.closedAt ? new Date(box.closedAt).toLocaleString('es-BO') : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      Bs. {box.initialAmount.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {box.closedAmount ? `Bs. ${box.closedAmount.toFixed(2)}` : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        box.status === 'OPEN' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {box.status === 'OPEN' ? 'Abierta' : 'Cerrada'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+    // Función para determinar el color de la ganancia
+    const getProfitColor = (profit: number) => {
+      if (profit > 0) return 'text-green-600';
+      if (profit < 0) return 'text-red-600';
+      return 'text-gray-600';
+    };
+
+    // Estructura base para vista compacta
+    if (compact) {
+      return (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Encabezados */}
+          <div className="grid grid-cols-7 bg-gray-50 px-3 py-2">
+            <div className="text-xs font-medium text-gray-500 uppercase">ID</div>
+            <div className="text-xs font-medium text-gray-500 uppercase">Abierta</div>
+            <div className="text-xs font-medium text-gray-500 uppercase text-right">Ventas</div>
+            <div className="text-xs font-medium text-gray-500 uppercase text-right">Gastos</div>
+            <div className="text-xs font-medium text-gray-500 uppercase text-right">Ganancia</div>
+            <div className="text-xs font-medium text-gray-500 uppercase">Estado</div>
+            <div className="text-xs font-medium text-gray-500 uppercase">Acciones</div>
+          </div>
+          
+          {/* Filas */}
+          <div className="divide-y divide-gray-200">
+            {boxes.map((box: any) => {
+              const totals = box.simpleTotals || {
+                totalSales: 0,
+                totalExpenses: 0,
+                simpleGrossProfit: 0
+              };
+              
+              const salesCount = box._count?.sales || 0;
+              const expensesCount = box._count?.expenses || 0;
+              
+              return (
+                <div key={box.id} className="grid grid-cols-7 px-3 py-3 hover:bg-gray-50 items-center">
+                  {/* ID */}
+                  <div className="text-sm font-medium">#{box.id}</div>
+                  
+                  {/* FECHA */}
+                  <div>
+                    <div className="text-sm">
+                      {new Date(box.openedAt).toLocaleDateString('es-BO')}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(box.openedAt).toLocaleTimeString('es-BO', {hour: '2-digit', minute:'2-digit'})}
+                    </div>
+                  </div>
+                  
+                  {/* VENTAS */}
+                  <div className="text-right">
+                    <div className="text-sm font-medium">
+                      Bs. {formatNumber(totals.totalSales)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {salesCount > 0 ? `${salesCount} venta${salesCount !== 1 ? 's' : ''}` : ''}
+                    </div>
+                  </div>
+                  
+                  {/* GASTOS */}
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-red-600">
+                      Bs. {formatNumber(totals.totalExpenses)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {expensesCount > 0 ? `${expensesCount} gasto${expensesCount !== 1 ? 's' : ''}` : ''}
+                    </div>
+                  </div>
+                  
+                  {/* GANANCIA */}
+                  <div className="text-right">
+                    <div className={`text-sm font-bold ${getProfitColor(totals.simpleGrossProfit)}`}>
+                      Bs. {formatNumber(totals.simpleGrossProfit)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {totals.totalSales > 0 ? 
+                        `${((totals.simpleGrossProfit / totals.totalSales) * 100).toFixed(1)}%` : ''}
+                    </div>
+                  </div>
+                      
+                  {/* ESTADO */}
+                  <div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full inline-block ${
+                      box.status === 'OPEN' 
+                        ? 'bg-green-100 text-green-800' 
+                        : box.status === 'REOPENED'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {box.status === 'OPEN' ? 'Abierta' : 
+                       box.status === 'REOPENED' ? 'Reabierta' : 'Cerrada'}
+                    </span>
+                  </div>
+                      
+                  {/* ACCIONES */}
+                  <div className="flex flex-col gap-1">
+                    {showReopen && shouldShowReopenButton(box) && (
                       <button
-                        onClick={() => {
-                          handleViewDetails(box);
-                        }}
-                        className="text-blue-600 hover:text-blue-900 font-medium"
+                        onClick={() => onReopen(box)}
+                        className={`px-2 py-1 rounded text-xs ${
+                          openCashbox && openCashbox.branchId === box.branchId
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                        }`}
+                        disabled={openCashbox && openCashbox.branchId === box.branchId}
+                      >
+                        Reabrir
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onViewDetails(box)}
+                      className="text-blue-600 hover:text-blue-900 text-xs font-medium"
+                    >
+                      Ver detalles
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+    
+    // Vista detallada (para showAllHistory = true)
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[8%]">ID</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[15%]">Abierta</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[15%]">Cerrada</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[10%]">Inicial</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[10%]">Final</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[12%]">Ventas</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[12%]">Gastos</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[13%]">G. Bruta</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[10%]">Estado</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[15%]">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {boxes.map((box: any) => {
+              // Usar simpleTotals para cálculo correcto (ventas - gastos)
+              const totals = box.simpleTotals || {
+                totalSales: 0,
+                totalExpenses: 0,
+                simpleGrossProfit: 0
+              };
+
+              const salesCount = box._count?.sales || 0;
+              const expensesCount = box._count?.expenses || 0;
+
+              return (
+                <tr key={box.id} className="hover:bg-gray-50">
+                  {/* ID */}
+                  <td className="px-4 py-3 text-sm font-medium align-top">
+                    #{box.id}
+                  </td>
+
+                  {/* FECHA APERTURA */}
+                  <td className="px-4 py-3 text-sm align-top">
+                    <div className="whitespace-nowrap">
+                      {new Date(box.openedAt).toLocaleDateString('es-BO')}
+                    </div>
+                    <div className="text-xs text-gray-500 whitespace-nowrap">
+                      {new Date(box.openedAt).toLocaleTimeString('es-BO', {hour: '2-digit', minute:'2-digit'})}
+                    </div>
+                  </td>
+
+                  {/* FECHA CIERRE */}
+                  <td className="px-4 py-3 text-sm align-top">
+                    {box.closedAt ? (
+                      <>
+                        <div className="whitespace-nowrap">
+                          {new Date(box.closedAt).toLocaleDateString('es-BO')}
+                        </div>
+                        <div className="text-xs text-gray-500 whitespace-nowrap">
+                          {new Date(box.closedAt).toLocaleTimeString('es-BO', {hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  
+                  {/* MONTO INICIAL */}
+                  <td className="px-4 py-3 text-sm align-top">
+                    <div className="font-medium">Bs. {box.initialAmount.toFixed(2)}</div>
+                  </td>
+                  
+                  {/* MONTO FINAL */}
+                  <td className="px-4 py-3 text-sm align-top">
+                    {box.closedAmount ? (
+                      <div className="font-medium">Bs. {box.closedAmount.toFixed(2)}</div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  
+                  {/* VENTAS */}
+                  <td className="px-4 py-3 text-sm text-right align-top">
+                    <div className="font-medium">Bs. {formatNumber(totals.totalSales)}</div>
+                    {salesCount > 0 && (
+                      <div className="text-xs text-gray-500">{salesCount} venta{salesCount !== 1 ? 's' : ''}</div>
+                    )}
+                  </td>
+                  
+                  {/* GASTOS */}
+                  <td className="px-4 py-3 text-sm text-right align-top">
+                    <div className="font-medium text-red-600">Bs. {formatNumber(totals.totalExpenses)}</div>
+                    {expensesCount > 0 && (
+                      <div className="text-xs text-gray-500">{expensesCount} gasto{expensesCount !== 1 ? 's' : ''}</div>
+                    )}
+                  </td>
+                  
+                  {/* GANANCIA BRUTA (ventas - gastos) */}
+                  <td className="px-4 py-3 text-sm text-right align-top">
+                    <div className={`font-bold ${getProfitColor(totals.simpleGrossProfit)}`}>
+                      Bs. {formatNumber(totals.simpleGrossProfit)}
+                    </div>
+                    {totals.totalSales > 0 && (
+                      <div className="text-xs text-gray-500">
+                        {((totals.simpleGrossProfit / totals.totalSales) * 100).toFixed(1)}%
+                      </div>
+                    )}
+                  </td>
+                  
+                  {/* ESTADO */}
+                  <td className="px-4 py-3 align-top">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full inline-block ${
+                      box.status === 'OPEN' 
+                        ? 'bg-green-100 text-green-800' 
+                        : box.status === 'REOPENED'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {box.status === 'OPEN' ? 'Abierta' : 
+                       box.status === 'REOPENED' ? 'Reabierta' : 'Cerrada'}
+                    </span>
+                  </td>
+                      
+                  {/* ACCIONES */}
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex flex-col gap-2">
+                      {showReopen && shouldShowReopenButton(box) && (
+                        <button
+                          onClick={() => onReopen(box)}
+                          className={`px-3 py-1 rounded text-sm ${
+                            openCashbox && openCashbox.branchId === box.branchId
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                          }`}
+                          disabled={openCashbox && openCashbox.branchId === box.branchId}
+                          title={openCashbox && openCashbox.branchId === box.branchId 
+                            ? `Hay una caja abierta en ${box.branch?.name || 'esta sucursal'}. Cierre la caja actual para reabrir.` 
+                            : "Reabrir caja"}
+                        >
+                          Reabrir
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onViewDetails(box)}
+                        className="text-blue-600 hover:text-blue-900 font-medium text-sm"
                       >
                         Ver detalles
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            <p>No hay historial de cajas</p>
-          </div>
-        )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     );
-  }
+  };
 
   if (selectedCashbox) {
     return (
@@ -526,61 +778,88 @@ export default function CashboxPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Caja</h1>
-        <div className="flex gap-2">
-          {!hasPermission(Permission.CASHBOX_OPEN_CLOSE) && (
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm text-blue-700">
-                    <strong>Modo Vendedor:</strong> Solo puedes realizar ventas cuando la caja esté abierta.
-                    Contacta a un supervisor para abrir/cerrar caja.
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* CABECERA CON BOTONES COHERENTES */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Caja</h1>
+          {openCashbox && (
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              openCashbox.status === 'REOPENED' 
+                ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                : 'bg-green-100 text-green-800 border border-green-300'
+            }`}>
+              {openCashbox.status === 'REOPENED' ? '🔄 REABIERTA' : '✅ ABIERTA'}
+            </span>
           )}
-          <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
-            {!openCashbox && (
-              <button
-                onClick={() => setShowOpenModal(true)}
-                className="px-3 py-2 bg-green-600 text-white rounded"
-              >
-                Abrir Caja
-              </button>
-            )}
-          </PermissionGuard>
+        </div>
+        
+        <div className="flex gap-2">
+          {/* Botones siempre visibles para caja abierta */}
           {openCashbox && (
             <>
-              <button onClick={() => setView("ventas")} className="px-3 py-2 bg-blue-500 text-white rounded">Ventas</button>
-              <button onClick={() => setView("gastos")} className="px-3 py-2 bg-blue-500 text-white rounded">Gastos</button>
-              <button onClick={() => setView("paymentMethods")} className="px-3 py-2 bg-blue-500 text-white rounded">Métodos de pago</button>
+              <button onClick={() => setView("ventas")} 
+                className={`px-4 py-2 rounded ${view === "ventas" ? 'bg-blue-600' : 'bg-blue-500'} text-white`}>
+                Ventas
+              </button>
+              <button onClick={() => setView("gastos")} 
+                className={`px-4 py-2 rounded ${view === "gastos" ? 'bg-blue-600' : 'bg-blue-500'} text-white`}>
+                Gastos
+              </button>
+              <button onClick={() => setView("paymentMethods")} 
+                className={`px-4 py-2 rounded ${view === "paymentMethods" ? 'bg-blue-600' : 'bg-blue-500'} text-white`}>
+                Métodos de Pago
+              </button>
+              
               <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
                 {openCashbox.status === 'OPEN' && (
-                  <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-500 text-white rounded">Cerrar</button>
+                  <button onClick={handleCloseCashbox} 
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded">
+                    Cerrar Caja
+                  </button>
                 )}
                 {openCashbox.status === 'REOPENED' && (
-                  <button onClick={handleCloseReopened} className="px-3 py-2 bg-orange-500 text-white rounded">Cerrar Reapertura</button>
+                  <button onClick={handleCloseReopened} 
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded">
+                    Finalizar Reapertura
+                  </button>
                 )}
               </PermissionGuard>
             </>
           )}
-          <PermissionGuard permission={Permission.CASHBOX_READ_ALL}>
+          
+          {/* Botón para abrir caja (solo si no hay abierta) */}
+          <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
+            {!openCashbox && (
+              <button onClick={() => setShowOpenModal(true)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+                + Abrir Caja
+              </button>
+            )}
+          </PermissionGuard>
+          
+          {/* Botón HISTORIAL siempre visible */}
+          <PermissionGuard permission={Permission.CASHBOX_READ}>
             <button 
-              onClick={() => setView("history")} 
-              className="px-3 py-2 bg-purple-600 text-white rounded"
+              onClick={() => {
+                if (showAllHistory) {
+                  setShowAllHistory(false);
+                  setView(null);
+                } else {
+                  setShowAllHistory(true);
+                  setView(null);
+                }
+              }} 
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded"
             >
-              📋 Historial
+              {showAllHistory ? 'Ocultar Historial' : '📋 Ver Historial'}
             </button>
           </PermissionGuard>
         </div>
       </div>
 
-      {warning && <div className="mb-4 text-sm text-red-600">{warning}</div>}
-
-      {openCashbox ? (
-        <>
+      {/* SECCIÓN DE CAJA ABIERTA */}
+      {openCashbox && !showAllHistory && (
+        <div className="mb-8">
           <div className="mb-4 p-4 rounded bg-green-50 border">
             <div className="font-semibold">Caja abierta (ID: {openCashbox.id})</div>
             <div className="text-sm text-gray-700">Abierta: {openCashbox.openedAt ? new Date(openCashbox.openedAt).toLocaleString() : "-"}</div>
@@ -614,98 +893,76 @@ export default function CashboxPage() {
               isClosedCashbox={false}
             />
           )}
-        </>
-      ) : (
-        <div>
-          <p className="mb-3">No hay ninguna caja abierta en este momento.</p>
-          <PermissionGuard permission={Permission.CASHBOX_READ}>
-            {cashboxes.length > 0 && (
-              <div className="mt-6">
-                <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold mb-4">Historial de Cajas</h2>
-                <PermissionGuard permission={Permission.CASHBOX_READ_ALL}>
-                  <button 
-                      onClick={() => setView("history")} 
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      Ver todas →
-                    </button>
-                </PermissionGuard>
-                </div>
-                <PermissionGuard permission={Permission.CASHBOX_READ}>
-                  <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Abierta</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cerrada</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicial</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {cashboxes.map((box: any) => (
-                          <tr key={box.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">{box.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {new Date(box.openedAt).toLocaleString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {box.closedAt ? new Date(box.closedAt).toLocaleString() : '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {box.initialAmount.toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {box.closedAmount?.toFixed(2) || '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                box.status === 'OPEN' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {box.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {box.status === 'CLOSED' && hasPermission(Permission.CASHBOX_REOPEN) && (
-                                <button
-                                  onClick={() => handleReopenCashbox(box)}
-                                  className="px-3 py-1 bg-yellow-500 text-white rounded text-sm mr-2"
-                                >
-                                  Reabrir
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleViewDetails(box)}
-                                className="text-blue-600 hover:text-blue-900"
-                              >
-                                Ver detalles
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </PermissionGuard>
-              </div>
-            )}
-          </PermissionGuard>
-          <PermissionGuard permission={Permission.CASHBOX_READ}>
-            {cashboxes.length === 0 && (
-              <div className="mt-6 text-center text-gray-500">
-                <p>No hay historial de cajas</p>
-              </div>
-            )}
-          </PermissionGuard>
         </div>
       )}
 
+      {/* SECCIÓN DE HISTORIAL - UNIFICADA */}
+      {(showAllHistory || !openCashbox) && hasPermission(Permission.CASHBOX_READ) && (
+        <div className="mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">
+              {showAllHistory ? 'Historial Completo de Cajas' : 'Historial Reciente'}
+            </h2>
+            {!showAllHistory && cashboxes.length > 5 && (
+              <button 
+                onClick={() => setShowAllHistory(true)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Ver todas ({totalCashboxes}) →
+              </button>
+            )}
+          </div>
+          
+          {cashboxes.length > 0 ? (
+            <>
+              <TableHistorialCajas
+                boxes={showAllHistory ? cashboxes : cashboxes.slice(0, 5)}
+                onViewDetails={handleViewDetails}
+                onReopen={handleReopenCashbox}
+                showReopen={true}
+                compact={!showAllHistory}
+              />
+              
+              {/* Paginación para vista completa */}
+              {showAllHistory && totalCashboxes > HISTORY_PER_PAGE && (
+                <div className="mt-4 flex justify-center items-center space-x-4">
+                  <button
+                    onClick={() => {
+                      setHistoryPage(prev => Math.max(1, prev - 1));
+                    }}
+                    disabled={historyPage === 1}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-sm">
+                    Página {historyPage} de {Math.ceil(totalCashboxes / HISTORY_PER_PAGE)}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setHistoryPage(prev => 
+                        prev < Math.ceil(totalCashboxes / HISTORY_PER_PAGE) 
+                          ? prev + 1 
+                          : prev
+                      );
+                    }}
+                    disabled={historyPage >= Math.ceil(totalCashboxes / HISTORY_PER_PAGE)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <p>No hay historial de cajas</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODALES (se mantienen igual) */}
       {showOpenModal && (
         <OpenCashboxModal
           onClose={() => setShowOpenModal(false)}
@@ -715,13 +972,13 @@ export default function CashboxPage() {
 
       {showCloseModal && openCashbox && closeData && (
         <CloseCashModal
-        cashbox={openCashbox}
-        closePreview={closeData} // ← Pasar los datos calculados
-        onClose={() => {
-          setShowCloseModal(false);
-          setCloseData(null);
-        }}
-        onConfirm={handleConfirmClose}
+          cashbox={openCashbox}
+          closePreview={closeData}
+          onClose={() => {
+            setShowCloseModal(false);
+            setCloseData(null);
+          }}
+          onConfirm={handleConfirmClose}
         />
       )}
       
@@ -775,14 +1032,6 @@ export default function CashboxPage() {
           }}
         />
       )}
-
-      {/* {showReportModal && selectedCashbox && (
-        <CashboxReportModal
-          cashbox={selectedCashbox}
-          onClose={() => setShowReportModal(false)}
-        />
-      )} */}
-      
     </div>
   );
 }
