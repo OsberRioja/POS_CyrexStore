@@ -16,4 +16,7 @@ router.get("/:id/close-preview", authMiddleware, requirePermission(Permission.CA
 router.post("/:id/close", authMiddleware, requirePermission(Permission.CASHBOX_OPEN_CLOSE), CashBoxController.close);
 router.get("/:id", authMiddleware, requirePermission(Permission.CASHBOX_READ), CashBoxController.getById);
 
+router.post('/:id/reopen', authMiddleware, requirePermission(Permission.CASHBOX_OPEN_CLOSE), CashBoxController.reopen);
+router.post('/:id/close-reopened', authMiddleware, requirePermission(Permission.CASHBOX_OPEN_CLOSE), CashBoxController.closeReopened);
+
 export default router;

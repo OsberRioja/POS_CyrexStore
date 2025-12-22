@@ -29,7 +29,12 @@ export const CashBoxRepository = {
 
   findOpenByBranch: async (branchId: number): Promise<CashBox | null> => {
     return prisma.cashBox.findFirst({
-      where: { status: "OPEN", branchId },
+      where: {
+        OR: [
+          { status: "OPEN", branchId },
+          { status: "REOPENED", branchId }
+        ]
+      },
       orderBy: { openedAt: "desc" },
     });
   },
@@ -48,7 +53,7 @@ export const CashBoxRepository = {
   update: async (id: number, data: Partial<any>) => {
     return prisma.cashBox.update({ where: { id }, data });
   },
-  
+
   findMany: async (options: {
     where?: any;
     skip?: number;

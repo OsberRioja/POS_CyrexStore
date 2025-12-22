@@ -11,6 +11,8 @@ interface ExpensesPageProps {
   token?: string;
   isClosedCashbox?: boolean;
   cashboxId?: number;
+  onEditExpense?: (expense: any) => void;  // Nueva prop
+  isReopened?: boolean;  // Nueva prop
 }
 
 export default function ExpensesPage({
@@ -19,7 +21,9 @@ export default function ExpensesPage({
   openCashboxId,
   token,
   isClosedCashbox = false,
-  cashboxId
+  cashboxId,
+  onEditExpense,
+  isReopened
 }: ExpensesPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
@@ -38,7 +42,6 @@ export default function ExpensesPage({
     setDownloadingReport(true);
     try {
       await reportService.downloadExpensesReport(cashboxId);
-      // Éxito silencioso - el archivo se descarga automáticamente
     } catch (error: any) {
       console.error("Error descargando reporte de gastos:", error);
       alert(error.message || "Error al descargar el reporte de gastos");
@@ -46,6 +49,14 @@ export default function ExpensesPage({
       setDownloadingReport(false);
     }
   };
+
+  // Agregar console.log para depuración
+  console.log('🔍 ExpensesPage props:', {
+    isReopened,
+    hasOnEditExpense: !!onEditExpense,
+    expensesCount: expenses?.length,
+    cashboxId
+  });
 
   return (
     <div>
@@ -82,10 +93,13 @@ export default function ExpensesPage({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-800">
-                📊 Modo de visualización - Caja Cerrada
+                📊 Modo de visualización - Caja {isReopened ? 'Reabierta' : 'Cerrada'}
               </p>
               <p className="text-xs text-blue-600">
-                Puedes descargar el reporte completo de gastos en Excel
+                {isReopened 
+                  ? 'Puedes editar los gastos existentes'
+                  : 'Puedes descargar el reporte completo de gastos en Excel'
+                }
               </p>
             </div>
             <div className="text-right">
@@ -100,7 +114,12 @@ export default function ExpensesPage({
         </div>
       )}
 
-      <ExpensesTable expenses={expenses} />
+      {/* Tabla de gastos con funcionalidad de edición */}
+      <ExpensesTable 
+        expenses={expenses} 
+        onEditExpense={onEditExpense}
+        isReopened={isReopened}
+      />
 
       {showModal && (
         <ExpenseFormModal

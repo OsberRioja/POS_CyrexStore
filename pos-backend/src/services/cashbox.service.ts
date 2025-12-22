@@ -15,7 +15,7 @@ function calculateProfitData(box: any) {
   if (box.sales && box.sales.length > 0) {
     box.sales.forEach((sale: any) => {
       totalSales += sale.total || 0;
-      
+
       // Calcular costo de los productos vendidos
       if (sale.items && sale.items.length > 0) {
         sale.items.forEach((item: any) => {
@@ -24,7 +24,7 @@ function calculateProfitData(box: any) {
         });
       }
     });
-    
+
     totalGrossProfit = totalSales - totalCost;
   }
 
@@ -76,7 +76,7 @@ export const CashBoxService = {
   async getOpen(branchId: number) {
     const open = await CashBoxRepository.findOpenByBranch(branchId);
     if (!open) return null;
-    
+
     return await prisma.cashBox.findUnique({
       where: { id: open.id },
       include: {
@@ -168,10 +168,10 @@ export const CashBoxService = {
           observations: closeDto.observations,
           cashCount: closeDto.cashCount,
           status: difference === 0 ? 'exact' : difference > 0 ? 'surplus' : 'shortage',
-          statusText: difference === 0 
-            ? 'Cuadre exacto' 
-            : difference > 0 
-              ? `Excedente de Bs. ${Math.abs(difference).toFixed(2)}` 
+          statusText: difference === 0
+            ? 'Cuadre exacto'
+            : difference > 0
+              ? `Excedente de Bs. ${Math.abs(difference).toFixed(2)}`
               : `Faltante de Bs. ${Math.abs(difference).toFixed(2)}`
         },
       };
@@ -231,7 +231,7 @@ export const CashBoxService = {
 
     return {
       ...box,
-      profitData 
+      profitData
     };
   },
 
@@ -241,7 +241,7 @@ export const CashBoxService = {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    
+
     if (params?.status) where.status = params.status;
     // Filtrar por sucursal
     if (params?.branchId !== undefined) where.branchId = params.branchId;
@@ -285,7 +285,7 @@ export const CashBoxService = {
     });
 
     if (!box) throw { status: 404, message: "Caja no encontrada" };
-    if (box.status !== "OPEN") throw { status: 400, message: "La caja ya está cerrada" };
+    if (box.status !== "OPEN" && box.status !== "REOPENED") throw { status: 400, message: "La caja ya está cerrada" };
 
     // Calcular totales - solo efectivo
     const paymentsSum = await prisma.salePayment.aggregate({
@@ -323,5 +323,80 @@ export const CashBoxService = {
         expectedClosedAmount,
       },
     };
+  },
+
+  // Reabrir cajas
+  async reopen(boxId: number, actorUserId: string) {
+    // verificar que la caja exista y esté cerrada
+    const box = await CashBoxRepository.findById(boxId);
+    if (!box) throw { status: 404, message: "Caja no encontrada" };
+    if (box.status !== "CLOSED") throw { status: 400, message: "La caja ya está abierta" };
+
+    return await prisma.$transaction(async (tx) => {
+      return await tx.cashBox.update({
+        where: { id: boxId },
+        data: {
+          status: "REOPENED",
+          reopenedAt: new Date(),
+          reopenedById: actorUserId,
+        },
+        include: {
+          openedByUser: { select: { name: true, userCode: true } },
+          closedByUser: { select: { name: true, userCode: true } },
+          reopenedByUser: { select: { name: true, userCode: true } },
+          branch: { select: { name: true } }
+        }
+      });
+    });
+  },
+
+  async closeReopened(boxId: number, actorUserId: string) {
+    const box = await CashBoxRepository.findById(boxId);
+
+    if (!box) throw { status: 404, message: "Caja no encontrada" };
+    if (box.status !== "REOPENED") throw { status: 400, message: "Solo se pueden cerrar cajas reabiertas" };
+
+    return await prisma.$transaction(async (tx) => {
+      // Recalcular totales de ventas y gastos actualizados
+      const paymentsSum = await tx.salePayment.aggregate({
+        _sum: { amount: true },
+        where: { cashBoxId: boxId, paymentMethod: { isCash: true } },
+      });
+      const totalCashSales = paymentsSum._sum.amount ?? 0;
+
+      const expensesSum = await tx.expense.aggregate({
+        _sum: { amount: true },
+        where: {
+          cashBoxId: boxId,
+          paymentMethod: { isCash: true },
+        },
+      });
+      const totalCashExpenses = expensesSum._sum.amount ?? 0;
+
+      // El expectedAmount se recalcula con los nuevos totales
+      const expectedAmount = Number(box.initialAmount) + Number(totalCashSales) - Number(totalCashExpenses);
+
+      // Mantener el realClosedAmount original (no se vuelve a contar el dinero)
+      const realClosedAmount = box.realClosedAmount || 0;
+
+      // Calcular nueva diferencia
+      const difference = realClosedAmount - expectedAmount;
+
+      return await tx.cashBox.update({
+        where: { id: boxId },
+        data: {
+          status: "CLOSED",
+          expectedAmount: Number(expectedAmount.toFixed(2)),
+          difference: Number(difference.toFixed(2)),
+          // No actualizamos realClosedAmount, cashCount ni observations
+        },
+        include: {
+          openedByUser: { select: { name: true, userCode: true } },
+          closedByUser: { select: { name: true, userCode: true } },
+          reopenedByUser: { select: { name: true, userCode: true } },
+          branch: { select: { name: true } }
+        }
+      });
+    });
   },
 };

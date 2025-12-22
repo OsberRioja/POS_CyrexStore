@@ -20,6 +20,7 @@ model User {
   passwordChangeRequired Boolean @default(false)
   deleted         Boolean         @default(false)
 
+  cashBoxesReopened CashBox[]     @relation("ReopenedCashBoxes")
   branch       Branch?    @relation(fields: [branchId], references: [id], onDelete: Cascade)
   cashBoxesClosed CashBox[]       @relation("CashBoxClosedBy")
   cashBoxesOpened CashBox[]       @relation("CashBoxOpenedBy")
@@ -116,7 +117,10 @@ model CashBox {
   updatedAt     DateTime      @updatedAt
   cashCount     Json?
   branchId      Int
+  reopenedAt    DateTime?
+  reopenedById    String?
 
+  reopenedByUser User?        @relation("ReopenedCashBoxes", fields: [reopenedById], references: [id])
   closedByUser  User?         @relation("CashBoxClosedBy", fields: [closedBy], references: [id])
   openedByUser  User          @relation("CashBoxOpenedBy", fields: [openedBy], references: [id])
   branch        Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
@@ -401,6 +405,7 @@ enum TipoCliente {
 enum CashBoxStatus {
   OPEN
   CLOSED
+  REOPENED
 }
 
 enum PaymentStatus {
@@ -415,6 +420,7 @@ enum PaymentStatus {
 enum MovementType {
   PURCHASE                //COMPRA
   SALE                    //VENTA
+  SALE_REVERSAL           // REVERSIÓN DE VENTA
   REPAIR_OUT              //ENVÍO A REPARACIÓN
   REPAIR_RETURN           //RETORNO DE REPARACIÓN
   DEMO_OUT                //ENVIO A DEMO

@@ -5,7 +5,7 @@ import SaleDetailsModal from "../components/SaleDetailModal";
 import AddPaymentModal from "../components/AddPaymentModal";
 import { reportService } from "../services/reportService";
 import { Download } from "lucide-react";
-import { useAuth } from "../context/authContext";
+//import { useAuth } from "../context/authContext";
 import { useBranch } from "../hooks/useBranch";
 
 interface SalesPageProps {
@@ -15,16 +15,18 @@ interface SalesPageProps {
   token?: string;
   isClosedCashbox?: boolean;
   cashboxId?: number;
+  onEditSale?: (sale: any) => void;
+  isReopened?: boolean;
 }
 
-export default function SalesPage({ sales, onReload, openCashboxId, token, isClosedCashbox, cashboxId }: SalesPageProps) {
+export default function SalesPage({ sales, onReload, openCashboxId, token, isClosedCashbox, cashboxId, onEditSale, isReopened }: SalesPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
 
-  const { currentBranchId } = useAuth();
+  //const { currentBranchId } = useAuth();
   const { branches, currentBranchId: branchId } = useBranch();
 
   // Obtener nombre de la sucursal actual
@@ -74,7 +76,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
       <div className="flex justify-between items-center mb-3">
         <div>
           <h3 className="font-semibold">Ventas</h3>
-          {/* ← NUEVO: Mostrar sucursal actual */}
+          {/*← Mostrar sucursal actual */}
           {currentBranchName && (
             <p className="text-xs text-gray-500">
               Sucursal: {currentBranchName}
@@ -134,6 +136,9 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
         sales={sales || []}
         onViewSale={handleViewSale}
         onAddPayment={handleAddPayment}
+        onEditSale={onEditSale}
+        onReload={onReload}
+        isReopened={isReopened}
       />
 
       {showModal && openCashboxId && (

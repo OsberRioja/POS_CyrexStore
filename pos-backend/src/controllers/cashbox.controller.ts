@@ -24,8 +24,8 @@ export const CashBoxController = {
         }
 
         if (!targetBranchId) {
-          return res.status(400).json({ 
-            error: "Para usuarios administradores, debe especificar una sucursal" 
+          return res.status(400).json({
+            error: "Para usuarios administradores, debe especificar una sucursal"
           });
         }
       }
@@ -53,14 +53,14 @@ export const CashBoxController = {
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
       let targetBranchId = userBranchId;
-      
+
       if (!targetBranchId) {
         // Para admin global, buscar branchId en query params
         targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
-        
+
         if (!targetBranchId) {
-          return res.status(400).json({ 
-            error: "Para usuarios administradores, debe especificar una sucursal via query param: ?branchId=1" 
+          return res.status(400).json({
+            error: "Para usuarios administradores, debe especificar una sucursal via query param: ?branchId=1"
           });
         }
       }
@@ -107,14 +107,14 @@ export const CashBoxController = {
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
       let targetBranchId = userBranchId;
-    
+
       // Si es admin global, buscar branchId en query params
       if (!targetBranchId) {
         targetBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
 
         if (!targetBranchId) {
-          return res.status(400).json({ 
-            error: "Para usuarios administradores, debe especificar una sucursal via query param: ?branchId=1" 
+          return res.status(400).json({
+            error: "Para usuarios administradores, debe especificar una sucursal via query param: ?branchId=1"
           });
         }
       }
@@ -137,6 +137,34 @@ export const CashBoxController = {
       return res.json(preview);
     } catch (err: any) {
       console.error("GET /cashbox/:id/close-preview", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
+
+  async reopen(req: Request, res: Response) {
+    try {
+      const boxId = Number(req.params.id);
+      const userId = (req as any).userId ?? (req as any).user?.sub;
+      if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
+
+      const reopened = await CashBoxService.reopen(boxId, String(userId));
+      return res.json(reopened);
+    } catch (err: any) {
+      console.error("POST /cashbox/:id/reopen", err);
+      return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
+
+  async closeReopened(req: Request, res: Response) {
+    try {
+      const boxId = Number(req.params.id);
+      const userId = (req as any).userId ?? (req as any).user?.sub;
+      if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
+
+      const closed = await CashBoxService.closeReopened(boxId, String(userId));
+      return res.json(closed);
+    } catch (err: any) {
+      console.error("POST /cashbox/:id/close-reopened", err);
       return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
     }
   },

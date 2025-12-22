@@ -12,6 +12,9 @@ import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
 import CashboxReportModal from "../components/CashboxReportModal";
+import { ReopenCashboxModal } from "../components/ReopenCashboxModal";
+import { EditSaleModal } from "../components/EditSaleModal";
+import { EditExpenseModal } from "../components/EditExpenseModal";
 
 export default function CashboxPage() {
   const { token } = useAuth();
@@ -30,6 +33,13 @@ export default function CashboxPage() {
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeData, setCloseData] = useState<any>(null);
+
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [cashboxToReopen, setCashboxToReopen] = useState<any | null>(null);
+  const [showEditSaleModal, setShowEditSaleModal] = useState(false);
+  const [selectedSaleForEdit, setSelectedSaleForEdit] = useState<any | null>(null);
+  const [showEditExpenseModal, setShowEditExpenseModal] = useState(false);
+  const [selectedExpenseForEdit, setSelectedExpenseForEdit] = useState<any | null>(null);
 
   const { hasPermission } = usePermissions();
  
@@ -154,6 +164,91 @@ export default function CashboxPage() {
       throw error;
     }
   };
+  const handleReopenCashbox = (cashbox: any) => {
+    setCashboxToReopen(cashbox);
+    setShowReopenModal(true);
+  };
+
+  // Función para manejar edición de venta
+  const handleEditSale = (sale: any) => {
+    console.log('🛠️ handleEditSale called:', {
+    saleId: sale?.id,
+    saleCashBoxId: sale?.cashBoxId,
+    activeCashbox: selectedCashbox || openCashbox,
+    activeCashboxStatus: (selectedCashbox || openCashbox)?.status,
+    hasSelectedSale: !!selectedSaleForEdit,
+    showModal: showEditSaleModal
+  });
+    const activeCashbox = selectedCashbox || openCashbox;
+    
+    if (!activeCashbox) {
+      alert('No hay caja activa');
+      return;
+    }
+
+    // Permitir edición en cajas OPEN y REOPENED
+    if (activeCashbox.status !== 'OPEN' && activeCashbox.status !== 'REOPENED') {
+      alert('Solo se pueden editar ventas en cajas abiertas');
+      return;
+    }
+
+    // Verificar que la venta pertenezca a esta caja
+    if (sale.cashBoxId !== activeCashbox.id) {
+      alert('Esta venta no pertenece a esta caja');
+      return;
+    }
+
+    setSelectedSaleForEdit(sale);
+    setShowEditSaleModal(true);
+  };
+
+  // Función para editar gastos
+  const handleEditExpense = (expense: any) => {
+    console.log('🛠️ handleEditExpense called:', {
+    expenseId: expense?.id,
+    expenseCashBoxId: expense?.cashBoxId,
+    activeCashbox: selectedCashbox || openCashbox,
+    activeCashboxStatus: (selectedCashbox || openCashbox)?.status,
+    hasSelectedExpense: !!selectedExpenseForEdit,
+    showModal: showEditExpenseModal
+  });
+    const activeCashbox = selectedCashbox || openCashbox;
+    
+    if (!activeCashbox) {
+      alert('No hay caja activa');
+      return;
+    }
+
+    // Permitir edición en cajas OPEN y REOPENED
+    if (activeCashbox.status !== 'OPEN' && activeCashbox.status !== 'REOPENED') {
+      alert('Solo se pueden editar gastos en cajas abiertas');
+      return;
+    }
+
+    setSelectedExpenseForEdit(expense);
+    setShowEditExpenseModal(true);
+  };
+
+
+  const handleCloseReopened = async () => {
+    if (!openCashbox?.id) return;
+    
+    // Confirmación especial para cajas reabiertas
+    const confirmMessage = `¿Cerrar caja reabierta #${openCashbox.id}?\n\nIMPORTANTE:\n• No se volverá a contar el efectivo\n• Se mantendrá el monto real original (Bs. ${openCashbox.realClosedAmount?.toFixed(2) || openCashbox.closedAmount?.toFixed(2)})\n• Solo se actualizarán los totales de ventas y gastos`;
+    
+    if (!confirm(confirmMessage)) return;
+    
+    try {
+      setLoading(true);
+      await cashboxService.closeReopened(openCashbox.id);
+      await loadAll();
+    } catch (error: any) {
+      console.error('Error closing reopened cashbox:', error);
+      alert(error.response?.data?.error || 'Error al cerrar caja reabierta');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) return <div className="p-6">Cargando caja...</div>;
 
@@ -272,11 +367,39 @@ export default function CashboxPage() {
           </div>
         </div>
 
-        {/* Información de cierre*/}
+        {/* INFORMACIÓN DE CAJA */}
         <div className="mb-4 p-4 rounded-lg border bg-white shadow-sm">
           <div className="flex justify-between items-start mb-3">
-            <div className="font-semibold text-lg">Caja Cerrada - #{selectedCashbox.id}</div>
-            {/* Botón para ver reporte completo - SOLO si la caja está cerrada */}
+            <div className="font-semibold text-lg">
+              Caja #{selectedCashbox.id} - 
+              <span className={`ml-2 px-2 py-1 rounded text-sm ${
+                selectedCashbox.status === 'OPEN' ? 'bg-green-100 text-green-800' :
+                selectedCashbox.status === 'REOPENED' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {selectedCashbox.status === 'REOPENED' ? 'REABIERTA' : selectedCashbox.status}
+              </span>
+            </div>
+            
+            {/* Botones para cajas reabiertas */}
+            {selectedCashbox.status === 'REOPENED' && (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCloseReopened}  // Usar la nueva función
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+                >
+                  Cerrar Reapertura
+                </button>
+
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                >
+                  📊 Ver Reporte
+                </button>
+              </div>
+            )}
+            {/* Botón para ver reporte completo - SOLO si la caja está cerrada (no reabierta) */}
             {selectedCashbox.status === 'CLOSED' && (
               <button
                 onClick={() => {
@@ -343,10 +466,16 @@ export default function CashboxPage() {
                 {selectedCashbox.closedByUser.userCode && ` (#${selectedCashbox.closedByUser.userCode})`}
               </div>
             )}
+            {selectedCashbox.reopenedByUser && (
+              <div>
+                <span className="font-medium">Reabierta por:</span> {selectedCashbox.reopenedByUser.name}
+                {selectedCashbox.reopenedByUser.userCode && ` (#${selectedCashbox.reopenedByUser.userCode})`}
+              </div>
+            )}
           </div>
         </div>
 
-        {view === "ventas" && (
+        {view === "ventas" && selectedCashbox && (
           <div>
             <SalesPage
               sales={sales || []}
@@ -355,11 +484,13 @@ export default function CashboxPage() {
               token={_token}
               isClosedCashbox={true}
               cashboxId={selectedCashbox.id}
+              onEditSale={handleEditSale}
+              isReopened={selectedCashbox?.status === 'REOPENED'}
             />
           </div>
         )}
 
-        {view === "gastos" && (
+        {view === "gastos" && selectedCashbox && (
           <ExpensesPage
             expenses={expenses}
             onReload={() => loadExpenses(selectedCashbox.id)}
@@ -367,6 +498,8 @@ export default function CashboxPage() {
             token={_token}
             isClosedCashbox={true}
             cashboxId={selectedCashbox.id}
+            onEditExpense={selectedCashbox?.status === 'REOPENED' ? handleEditExpense : undefined}
+            isReopened={selectedCashbox?.status === 'REOPENED'}
           />
         )}
 
@@ -424,7 +557,12 @@ export default function CashboxPage() {
               <button onClick={() => setView("gastos")} className="px-3 py-2 bg-blue-500 text-white rounded">Gastos</button>
               <button onClick={() => setView("paymentMethods")} className="px-3 py-2 bg-blue-500 text-white rounded">Métodos de pago</button>
               <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
-                <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-500 text-white rounded">Cerrar</button>
+                {openCashbox.status === 'OPEN' && (
+                  <button onClick={handleCloseCashbox} className="px-3 py-2 bg-red-500 text-white rounded">Cerrar</button>
+                )}
+                {openCashbox.status === 'REOPENED' && (
+                  <button onClick={handleCloseReopened} className="px-3 py-2 bg-orange-500 text-white rounded">Cerrar Reapertura</button>
+                )}
               </PermissionGuard>
             </>
           )}
@@ -455,15 +593,18 @@ export default function CashboxPage() {
               onReload={() => loadSales(openCashbox.id)}
               openCashboxId={openCashbox.id}
               token={_token}
+              onEditSale={handleEditSale}
             />
           )}
 
-          {view === "gastos" && (
+          {view === "gastos" && openCashbox && (
             <ExpensesPage
               expenses={expenses}
               onReload={() => loadExpenses(openCashbox.id)}
               openCashboxId={openCashbox.id}
               token={_token}
+              isClosedCashbox={false}
+              onEditExpense={handleEditExpense}
             />
           )}
           {view === "paymentMethods" && (
@@ -531,6 +672,14 @@ export default function CashboxPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {box.status === 'CLOSED' && hasPermission(Permission.CASHBOX_REOPEN) && (
+                                <button
+                                  onClick={() => handleReopenCashbox(box)}
+                                  className="px-3 py-1 bg-yellow-500 text-white rounded text-sm mr-2"
+                                >
+                                  Reabrir
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleViewDetails(box)}
                                 className="text-blue-600 hover:text-blue-900"
@@ -573,6 +722,57 @@ export default function CashboxPage() {
           setCloseData(null);
         }}
         onConfirm={handleConfirmClose}
+        />
+      )}
+      
+      {showReopenModal && cashboxToReopen && (
+        <ReopenCashboxModal
+          cashbox={cashboxToReopen}
+          onClose={() => {
+            setShowReopenModal(false);
+            setCashboxToReopen(null);
+          }}
+          onSuccess={() => {
+            loadAll();
+            setShowReopenModal(false);
+            setCashboxToReopen(null);
+          }}
+        />
+      )}
+
+      {showEditSaleModal && selectedSaleForEdit && (selectedCashbox || openCashbox) && (
+        <EditSaleModal
+          sale={selectedSaleForEdit}
+          cashboxId={(selectedCashbox || openCashbox)?.id}
+          branchId={(selectedCashbox || openCashbox)?.branchId}
+          onClose={() => {
+            setShowEditSaleModal(false);
+            setSelectedSaleForEdit(null);
+          }}
+          onSuccess={() => {
+            if (selectedCashbox) loadSales(selectedCashbox.id);
+            if (openCashbox) loadSales(openCashbox.id);
+            setShowEditSaleModal(false);
+            setSelectedSaleForEdit(null);
+          }}
+        />
+      )}
+
+      {showEditExpenseModal && selectedExpenseForEdit && (selectedCashbox || openCashbox) && (
+        <EditExpenseModal
+          expense={selectedExpenseForEdit}
+          cashboxId={(selectedCashbox || openCashbox)?.id}
+          branchId={(selectedCashbox || openCashbox)?.branchId}
+          onClose={() => {
+            setShowEditExpenseModal(false);
+            setSelectedExpenseForEdit(null);
+          }}
+          onSuccess={() => {
+            if (selectedCashbox) loadExpenses(selectedCashbox.id);
+            if (openCashbox) loadExpenses(openCashbox.id);
+            setShowEditExpenseModal(false);
+            setSelectedExpenseForEdit(null);
+          }}
         />
       )}
 

@@ -27,6 +27,8 @@ import { emailService } from './services/email.service';
 import { startTokenCleanupCron } from './jobs/cleanupExpiredTokens';
 import branchRoutes from "./routes/branch.routes"
 import dashboardRoutes from "./routes/dashboard.routes";
+import saleEditRoutes from './routes/saleEdit.routes';
+import expenseEditRoutes from './routes/expenseEdit.routes';
 
 const app = express();
 
@@ -57,11 +59,13 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/returns', returnRoutes);
 app.use('/api/exchange-rates', exchangeRateRoutes);
 app.use('/api/user-preferences', userPreferenceRoutes);
-app.use('/api/reports',reportRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/commission-config', commissionRoutes);
 app.use('/api/commission-reports', commissionReportRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/sales-edit', saleEditRoutes);
+app.use('/api/expenses-edit', expenseEditRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);

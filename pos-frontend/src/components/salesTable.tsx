@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, Plus, RefreshCw } from 'lucide-react';
-import { useAuth } from '../context/authContext'; // Importar useAuth para obtener el usuario
+import { Eye, Plus, RefreshCw, Edit } from 'lucide-react';
+import { useAuth } from '../context/authContext';
 import ReturnModal from './ReturnModal';
 import { returnService } from '../services/returnService';
 import FormattedPrice from './FormattedPrice';
@@ -21,28 +21,32 @@ interface SalesTableProps {
   sales: Sale[];
   onViewSale: (sale: Sale) => void;
   onAddPayment?: (sale: Sale) => void;
-  onReload?: () => void; // Agregar onReload para recargar después de una devolución
+  onReload?: () => void;
+  onEditSale?: (sale: any) => void;
+  isReopened?: boolean;
 }
 
 const SalesTable: React.FC<SalesTableProps> = ({ 
   sales, 
   onViewSale, 
   onAddPayment, 
-  onReload // Recibir onReload como prop
+  onReload,
+  onEditSale,
+  isReopened
 }) => {
-  const { user } = useAuth(); // Obtener el usuario del contexto de autenticación
+  const { user } = useAuth();
 
   // Estados para el modal de devolución
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<any>(null);
   const [salesWithReturns, setSalesWithReturns] = useState<Set<string>>(new Set());
 
-  //verificar qué ventas tienen devoluciones
+  // verificar qué ventas tienen devoluciones
   useEffect(() => {
     const checkReturs = async () => {
       const returnsMap = new Set<string>();
 
-      //solo verificar para ventas que no tienen el campo hasReturn como true
+      // solo verificar para ventas que no tienen el campo hasReturn como true
       const salesToCheck = sales.filter(sale => sale.hasReturn === undefined);
       for (const sale of salesToCheck) {
         try {
@@ -55,7 +59,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
               returnsMap.add(sale.id);
             }
           }
-        }catch (error) {
+        } catch (error) {
           console.error(`Error checking returns for sale ${sale.id}:`, error);
         }
       }
@@ -66,12 +70,12 @@ const SalesTable: React.FC<SalesTableProps> = ({
     }
   }, [sales]);
 
-  //Determinar si una venta puede tener devolución
+  // Determinar si una venta puede tener devolución
   const canReturnSale = (sale: Sale) => {
-    //Si la venta ya tiene el campo hasReturn usarlo
+    // Si la venta ya tiene el campo hasReturn usarlo
     if (sale.hasReturn === true) return false;
 
-    //si no, verificar en nuestro estado local
+    // si no, verificar en nuestro estado local
     return !salesWithReturns.has(sale.id);
   };
 
@@ -195,7 +199,8 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     >
                       <Eye size={16} />
                     </button>
-                    {sale.paymentStatus === 'PARTIAL' && onAddPayment &&(
+                    
+                    {sale.paymentStatus === 'PARTIAL' && onAddPayment && (
                       <button
                         onClick={() => onAddPayment(sale)}
                         className="text-green-600 hover:text-green-900 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
@@ -207,7 +212,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     )}
 
                     {/* Botón de devolución - solo para ADMIN y SUPERVISOR */}
-                    {(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') &&  canReturnSale(sale) &&(
+                    {(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && canReturnSale(sale) && (
                       <button
                         onClick={() => handleReturn(sale)}
                         className="text-orange-600 hover:text-orange-900 p-1 rounded"
@@ -216,6 +221,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                         <RefreshCw size={16} />
                       </button>
                     )}
+                    
                     {/* Indicador de que ya tiene devolución */}
                     {(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && !canReturnSale(sale) && (
                       <span 
@@ -224,6 +230,17 @@ const SalesTable: React.FC<SalesTableProps> = ({
                       >
                         <RefreshCw size={16} />
                       </span>
+                    )}
+                    
+                    {/* Botón de edición - SOLO para cajas reabiertas */}
+                    {onEditSale && (
+                      <button
+                        onClick={() => onEditSale(sale)}
+                        className="text-yellow-600 hover:text-yellow-900 p-1 rounded"
+                        title="Editar venta"
+                      >
+                        <Edit size={16} />
+                      </button>
                     )}
                   </div>
                 </td>
@@ -239,7 +256,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
         )}
       </div>
 
-      {/* Modal de Devolución - Colocado fuera de la tabla pero dentro del componente */}
+      {/* Modal de Devolución */}
       {showReturnModal && selectedSaleForReturn && (
         <ReturnModal
           saleId={selectedSaleForReturn.id}
@@ -249,7 +266,6 @@ const SalesTable: React.FC<SalesTableProps> = ({
           }}
           onSuccess={() => {
             setSalesWithReturns(prev => new Set(prev.add(selectedSaleForReturn.id)));
-            // Recargar datos si es necesario
             if (onReload) onReload();
             setShowReturnModal(false);
             setSelectedSaleForReturn(null);
