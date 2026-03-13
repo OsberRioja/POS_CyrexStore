@@ -7,23 +7,8 @@ export const productController = {
       const userId = (req as any).userId ?? (req as any).user?.sub ?? (req as any).user?.id;
       if (!userId) return res.status(401).json({ error: "Usuario no autenticado" });
 
-      // Obtener branchId del usuario autenticado
-      const userBranchId = (req as any).user?.branchId;
-      let targetBranchId = userBranchId;
-      
-      // Si es admin global, buscar branchId en el body
-      if (!targetBranchId) {
-        targetBranchId = req.body.branchId;
-        
-        if (!targetBranchId) {
-          return res.status(400).json({ 
-            error: "Para usuarios administradores, debe especificar una sucursal (branchId en el body)" 
-          });
-        }
-      }
-
       const dto = req.body;
-      const created = await productService.createProduct(dto, String(userId), targetBranchId);
+      const created = await productService.createProduct(dto, String(userId));
       return res.status(201).json(created);
     } catch (err: any) {
       console.error("POST /products error:", err);
