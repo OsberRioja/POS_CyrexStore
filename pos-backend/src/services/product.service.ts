@@ -2,9 +2,10 @@ import { productRepository } from "../repositories/product.repository";
 import { CreateProductDTO } from "../dtos/createProduct.dto";
 import { UpdateProductDTO } from "../dtos/updateProduct.dto";
 import { prisma } from "../prismaClient";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 export const productService = {
-  async createProduct(dto: CreateProductDTO, userId: string, branchId: number) {
+  async createProduct(dto: CreateProductDTO, userId: string) {
     // validaciones mínimas
     if (!dto.sku || !dto.name || dto.salePrice == null || dto.costPrice == null) {
       throw { status: 400, message: "sku, name, costPrice y salePrice son requeridos" };
@@ -18,85 +19,94 @@ export const productService = {
       throw { status: 400, message: "priceCurrency debe ser BOB, USD o CNY" };
     }
     
-    // ✅ Usar transacción para crear producto y registrar movimiento
-    return prisma.$transaction(async (tx) => {
-      // Verificar si el SKU ya existe en la misma sucursal
-      const existingProduct = await tx.product.findFirst({
-        where:{
-          sku: dto.sku.trim(),
-          branchId: branchId
-        }
-      });
-      if (existingProduct) {
-        throw { status: 400, message: `El SKU '${dto.sku}' ya existe en esta sucursal.` };
-      }
-
-      // Crear el producto usando el repository pero dentro de la transacción
-      const created = await tx.product.create({
-        data: {
-          sku: dto.sku.trim(),
-          name: dto.name.trim(),
-          description: dto.description?.trim(),
-          costPrice: dto.costPrice,
-          salePrice: dto.salePrice,
-          priceCurrency: dto.priceCurrency,
-          stock: dto.stock || 0,
-          category: dto.category?.trim(),
-          brand: dto.brand?.trim(),
-          imageUrl: dto.imageUrl,
-          createdBy: userId,
-          providerId: dto.providerId ? Number(dto.providerId) : null,
-          branchId: branchId
-        },
-        include: {
-          user: { select: { name: true, userCode: true } },
-          provider: true,
-          branch: { select: { name: true } }
-        },
-      });
-
-      // ✅ Registrar movimiento de stock inicial si hay stock > 0
-      if (created.stock > 0) {
-        await tx.stockMovement.create({
-          data: {
-            productId: created.id,
-            movementType: 'PURCHASE',
-            quantity: created.stock,
-            previousStock: 0,
-            newStock: created.stock,
-            unitCost: created.costPrice,
-            providerId: created.providerId,
-            notes: 'Stock inicial al crear producto',
-            createdBy: userId
+    // ✅ Crear producto maestro en todas las sucursales activas
+    try {
+      return prisma.$transaction(async (tx) => {
+        const existingSku = await tx.product.findFirst({
+          where: {
+            sku: dto.sku.trim()
           }
         });
+
+        if (existingSku) {
+          throw { status: 400, message: `El SKU '${dto.sku}' ya existe.` };
+        }
+
+        const activeBranches = await tx.branch.findMany({
+          where: { isActive: true },
+          select: { id: true }
+        });
+
+        if (!activeBranches.length) {
+          throw { status: 400, message: "No hay sucursales activas para crear el producto" };
+        }
+
+        const createdProducts = [];
+
+        for (const branch of activeBranches) {
+          const created = await tx.product.create({
+            data: {
+              sku: dto.sku.trim(),
+              name: dto.name.trim(),
+              description: dto.description?.trim(),
+              costPrice: dto.costPrice,
+              salePrice: dto.salePrice,
+              priceCurrency: priceCurrency,
+              stock: 0,
+              category: dto.category?.trim(),
+              brand: dto.brand?.trim(),
+              imageUrl: dto.imageUrl,
+              createdBy: userId,
+              providerId: dto.providerId ? Number(dto.providerId) : null,
+              branchId: branch.id
+            },
+            include: {
+              user: { select: { name: true, userCode: true } },
+              provider: true,
+              branch: { select: { name: true } }
+            },
+          });
+
+          await tx.priceHistory.create({
+            data: {
+              productId: created.id,
+              oldPrice: 0,
+              newPrice: created.costPrice,
+              priceType: 'cost',
+              changedBy: userId,
+              notes: 'Precio de costo inicial al crear producto maestro'
+            }
+          });
+
+          await tx.priceHistory.create({
+            data: {
+              productId: created.id,
+              oldPrice: 0,
+              newPrice: created.salePrice,
+              priceType: 'sale',
+              changedBy: userId,
+              notes: 'Precio de venta inicial al crear producto maestro'
+            }
+          });
+
+          createdProducts.push(created);
+        }
+
+        return createdProducts;
+      });
+    } catch (error: any) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+        const target = Array.isArray((error.meta as any)?.target) ? (error.meta as any).target : [];
+        if (target.includes('sku')) {
+          throw {
+            status: 400,
+            message:
+              "No se pudo crear el producto maestro porque la base aún tiene SKU único global. Ejecuta las migraciones pendientes para cambiar a unicidad por sucursal (sku + branchId)."
+          };
+        }
       }
-      // Registrar precio de costo inicial en el historial de precios
-      await tx.priceHistory.create({
-        data: {
-          productId: created.id,
-          oldPrice: 0, // No hay precio anterior
-          newPrice: created.costPrice,
-          priceType: 'cost',
-          changedBy: userId,
-          notes: 'Precio de costo inicial al crear producto'
-        }
-      });
-
-      //Registrar precio de venta inicial en el historial de precios
-      await tx.priceHistory.create({
-        data: {
-          productId: created.id,
-          oldPrice: 0, // No hay precio anterior
-          newPrice: created.salePrice,
-          priceType: 'sale',
-          changedBy: userId,
-          notes: 'Precio de venta inicial al crear producto'
-        }
-      });
-
-      return created;
-    });
+      throw error;
+    }
   },
 
   async getAllProducts(includeInactive = true, branchId?: number) {
