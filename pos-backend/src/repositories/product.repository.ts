@@ -15,7 +15,7 @@ export const productRepository = {
         description: dto.description,   
         costPrice: dto.costPrice,
         salePrice: dto.salePrice,
-        stock: dto.stock,
+        stock: dto.stock ?? 0,
         category: dto.category,
         brand: dto.brand,
         imageUrl: dto.imageUrl,

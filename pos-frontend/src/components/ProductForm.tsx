@@ -12,7 +12,6 @@ type FormState = {
   costPrice: string; // string en el form mientras el usuario escribe
   salePrice: string;
   priceCurrency: string;
-  stock: string;
   category?: string;
   brand?: string;
   providerId?: string | null; // string o null en el form
@@ -36,7 +35,6 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     costPrice: product?.costPrice != null ? String(product.costPrice) : "",
     salePrice: product?.salePrice != null ? String(product.salePrice) : "",
     priceCurrency: product?.priceCurrency ?? "BOB",
-    stock: product?.stock != null ? String(product.stock) : "",
     category: product?.category ?? "",
     brand: product?.brand ?? "",
     providerId: product?.providerId ?? (product?.provider?.id_provider ?? product?.provider?.id) ?? null,
@@ -60,7 +58,6 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       costPrice: product?.costPrice != null ? String(product.costPrice) : "",
       salePrice: product?.salePrice != null ? String(product.salePrice) : "",
       priceCurrency: product?.priceCurrency ?? "BOB",
-      stock: product?.stock != null ? String(product.stock) : "",
       category: product?.category ?? "",
       brand: product?.brand ?? "",
       providerId: product?.providerId ?? (product?.provider?.id_provider ?? product?.provider?.id) ?? null,
@@ -128,13 +125,12 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       // parsear números aquí (y validar)
       const cost = form.costPrice.trim() === "" ? NaN : Number(form.costPrice.replace(",", "."));
       const sale = form.salePrice.trim() === "" ? NaN : Number(form.salePrice.replace(",", "."));
-      const stockNum = form.stock.trim() === "" ? NaN : Number(form.stock);
 
       if (!form.sku.trim() || !form.name.trim()) {
         throw new Error("SKU y nombre son requeridos");
       }
-      if (!isEditing &&(Number.isNaN(cost) || Number.isNaN(sale) || Number.isNaN(stockNum))) {
-        throw new Error("Precio de costo, precio de venta y stock deben ser números válidos");
+      if (!isEditing &&(Number.isNaN(cost) || Number.isNaN(sale))) {
+        throw new Error("Precio de costo y precio de venta deben ser números válidos");
       }
 
       // Subir imagen si hay una nueva
@@ -161,7 +157,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
         costPrice: cost,
         salePrice: sale,
         priceCurrency: form.priceCurrency,
-        stock: Math.floor(stockNum),
+        stock: 0,
         category: form.category?.trim() || undefined,
         brand: form.brand?.trim() || undefined,
         providerId: form.providerId ? Number(form.providerId) : null,
@@ -301,7 +297,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
           )}
           {/* Precios y Stock - solo en creación */}
           {!isEditing && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Precio Costo ({form.priceCurrency === 'BOB' ? 'Bs.' : form.priceCurrency === 'USD' ? '$' : '¥'})
@@ -330,22 +326,6 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
                   value={form.salePrice} 
                   onChange={handleChange} 
                   placeholder="0.00" 
-                  className="w-full border p-2 rounded" 
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Stock Inicial
-                </label>
-                <input 
-                  name="stock" 
-                  type="text" 
-                  inputMode="decimal" 
-                  pattern="[0-9]*" 
-                  value={form.stock} 
-                  onChange={handleChange} 
-                  placeholder="0" 
                   className="w-full border p-2 rounded" 
                   required
                 />
