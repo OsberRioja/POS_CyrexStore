@@ -92,7 +92,6 @@ export const ReturnService = {
       refundMethod: dto.refundMethod,
       notes: dto.notes,
       status,
-      cashBoxId: openCashBox.id, // Asociar con la caja abierta
       items: dto.items.map(item => ({
         productId: item.productId,
         quantityReturned: item.quantityReturned,
@@ -133,16 +132,6 @@ export const ReturnService = {
         throw { status: 400, message: "La devolución no está aprobada" };
       }
 
-      // Verificar que la caja asociada sigue abierta
-      if (returnRecord.cashBoxId) {
-        const cashBox = await tx.cashBox.findUnique({
-          where: { id: returnRecord.cashBoxId }
-        });
-
-        if (!cashBox || cashBox.status !== 'OPEN') {
-          throw { status: 400, message: "No se puede procesar la devolución porque la caja asociada está cerrada" };
-        }
-      }
 
       // Incrementar stock y registrar movimientos
       for (const item of returnRecord.items) {
@@ -230,9 +219,8 @@ export const ReturnService = {
     // Actualizar estado a APPROVED
     const updatedReturn = await prisma.return.update({
       where: { id: returnId },
-      data: { 
+      data: {
         status: ReturnStatus.APPROVED,
-        cashBoxId: openCashBox.id // Asociar con caja abierta si no estaba
       },
     });
 

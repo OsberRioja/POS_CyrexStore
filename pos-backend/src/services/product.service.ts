@@ -95,14 +95,14 @@ export const productService = {
       });
     } catch (error: any) {
       if (error?.code === 'P2002') {
-        const target = Array.isArray(error?.meta?.target) ? error.meta.target : [];
-        if (target.includes('sku')) {
-          throw {
-            status: 400,
-            message:
-              "No se pudo crear el producto maestro porque la base aún tiene SKU único global. Aplica la migración que cambia la unicidad a (sku, branchId) y regenera Prisma Client."
-          };
-        }
+        const target = Array.isArray(error?.meta?.target) ? error.meta.target.join(', ') : '';
+
+        throw {
+          status: 400,
+          message: target.includes('sku') || target.includes('Product_sku_key')
+            ? "No se pudo crear el producto maestro porque la base aún tiene una restricción única de SKU global. Aplica la migración para usar unicidad por sucursal (sku, branchId), ejecuta prisma generate y reinicia el backend."
+            : `No se pudo crear el producto por una restricción única (${target || 'desconocida'}).`
+        };
       }
       throw error;
     }
