@@ -1,0 +1,4 @@
+ALTER TABLE "public"."User"
+ADD COLUMN IF NOT EXISTS "firstName" TEXT,
+ADD COLUMN IF NOT EXISTS "lastNamePaterno" TEXT,
+ADD COLUMN IF NOT EXISTS "lastNameMaterno" TEXT;

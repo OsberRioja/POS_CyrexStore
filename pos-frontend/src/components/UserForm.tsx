@@ -6,18 +6,19 @@ import { Permission } from "../types/permissions";
 export default function UserForm({ user, onClose, onSaved }: { user: any | null; onClose: () => void; onSaved: () => void; }) {
   const [form, setForm] = useState({
     usercode: user?.userCode ?? user?.usercode ?? "",
-    username: user?.name ?? user?.username ?? "",
+    firstName: user?.firstName ?? "",
+    lastNamePaterno: user?.lastNamePaterno ?? "",
+    lastNameMaterno: user?.lastNameMaterno ?? "",
     email: user?.email ?? "",
     phone: user?.phone ?? "",
     role: user?.role ?? "SELLER",
-    password: "" // Solo para edición, no para creación
+    password: ""
   });
   const [saving, setSaving] = useState(false);
 
   const { hasPermission } = usePermissions();
   const isEditing = !!(user && user.id);
 
-  // Verificar permisos al cargar
   useEffect(() => {
     if (isEditing && !hasPermission(Permission.USER_UPDATE)) {
       alert("No tienes permisos para editar usuarios");
@@ -34,11 +35,13 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
   useEffect(() => {
     setForm({
       usercode: user?.userCode ?? user?.usercode ?? "",
-      username: user?.name ?? user?.username ?? "",
+      firstName: user?.firstName ?? "",
+      lastNamePaterno: user?.lastNamePaterno ?? "",
+      lastNameMaterno: user?.lastNameMaterno ?? "",
       email: user?.email ?? "",
       phone: user?.phone ?? "",
       role: user?.role ?? "SELLER",
-      password: "" // Siempre vacío para creación
+      password: ""
     });
   }, [user]);
 
@@ -49,18 +52,21 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validar permisos
     if (isEditing && !hasPermission(Permission.USER_UPDATE)) {
       alert("No tienes permisos para editar usuarios");
       return;
     }
-    
+
     if (!isEditing && !hasPermission(Permission.USER_CREATE)) {
       alert("No tienes permisos para crear usuarios");
       return;
     }
 
-    // Validar email
+    if (!form.firstName.trim() || !form.lastNamePaterno.trim() || !form.lastNameMaterno.trim()) {
+      alert("Nombre, apellido paterno y apellido materno son requeridos");
+      return;
+    }
+
     if (!form.email || !form.email.includes('@')) {
       alert("Por favor ingresa un email válido");
       return;
@@ -69,23 +75,21 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
     setSaving(true);
     try {
       const payload: any = {
-        name: form.username,
+        firstName: form.firstName.trim(),
+        lastNamePaterno: form.lastNamePaterno.trim(),
+        lastNameMaterno: form.lastNameMaterno.trim(),
         email: form.email,
         phone: form.phone,
         role: form.role
       };
 
-      // Solo enviar userCode para nuevos usuarios
       if (form.usercode && !isEditing) {
         payload.userCode = Number(form.usercode);
       }
 
-      // Solo enviar password para edición si se proporcionó
       if (isEditing && form.password) {
         payload.password = form.password;
       }
-
-      // NO enviar password para creación - se genera automáticamente
 
       if (isEditing) {
         await userService.update(user.id, payload);
@@ -95,7 +99,7 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
       onSaved();
     } catch (err: any) {
       console.error(err);
-      alert(err?.response?.data?.message ?? "Error al guardar");
+      alert(err?.response?.data?.error ?? err?.response?.data?.message ?? "Error al guardar");
     } finally {
       setSaving(false);
     }
@@ -111,102 +115,113 @@ export default function UserForm({ user, onClose, onSaved }: { user: any | null;
           )}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-2">
-          {/* Campo de código - Solo editable al crear */}
           {isEditing ? (
             <div className="w-full">
-              <input 
-                name="usercode" 
-                value={form.usercode} 
-                placeholder="Código de usuario" 
-                className="w-full border p-2 rounded bg-gray-100 text-gray-600" 
+              <input
+                name="usercode"
+                value={form.usercode}
+                placeholder="Código de usuario"
+                className="w-full border p-2 rounded bg-gray-100 text-gray-600"
                 disabled
                 readOnly
               />
               <small className="text-gray-500 text-xs">El código de usuario no se puede modificar</small>
             </div>
           ) : (
-            <input 
-              name="usercode" 
-              value={form.usercode} 
-              onChange={handleChange} 
-              placeholder="Código (opcional - se generará automáticamente si está vacío)" 
-              className="w-full border p-2 rounded" 
+            <input
+              name="usercode"
+              value={form.usercode}
+              onChange={handleChange}
+              placeholder="Código (opcional - se generará automáticamente si está vacío)"
+              className="w-full border p-2 rounded"
             />
           )}
-          
-          <input 
-            name="username" 
-            value={form.username} 
-            onChange={handleChange} 
-            placeholder="Nombre completo" 
-            className="w-full border p-2 rounded" 
+
+          <input
+            name="firstName"
+            value={form.firstName}
+            onChange={handleChange}
+            placeholder="Nombre"
+            className="w-full border p-2 rounded"
             required
             disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
           />
-          <input 
-            name="email" 
-            value={form.email} 
-            onChange={handleChange} 
-            placeholder="Correo electrónico" 
-            type="email" 
-            className="w-full border p-2 rounded" 
+          <input
+            name="lastNamePaterno"
+            value={form.lastNamePaterno}
+            onChange={handleChange}
+            placeholder="Apellido paterno"
+            className="w-full border p-2 rounded"
             required
             disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
           />
-          <input 
-            name="phone" 
-            value={form.phone} 
-            onChange={handleChange} 
+          <input
+            name="lastNameMaterno"
+            value={form.lastNameMaterno}
+            onChange={handleChange}
+            placeholder="Apellido materno"
+            className="w-full border p-2 rounded"
+            required
+            disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
+          />
+          <input
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            placeholder="Correo electrónico"
+            type="email"
+            className="w-full border p-2 rounded"
+            required
+            disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
+          />
+          <input
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
             placeholder="Teléfono"
-            className="w-full border p-2 rounded" 
+            className="w-full border p-2 rounded"
             disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
           />
-          
-          {/* Campo de contraseña - Solo para edición */}
+
           {isEditing ? (
             <div>
-              <input 
-                name="password" 
-                value={form.password} 
-                onChange={handleChange} 
-                placeholder="Nueva contraseña (dejar vacío para no cambiar)" 
-                type="password" 
+              <input
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Nueva contraseña (dejar vacío para no cambiar)"
+                type="password"
                 className="w-full border p-2 rounded"
                 disabled={!hasPermission(Permission.USER_UPDATE)}
               />
-              <small className="text-gray-500 text-xs">
-                Solo llena este campo si deseas cambiar la contraseña del usuario
-              </small>
             </div>
           ) : (
-            <div className="bg-blue-50 p-3 rounded border border-blue-200">
-              <p className="text-sm text-blue-700">
-                <strong>Nota:</strong> La contraseña se generará automáticamente y se enviará por email al usuario.
-              </p>
-            </div>
+            <p className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+              <strong>Nota:</strong> La contraseña se generará automáticamente y se enviará por email al usuario.
+            </p>
           )}
-          
-          <select 
-            name="role" 
-            value={form.role} 
-            onChange={handleChange} 
+
+          <select
+            name="role"
+            value={form.role}
+            onChange={handleChange}
             className="w-full border p-2 rounded"
             disabled={isEditing && !hasPermission(Permission.USER_UPDATE)}
           >
-            <option value="SELLER">Vendedor</option>
-            <option value="SUPERVISOR">Supervisor</option>
             <option value="ADMIN">Administrador</option>
+            <option value="SUPERVISOR">Supervisor</option>
+            <option value="SELLER">Vendedor</option>
           </select>
 
-          <div className="flex justify-end gap-2 mt-4">
-            <button type="button" onClick={onClose} className="px-3 py-1 bg-gray-300 rounded">
-              Cancelar
+          <div className="flex justify-end gap-2 mt-3">
+            <button type="button" onClick={onClose} className="px-3 py-1 border rounded">Cancelar</button>
+            <button
+              type="submit"
+              disabled={saving || (isEditing && !hasPermission(Permission.USER_UPDATE))}
+              className="px-4 py-1 bg-green-600 text-white rounded disabled:opacity-50"
+            >
+              {saving ? "Guardando..." : "Guardar"}
             </button>
-            {(isEditing ? hasPermission(Permission.USER_UPDATE) : hasPermission(Permission.USER_CREATE)) && (
-              <button type="submit" disabled={saving} className="px-3 py-1 bg-blue-600 text-white rounded">
-                {saving ? "Guardando..." : "Guardar"}
-              </button>
-            )}
           </div>
         </form>
       </div>

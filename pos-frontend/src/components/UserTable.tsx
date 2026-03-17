@@ -24,7 +24,7 @@ export default function UserTable({
     if (!confirm("¿Estas Seguro de Querer Eliminar Este usuario?")) return;
 
     try {
-      await userService.remove(id);
+      await userService.delete(id);
       onRefresh();
     } catch(error) {
       console.error(error);
@@ -33,6 +33,14 @@ export default function UserTable({
   };
 
   const getCode = (u: any) => u.userCode ?? u.usercode ?? u.user_code ?? u.code ?? "-";
+
+  const getDisplayName = (u: any) => {
+    const normalized = [u.firstName, u.lastNamePaterno, u.lastNameMaterno]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    return normalized || (u.name ?? u.username ?? u.userName);
+  };
 
   if (loading) return <div>Cargando...</div>;
   if (!users.length) return <div className="text-gray-500">No hay usuarios.</div>;
@@ -54,7 +62,7 @@ export default function UserTable({
           {users.map((u) => (
             <tr key={u.id ?? getCode(u)} className="odd:bg-white even:bg-gray-50">
               <td className="p-3 border font-semibold">{getCode(u)}</td>
-              <td className="p-3 border">{u.name ?? u.username ?? u.userName}</td>
+              <td className="p-3 border">{getDisplayName(u)}</td>
               <td className="p-3 border">{u.email}</td>
               <td className="p-3 border">{u.phone}</td>
               <td className="p-3 border">

@@ -7,7 +7,10 @@ export const UserRepository = {
     return prisma.user.create({
       data: {
         userCode: dto.userCode,
-        name: dto.name,
+        name: dto.name ?? `${dto.firstName} ${dto.lastNamePaterno} ${dto.lastNameMaterno}`.trim(),
+        firstName: dto.firstName,
+        lastNamePaterno: dto.lastNamePaterno,
+        lastNameMaterno: dto.lastNameMaterno,
         email: dto.email,
         password: dto.password ?? "",
         phone: dto.phone ?? null,
@@ -102,6 +105,9 @@ export const UserRepository = {
     id: string,
     data: {
       name?: string;
+      firstName?: string;
+      lastNamePaterno?: string;
+      lastNameMaterno?: string;
       password?: string;
       email?: string;
       phone?: string;
@@ -118,6 +124,9 @@ export const UserRepository = {
       where: { id },
       data: {
         ...(data.name && { name: data.name }),
+        ...(data.firstName !== undefined && { firstName: data.firstName }),
+        ...(data.lastNamePaterno !== undefined && { lastNamePaterno: data.lastNamePaterno }),
+        ...(data.lastNameMaterno !== undefined && { lastNameMaterno: data.lastNameMaterno }),
         ...(data.password && { password: data.password }),
         ...(data.email && { email: data.email }),
         ...(data.phone && { phone: data.phone }),

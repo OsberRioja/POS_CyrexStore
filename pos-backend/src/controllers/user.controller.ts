@@ -76,6 +76,9 @@ export const UserController = {
       const id = req.params.id;
       const data: {
         name?: string;
+        firstName?: string;
+        lastNamePaterno?: string;
+        lastNameMaterno?: string;
         password?: string;
         email?: string;
         phone?: string;

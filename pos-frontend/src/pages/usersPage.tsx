@@ -67,11 +67,16 @@ export default function UsersPage() {
     }
     if (!q) return true;
     const code = (u.userCode ?? u.usercode ?? "").toString().toLowerCase();
-    const name = (u.name ?? u.username ?? "").toString().toLowerCase();
+    const fullName = [u.firstName, u.lastNamePaterno, u.lastNameMaterno]
+      .filter(Boolean)
+      .join(' ')
+      .toString()
+      .toLowerCase();
+    const legacyName = (u.name ?? u.username ?? "").toString().toLowerCase();
     const email = (u.email ?? "").toString().toLowerCase();
     const phone = (u.phone ?? "").toString().toLowerCase();
     if (numeric !== null && code === numeric.toString()) return true;
-    if (name.includes(q) || email.includes(q) || phone.includes(q) || code.includes(q)) return true;
+    if (fullName.includes(q) || legacyName.includes(q) || email.includes(q) || phone.includes(q) || code.includes(q)) return true;
     return false;
   });
 

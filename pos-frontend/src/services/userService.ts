@@ -1,7 +1,9 @@
 import api from './api';
 
 export interface CreateUserPayload {
-  name: string;
+  firstName: string;
+  lastNamePaterno: string;
+  lastNameMaterno: string;
   email: string;
   phone: string;
   role: "ADMIN" | "SUPERVISOR" | "SELLER";
@@ -10,7 +12,9 @@ export interface CreateUserPayload {
 }
 
 export interface UpdateUserPayload {
-  name?: string;
+  firstName?: string;
+  lastNamePaterno?: string;
+  lastNameMaterno?: string;
   email?: string;
   phone?: string;
   role?: "ADMIN" | "SUPERVISOR" | "SELLER";
