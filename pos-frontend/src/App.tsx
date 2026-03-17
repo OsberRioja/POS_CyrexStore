@@ -250,6 +250,7 @@ function MainApp() {
       {/* Modal de cambio de contraseña obligatorio */}
       <PasswordChangeModal
         isOpen={showPasswordModal}
+        isMandatory={!!requiresPasswordChange}
         onClose={() => {
           // No permitir cerrar el modal hasta que se cambie la contraseña
           // Solo cerrar si no está cargando y no requiere cambio
