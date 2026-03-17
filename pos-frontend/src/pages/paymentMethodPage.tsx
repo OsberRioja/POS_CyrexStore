@@ -4,7 +4,7 @@ import PaymentMethodTable from "../components/paymentMethodTable";
 import PaymentMethodForm from "../components/paymentMethodForm";
 import { paymentMethodService } from "../services/paymentMethodService";
 import { reportService } from "../services/reportService";
-import { useAuth } from "../context/authContext";
+//import { useAuth } from "../context/authContext";
 import { Download } from "lucide-react";
 
 interface PaymentMethodsPageProps {
@@ -18,8 +18,8 @@ export default function PaymentMethodsPage({
   onBack,
   isClosedCashbox = false
 }: PaymentMethodsPageProps) {
-  const { token } = useAuth();
-  const _token = token ?? undefined;
+  // const { token } = useAuth();
+  // const _token = token ?? undefined;
 
   const [methods, setMethods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export default function PaymentMethodsPage({
     setLoading(true);
     try {
       // traer métodos
-      const r = await paymentMethodService.list(_token);
+      const r = await paymentMethodService.list();
       const list = r.data ?? [];
 
       // si tenemos cashBoxId pedimos resumen y combinamos totales
@@ -61,9 +61,9 @@ export default function PaymentMethodsPage({
 
   const handleSave = async (payload: { name: string; isCash: boolean }) => {
     if (editing) {
-      await paymentMethodService.update(editing.id, payload, _token);
+      await paymentMethodService.update(editing.id, payload);
     } else {
-      await paymentMethodService.create(payload, _token);
+      await paymentMethodService.create(payload);
     }
     await load();
   };
@@ -71,7 +71,7 @@ export default function PaymentMethodsPage({
   const handleDelete = async (id: number) => {
     if (!confirm("Eliminar método de pago?")) return;
     try {
-      await paymentMethodService.remove(id, _token);
+      await paymentMethodService.remove(id);
       await load();
     } catch (err) {
       console.error(err);
