@@ -241,8 +241,7 @@ function MainApp() {
               </div>
             )}
 
-            {mainPage === "salir" && <HomePage />}
-            {(mainPage === null || mainPage === "dashboard") && <HomePage />}
+            {mainPage === null && <HomePage />}
           </div>
         </main>
       </div>

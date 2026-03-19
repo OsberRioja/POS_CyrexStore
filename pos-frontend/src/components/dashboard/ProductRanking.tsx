@@ -1,4 +1,5 @@
 import React from 'react';
+import DashboardMoney from './DashboardMoney';
 
 interface ProductRankingProps {
   products: Array<{
@@ -56,9 +57,10 @@ const ProductRanking: React.FC<ProductRankingProps> = ({
               </div>
             </div>
             <div className="text-right">
-              <p className="font-semibold text-gray-800">
-                Bs. {typeof product.amount === 'number' ? product.amount.toFixed(2) : '0.00'}
-              </p>
+              <DashboardMoney
+                amount={typeof product.amount === 'number' ? product.amount : 0}
+                className="font-semibold text-gray-800"
+              />
             </div>
           </div>
         ))}

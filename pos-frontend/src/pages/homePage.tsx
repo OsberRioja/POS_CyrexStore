@@ -3,12 +3,13 @@ import { useAuth } from "../context/authContext";
 import { useBranch } from "../hooks/useBranch";
 import { dashboardService } from "../services/dashboardService";
 import MetricCard from "../components/dashboard/MetricCard";
+import DashboardMoney from "../components/dashboard/DashboardMoney";
 import ProductRanking from "../components/dashboard/ProductRanking";
 import PeriodFilter from "../components/dashboard/PeriodFilter";
 import { DollarSign, ShoppingBag, Users, Package, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, isInBranchMode } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const { branches, currentBranchId } = useBranch();
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -16,6 +17,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<string>('day');
   const [refreshing, setRefreshing] = useState(false);
+  const canUseCurrencySwitch = isInBranchMode && user?.role === "ADMIN";
 
   // Obtener nombre de la sucursal actual
   const currentBranchName = branches.find(b => b.id === currentBranchId)?.name;
@@ -52,8 +54,19 @@ export default function HomePage() {
   }, [currentBranchId, period]);
 
   const handleRefresh = () => {
+    if (!currentBranchId) return;
+
     setRefreshing(true);
-    // El useEffect se ejecutará de nuevo porque refreshing cambió
+    dashboardService.getBranchDashboard(currentBranchId, period)
+      .then(data => {
+        setDashboardData(data);
+        setError(null);
+      })
+      .catch((err: any) => {
+        console.error('Error refreshing dashboard:', err);
+        setError(err.message || 'Error al recargar el dashboard');
+      })
+      .finally(() => setRefreshing(false));
   };
 
 
@@ -133,6 +146,9 @@ export default function HomePage() {
                 </span>
               )}
             </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Divisa visualizada: {canUseCurrencySwitch ? 'según el selector de divisa' : 'Bs.'}
+            </p>
           </div>
           <div className="mt-4 md:mt-0 flex items-center gap-3">
             <button
@@ -164,14 +180,14 @@ export default function HomePage() {
         <MetricCard
           title={`Ventas ${getPeriodTitle()}`}
           value={dashboardData?.salesToday?.count || 0}
-          subtitle={`Bs. ${(dashboardData?.salesToday?.amount || 0).toFixed(2)}`}
+          subtitle={<DashboardMoney amount={dashboardData?.salesToday?.amount || 0} />}
           icon={<ShoppingBag className="h-6 w-6" />}
           color="blue"
         />
       
         <MetricCard
           title={`Ganancias ${getPeriodTitle()}`}
-          value={`Bs. ${(dashboardData?.earningsToday?.grossEarnings || 0).toFixed(2)}`}
+          value={<DashboardMoney amount={dashboardData?.earningsToday?.grossEarnings || 0} />}
           subtitle={`${dashboardData?.salesToday?.count || 0} ventas`}
           icon={<DollarSign className="h-6 w-6" />}
           color="green"
@@ -179,7 +195,7 @@ export default function HomePage() {
       
         <MetricCard
           title="Ticket Promedio"
-          value={`Bs. ${(dashboardData?.averageTicket || 0).toFixed(2)}`}
+          value={<DashboardMoney amount={dashboardData?.averageTicket || 0} />}
           subtitle="Por venta"
           icon={<TrendingUp className="h-6 w-6" />}
           color="purple"
@@ -189,7 +205,7 @@ export default function HomePage() {
           title="Estado Caja"
           value={dashboardData?.cashBoxStatus?.isOpen ? "Abierta" : "Cerrada"}
           subtitle={dashboardData?.cashBoxStatus?.isOpen 
-            ? `Bs. ${(dashboardData?.cashBoxStatus?.currentAmount || 0).toFixed(2)}`
+            ? <DashboardMoney amount={dashboardData?.cashBoxStatus?.currentAmount || 0} />
             : "Abrir caja para ventas"}
           icon={<AlertCircle className="h-6 w-6" />}
           color={dashboardData?.cashBoxStatus?.isOpen ? "green" : "red"}
@@ -227,7 +243,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-gray-800">Bs. {seller.amount.toFixed(2)}</p>
+                  <DashboardMoney amount={seller.amount} className="font-semibold text-gray-800" />
                 </div>
               </div>
             ))}

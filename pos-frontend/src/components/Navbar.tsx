@@ -37,7 +37,7 @@ export default function Navbar() {
 
         <div className="flex items-center space-x-4">
           {isInBranchMode && <BranchSelector />}
-          {isInBranchMode && <CurrencySelector />}
+          {isInBranchMode && user?.role === 'ADMIN' && <CurrencySelector />}
 
           <div className="relative">
             <button

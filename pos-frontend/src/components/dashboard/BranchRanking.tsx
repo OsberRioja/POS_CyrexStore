@@ -1,4 +1,5 @@
 import React from 'react';
+import DashboardMoney from './DashboardMoney';
 
 interface BranchRankingProps {
   branches: Array<{
@@ -49,11 +50,12 @@ const BranchRanking: React.FC<BranchRankingProps> = ({
             </div>
             <div className="text-right">
               {/* CORRECCIÓN: Verificar que los valores sean números */}
-              <p className="font-semibold text-gray-800">
-                Bs. {typeof branch.totalAmount === 'number' ? branch.totalAmount.toFixed(2) : '0.00'}
-              </p>
+              <DashboardMoney
+                amount={typeof branch.totalAmount === 'number' ? branch.totalAmount : 0}
+                className="font-semibold text-gray-800"
+              />
               <p className="text-sm text-gray-500">
-                Ticket: Bs. {typeof branch.averageTicket === 'number' ? branch.averageTicket.toFixed(2) : '0.00'}
+                Ticket: <DashboardMoney amount={typeof branch.averageTicket === 'number' ? branch.averageTicket : 0} />
               </p>
             </div>
           </div>

@@ -5,6 +5,7 @@ import BranchCard from "../components/BranchCard";
 import BranchFormModal from "../components/BranchFormModal";
 import { dashboardService } from "../services/dashboardService";
 import MetricCard from "../components/dashboard/MetricCard";
+import DashboardMoney from "../components/dashboard/DashboardMoney";
 import BranchRanking from "../components/dashboard/BranchRanking";
 import ProductRanking from "../components/dashboard/ProductRanking";
 import PeriodFilter from "../components/dashboard/PeriodFilter";
@@ -175,7 +176,7 @@ export default function AdminHomePage() {
           <MetricCard
             title={`Ventas ${getPeriodTitle()}`}
             value={dashboardData?.globalSummary.totalSalesToday || 0}
-            subtitle={`Bs. ${(dashboardData?.globalSummary.totalAmountToday || 0).toFixed(2)}`}
+            subtitle={<DashboardMoney amount={dashboardData?.globalSummary.totalAmountToday || 0} />}
             icon={<DollarSign className="h-6 w-6" />}
             color="green"
           />
