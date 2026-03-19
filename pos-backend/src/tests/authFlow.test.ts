@@ -24,7 +24,9 @@ export class AuthFlowTests {
     console.log('1. Probando creación de usuario...');
     
     const testUser = {
-      name: 'Usuario de Prueba',
+      firstName: 'Usuario',
+      lastNamePaterno: 'de',
+      lastNameMaterno: 'Prueba',
       email: `test${Date.now()}@example.com`,
       phone: '123456789',
       role: 'SELLER' as const

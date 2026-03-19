@@ -30,6 +30,13 @@ function mapRole(role?: RoleString): "ADMIN" | "SUPERVISOR" | "SELLER" {
   }
 }
 
+function buildFullName(firstName: string, lastNamePaterno: string, lastNameMaterno: string): string {
+  return [firstName, lastNamePaterno, lastNameMaterno]
+    .map((v) => v?.trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
 // Validar formato de email (básico)
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,8 +45,8 @@ function isValidEmail(email: string): boolean {
 
 export const UserService = {
   async createUser(dto: CreateUserDTO, currentUserBranchId?: number | null) {
-    if (!dto.name || !dto.email || !dto.role || !dto.phone) {
-      throw { status: 400, message: "todos los campos son requeridos" };
+    if (!dto.firstName || !dto.lastNamePaterno || !dto.lastNameMaterno || !dto.email || !dto.role || !dto.phone) {
+      throw { status: 400, message: "nombre, apellido paterno, apellido materno, email, rol y teléfono son requeridos" };
     }
 
     if (!isValidEmail(dto.email)) {
@@ -102,9 +109,14 @@ export const UserService = {
     //    si fue generado por nosotros, reintentamos en caso de P2002 por usercode).
     for (let attempt = 0; attempt < CREATE_RETRY; attempt++) {
       try {
+        const fullName = buildFullName(dto.firstName, dto.lastNamePaterno, dto.lastNameMaterno);
+
         const user = await UserRepository.create({
           userCode: usercode,
-          name: dto.name,
+          name: fullName,
+          firstName: dto.firstName.trim(),
+          lastNamePaterno: dto.lastNamePaterno.trim(),
+          lastNameMaterno: dto.lastNameMaterno.trim(),
           email: dto.email,
           password: passwordHash,   // enviar la contraseña ya hasheada
           phone: dto.phone ?? null,
@@ -210,6 +222,9 @@ export const UserService = {
     id: string,
     data: {
       name?: string;
+      firstName?: string;
+      lastNamePaterno?: string;
+      lastNameMaterno?: string;
       password?: string;
       email?: string;
       phone?: string;
@@ -225,6 +240,20 @@ export const UserService = {
     const updatedData: any = { ...data };
     if (data.password) {
       updatedData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
+    }
+
+    const firstName = (data.firstName ?? existing.firstName ?? '').trim();
+    const lastNamePaterno = (data.lastNamePaterno ?? existing.lastNamePaterno ?? '').trim();
+    const lastNameMaterno = (data.lastNameMaterno ?? existing.lastNameMaterno ?? '').trim();
+
+    if (data.firstName !== undefined || data.lastNamePaterno !== undefined || data.lastNameMaterno !== undefined) {
+      if (!firstName || !lastNamePaterno || !lastNameMaterno) {
+        throw { status: 400, message: "nombre, apellido paterno y apellido materno son requeridos" };
+      }
+      updatedData.name = buildFullName(firstName, lastNamePaterno, lastNameMaterno);
+      updatedData.firstName = firstName;
+      updatedData.lastNamePaterno = lastNamePaterno;
+      updatedData.lastNameMaterno = lastNameMaterno;
     }
 
     const user = await UserRepository.updateUser(id, updatedData);

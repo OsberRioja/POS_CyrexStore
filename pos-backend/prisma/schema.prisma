@@ -11,6 +11,9 @@ model User {
   id              String          @id @default(uuid())
   userCode        Int?            @unique
   name            String
+  firstName       String?
+  lastNamePaterno String?
+  lastNameMaterno String?
   email           String          @unique
   phone           String
   password        String
@@ -62,7 +65,7 @@ model Provider {
 
 model Product {
   id             String          @id @default(uuid())
-  sku            String          @unique
+  sku            String
   name           String
   salePrice      Float
   costPrice      Float
@@ -88,6 +91,8 @@ model Product {
   returnItems    ReturnItem[]
   saleItems      SaleItem[]
   stockMovements StockMovement[]
+
+  @@unique([sku, branchId])
 }
 
 model PaymentMethod {

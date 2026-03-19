@@ -31,7 +31,7 @@ export default function ExpenseFormModal({ cashBoxId, onClose, onSuccess, token 
     if (!methodId) return alert("Seleccione método de pago");
     setSaving(true);
     try {
-      await expenseService.create({ cashBoxId, amount: a, concept, paymentMethodId: methodId }, token);
+      await expenseService.create({ cashBoxId, amount: a, concept, paymentMethodId: methodId });
       onSuccess();
     } catch (err) {
       console.error(err);

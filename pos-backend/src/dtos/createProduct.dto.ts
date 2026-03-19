@@ -5,7 +5,7 @@ export interface CreateProductDTO {
   costPrice: number;
   salePrice: number;
   priceCurrency?: string;
-  stock: number; // cantidad de stock inicial
+  stock?: number; // deprecado: el stock inicial ahora se gestiona por movimientos de inventario
   category?: string; // opcional, si se quiere asociar a una categoría
   brand?: string; // opcional, si se quiere asociar a una marca
   providerId?: string; //porveedor asociado
