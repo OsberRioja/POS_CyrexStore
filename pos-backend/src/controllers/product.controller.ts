@@ -18,7 +18,7 @@ export const productController = {
 
   async getAll(req: Request, res: Response) {
     try {
-      const { q, onlyActive } = req.query;
+      const { q, onlyActive, onlyInStock } = req.query;
       
       // Obtener branchId del usuario autenticado
       const userBranchId = (req as any).user?.branchId;
@@ -36,10 +36,12 @@ export const productController = {
       }
 
       let products;
+      const filterOnlyInStock = onlyInStock === 'true';
+
       if (onlyActive === 'true') {
-        products = await productService.getProducts(targetBranchId);
+        products = await productService.getProducts(targetBranchId, filterOnlyInStock);
       } else {
-        products = await productService.getAllProducts(true, targetBranchId);
+        products = await productService.getAllProducts(true, targetBranchId, filterOnlyInStock);
       }
       
       // Si hay query de búsqueda, filtrar adicionalmente

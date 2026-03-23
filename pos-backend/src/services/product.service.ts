@@ -108,12 +108,12 @@ export const productService = {
     }
   },
 
-  async getAllProducts(includeInactive = true, branchId?: number) {
-    return await productRepository.findAll(includeInactive, branchId);
+  async getAllProducts(includeInactive = true, branchId?: number, onlyInStock = false) {
+    return await productRepository.findAll(includeInactive, branchId, onlyInStock);
   },
 
-  async getProducts(branchId?: number) {
-    return await productRepository.findAllActive(branchId);
+  async getProducts(branchId?: number, onlyInStock = false) {
+    return await productRepository.findAllActive(branchId, onlyInStock);
   },
 
   async getProductById(id: string) {

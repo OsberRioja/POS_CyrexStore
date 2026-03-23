@@ -26,11 +26,12 @@ export const productRepository = {
     });
   },
 
-  findAll(includeInactive = false, branchId?: number) {
+  findAll(includeInactive = false, branchId?: number, onlyInStock = false) {
     return prisma.product.findMany({
       where: {
         ...(includeInactive ? undefined : { isActive: true }),
-        ...(branchId ? { branchId } : {})
+        ...(branchId ? { branchId } : {}),
+        ...(onlyInStock ? { stock: { gte: 1 } } : {})
       },
       include: {
         user: { select: { name: true, userCode: true } },
@@ -41,11 +42,12 @@ export const productRepository = {
     });
   },
 
-  findAllActive(branchId?: number) {
+  findAllActive(branchId?: number, onlyInStock = false) {
     return prisma.product.findMany({
       where: { 
         isActive: true,
-        ...(branchId ? { branchId } : {})
+        ...(branchId ? { branchId } : {}),
+        ...(onlyInStock ? { stock: { gte: 1 } } : {})
       },
       include: {
         user: { select: { name: true, userCode: true } },

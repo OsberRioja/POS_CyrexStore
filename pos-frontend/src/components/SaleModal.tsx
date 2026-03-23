@@ -87,7 +87,7 @@ export default function SaleFormModal({
         return;
       }
       try {
-        const r = await productService.search({ q: queryProduct, onlyActive: true });
+        const r = await productService.search({ q: queryProduct, onlyActive: true, onlyInStock: true });
         setProductResults(r.data ?? []);
       } catch (err) {
         console.error(err);
@@ -248,6 +248,11 @@ export default function SaleFormModal({
   };
 
   const addProduct = async (p: any) => {
+    if (Number(p.stock ?? 0) < 1) {
+      alert(`El producto ${p.name} no tiene stock disponible.`);
+      return;
+    }
+
     const productCurrency = p.priceCurrency || 'BOB';
     const originalPrice = p.salePrice ?? p.sale_price ?? 0;
     
