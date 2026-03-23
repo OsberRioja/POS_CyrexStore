@@ -4,13 +4,14 @@ import { clientService } from "../services/clientService";
 import { userService } from "../services/userService";
 import { paymentMethodService } from "../services/paymentMethodService";
 import { saleService } from "../services/saleService";
+import { stockService } from "../services/stockService";
 import ClientForm from "./ClientForm"; // usamos el formulario completo de cliente
 import { exchangeRateService } from "../services/exchangeRateService";
 import { useAuth } from "../context/authContext";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 
-type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number; originalPrice?: number; originalCurrency?: string; conversionRate?: number };
+type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number; originalPrice?: number; originalCurrency?: string; conversionRate?: number; serialNumbers: string[]; availableSerials: string[] };
 type Payment = { paymentMethodId: number; amount: number };
 
 export default function SaleFormModal({
@@ -229,6 +230,16 @@ export default function SaleFormModal({
     };
   }, []);
 
+  const syncItemQuantity = (item: Item) => ({
+    ...item,
+    qty: item.serialNumbers.length,
+    subtotal: Math.round(item.unitPrice * item.serialNumbers.length * 100) / 100,
+  });
+
+  const getSelectableSerials = (item: Item, currentSerial?: string) => {
+    return item.availableSerials.filter((serial) => serial === currentSerial || !item.serialNumbers.includes(serial));
+  };
+
   const convertPriceToBOB = async (price: number, fromCurrency: string): Promise<{ convertedPrice: number; rate: number }> => {
     if (fromCurrency === 'BOB') {
       return { convertedPrice: price, rate: 1 };
@@ -253,45 +264,89 @@ export default function SaleFormModal({
       return;
     }
 
-    const productCurrency = p.priceCurrency || 'BOB';
-    const originalPrice = p.salePrice ?? p.sale_price ?? 0;
-    
-    let finalPrice = originalPrice;
-    let conversionRate = 1;
+    if (items.some((item) => item.productId === p.id)) {
+      alert(`El producto ${p.name} ya fue agregado. Ajusta la cantidad o las series en la fila existente.`);
+      return;
+    }
 
-    // Si el producto está en otra moneda, convertir a BOB
-    if (productCurrency !== 'BOB') {
-      try {
-        const conversion = await convertPriceToBOB(originalPrice, productCurrency);
-        finalPrice = conversion.convertedPrice;
-        conversionRate = conversion.rate;
-      } catch (error) {
-        console.error('Error converting product price:', error);
-        // Si falla la conversión, usar precio original pero mostrar advertencia
-        alert(`Advertencia: No se pudo convertir el precio de ${p.name}. Se usará el precio en ${productCurrency}.`);
+    try {
+      const serialsResponse = await stockService.getAvailableSerials(p.id);
+      const availableSerials = (serialsResponse.data?.data ?? []).map((item: any) => item.serialNumber);
+
+      if (availableSerials.length === 0) {
+        alert(`El producto ${p.name} no tiene números de serie disponibles para vender.`);
+        return;
       }
-    };
 
+      const productCurrency = p.priceCurrency || 'BOB';
+      const originalPrice = p.salePrice ?? p.sale_price ?? 0;
+      
+      let finalPrice = originalPrice;
+      let conversionRate = 1;
 
-    const it: Item = { 
-      productId: p.id, 
-      name: p.name, 
-      qty: 1, 
-      unitPrice: Number(finalPrice), 
-      subtotal: Number(finalPrice),
-      originalPrice: Number(originalPrice),        // ← Guardar precio original
-      originalCurrency: productCurrency,           // ← Guardar moneda original
-      conversionRate: conversionRate               // ← Guardar tasa de cambio
-    };
-    
-    setItems((s) => [...s, it]);
-    setQueryProduct("");
-    setProductResults([]);
+      if (productCurrency !== 'BOB') {
+        try {
+          const conversion = await convertPriceToBOB(originalPrice, productCurrency);
+          finalPrice = conversion.convertedPrice;
+          conversionRate = conversion.rate;
+        } catch (error) {
+          console.error('Error converting product price:', error);
+          alert(`Advertencia: No se pudo convertir el precio de ${p.name}. Se usará el precio en ${productCurrency}.`);
+        }
+      }
+
+      const it: Item = { 
+        productId: p.id, 
+        name: p.name, 
+        qty: 1, 
+        unitPrice: Number(finalPrice), 
+        subtotal: Number(finalPrice),
+        originalPrice: Number(originalPrice),
+        originalCurrency: productCurrency,
+        conversionRate: conversionRate,
+        serialNumbers: [availableSerials[0]],
+        availableSerials
+      };
+      
+      setItems((s) => [...s, it]);
+      setQueryProduct("");
+      setProductResults([]);
+    } catch (error) {
+      console.error('Error loading serials:', error);
+      alert(`No se pudieron cargar los números de serie disponibles para ${p.name}.`);
+    }
   };
 
   const changeQty = (idx: number, qty: number) => {
     if (qty < 1) qty = 1;
-    setItems((s) => s.map((it, i) => (i === idx ? { ...it, qty, subtotal: Math.round(it.unitPrice * qty * 100) / 100 } : it)));
+    setItems((current) => current.map((item, index) => {
+      if (index !== idx) return item;
+
+      if (qty > item.availableSerials.length) {
+        alert(`Solo hay ${item.availableSerials.length} números de serie disponibles para ${item.name}.`);
+        qty = item.availableSerials.length;
+      }
+
+      const serialNumbers = [...item.serialNumbers];
+
+      if (qty > serialNumbers.length) {
+        const missing = item.availableSerials.filter((serial) => !serialNumbers.includes(serial)).slice(0, qty - serialNumbers.length);
+        serialNumbers.push(...missing);
+      } else if (qty < serialNumbers.length) {
+        serialNumbers.splice(qty);
+      }
+
+      return syncItemQuantity({ ...item, serialNumbers });
+    }));
+  };
+
+  const changeSerial = (itemIndex: number, serialIndex: number, serialNumber: string) => {
+    setItems((current) => current.map((item, index) => {
+      if (index !== itemIndex) return item;
+      const serialNumbers = [...item.serialNumbers];
+      serialNumbers[serialIndex] = serialNumber;
+      return syncItemQuantity({ ...item, serialNumbers });
+    }));
   };
 
   const removeItem = (idx: number) => setItems((s) => s.filter((_, i) => i !== idx));
@@ -374,11 +429,16 @@ export default function SaleFormModal({
       return; // La validación ya mostró el error
     }
 
+    const hasInvalidSerials = items.some((item) => item.serialNumbers.length !== item.qty || item.serialNumbers.some((serial) => !serial));
+    if (hasInvalidSerials) {
+      return alert("Cada producto debe tener un número de serie válido por unidad vendida.");
+    }
+
     const payload: any = {
       sellerUserCode: sellerSelected ? sellerSelected.userCode : undefined,
       sellerId: sellerSelected ? sellerSelected.id : undefined,
       client: { id_cliente: clientSelected.id_cliente },
-      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice, originalPrice: it.originalPrice, originalCurrency: it.originalCurrency, conversionRate: it.conversionRate })),
+      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice, originalPrice: it.originalPrice, originalCurrency: it.originalCurrency, conversionRate: it.conversionRate, serialNumbers: it.serialNumbers })),
       payments: payments.map((p) => ({ paymentMethodId: p.paymentMethodId, amount: p.amount })),
       allowPartialPayment: allowPartialPayment, // NUEVO: enviar flag
       cashBoxId,
@@ -582,20 +642,40 @@ export default function SaleFormModal({
                             )}
                           </div>
                         </td>
-                        <td className="p-2">
+                        <td className="p-2 align-top">
                           <input 
                             type="number" 
                             value={it.qty} 
                             min={1} 
+                            max={it.availableSerials.length}
                             onChange={(e) => changeQty(idx, Number(e.target.value))} 
                             className="w-20 border p-1 rounded" 
                           />
+                          <div className="text-xs text-gray-500 mt-1">Disponibles: {it.availableSerials.length}</div>
                         </td>
                         <td className="p-2 text-right">
                           <div className="font-semibold">Bs. {it.unitPrice.toFixed(2)}</div>
                         </td>
                         <td className="p-2 text-right">
                           <div className="font-semibold">Bs. {it.subtotal.toFixed(2)}</div>
+                          <div className="mt-2 space-y-2 text-left">
+                            {it.serialNumbers.map((serial, serialIndex) => (
+                              <div key={`${idx}-${serialIndex}`}>
+                                <label className="block text-xs text-gray-500 mb-1">Serie #{serialIndex + 1}</label>
+                                <select
+                                  value={serial}
+                                  onChange={(e) => changeSerial(idx, serialIndex, e.target.value)}
+                                  className="w-full min-w-[180px] border p-1 rounded text-xs"
+                                >
+                                  {getSelectableSerials(it, serial).map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ))}
+                          </div>
                         </td>
                         <td className="p-2">
                           <button 

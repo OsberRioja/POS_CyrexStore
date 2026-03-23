@@ -8,6 +8,7 @@ interface CreateSalePayload {
     productId: string;
     quantity: number;
     unitPrice: number;
+    serialNumbers?: string[];
   }>;
   payments: Array<{
     paymentMethodId: number;

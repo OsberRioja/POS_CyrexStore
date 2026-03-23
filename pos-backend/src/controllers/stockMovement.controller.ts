@@ -11,7 +11,7 @@ export const StockMovementController = {
   async registerPurchase(req: Request, res: Response) {
     try {
       const userId = (req as any).userId;
-      const { productId, quantity, unitCost, providerId, notes } = req.body;
+      const { productId, quantity, unitCost, providerId, notes, serialNumbers } = req.body;
 
       if (!productId || !quantity || !unitCost) {
         return res.status(400).json({ 
@@ -20,7 +20,7 @@ export const StockMovementController = {
       }
 
       const movement = await StockMovementService.registerPurchase(
-        { productId, quantity, unitCost, providerId, notes },
+        { productId, quantity, unitCost, providerId, notes, serialNumbers },
         userId
       );
 
@@ -139,6 +139,20 @@ export const StockMovementController = {
     } catch (err: any) {
       console.error("GET /stock/movements:", err);
       return res.status(500).json({ error: "Error interno" });
+    }
+  },
+
+
+  async getAvailableSerials(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+      const serials = await StockMovementService.getAvailableSerials(productId);
+      return res.json({ data: serials });
+    } catch (err: any) {
+      console.error("GET /stock/product/:productId/available-serials:", err);
+      return res.status(err?.status || 500).json({
+        error: err?.message || "Error interno"
+      });
     }
   },
 

@@ -7,6 +7,7 @@ export type SaleItemDTO = {
   originalPrice?: number;
   originalCurrency?: string;
   conversionRate?: number;
+  serialNumbers?: string[];
 };
 
 export type SalePaymentDTO = {
@@ -63,6 +64,7 @@ export const createSaleSchema = z.object({
     productId: z.string().uuid('ID de producto inválido'),
     quantity: z.number().int().positive('La cantidad debe ser positiva'),
     unitPrice: z.number().positive().optional(),
+    serialNumbers: z.array(z.string().min(1)).optional(),
   })).min(1, 'Debe incluir al menos un producto'),
   payments: z.array(z.object({
     paymentMethodId: z.number().int().positive('ID de método de pago inválido'),

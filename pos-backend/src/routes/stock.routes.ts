@@ -44,6 +44,7 @@ router.post('/internal-use/:movementId/return', StockMovementController.returnIn
 
 // Historial de movimientos de un producto específico
 router.get('/product/:productId/history', StockMovementController.getProductHistory);
+router.get('/product/:productId/available-serials', StockMovementController.getAvailableSerials);
 
 // Actualizar precios de un producto
 router.put('/product/:productId/prices', StockMovementController.updatePrices);

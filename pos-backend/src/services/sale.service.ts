@@ -1,5 +1,5 @@
 // src/services/sale.service.ts
-import { PrismaClient, PaymentStatus } from "@prisma/client";
+import { PrismaClient, PaymentStatus, ProductSerialStatus } from "@prisma/client";
 import { SaleRepository } from "../repositories/sale.repository";
 import type { AddPaymentDTO } from "../dtos/sale.dto";
 import { CashBoxRepository } from "../repositories/cashBox.repository";
@@ -65,13 +65,32 @@ export const SaleService = {
         throw { status: 400, message: "unitPrice inválido para un item" };
       }
       
+      const serialNumbers = Array.isArray(it.serialNumbers)
+        ? it.serialNumbers.map((serial: string) => String(serial).trim()).filter(Boolean)
+        : [];
+
+      if (serialNumbers.length !== quantity) {
+        throw {
+          status: 400,
+          message: "Debe seleccionar exactamente un número de serie por cada unidad vendida"
+        };
+      }
+
+      if (new Set(serialNumbers).size !== serialNumbers.length) {
+        throw {
+          status: 400,
+          message: "Los números de serie no pueden repetirse dentro del mismo item de venta"
+        };
+      }
+
       itemsData.push({ 
         productId: String(it.productId), 
         quantity, 
         unitPrice, // ← Usar el precio que viene del frontend (ya convertido a BOB)
         originalPrice: Number(it.originalPrice) || unitPrice, // Precio en moneda original
         originalCurrency: it.originalCurrency || 'BOB', // Moneda Original
-        conversionRate: Number(it.conversionRate) || 1 // Tasa de cambio
+        conversionRate: Number(it.conversionRate) || 1, // Tasa de cambio
+        serialNumbers
       });
     }
 
@@ -148,12 +167,34 @@ export const SaleService = {
       const itemsToCreate: any[] = [];
       let calculatedTotal = 0;
 
+      const allSerialNumbers = itemsData.flatMap((item) => item.serialNumbers);
+      if (new Set(allSerialNumbers).size !== allSerialNumbers.length) {
+        throw { status: 400, message: "No puede vender el mismo número de serie más de una vez en la misma venta" };
+      }
+
       for (const it of itemsData) {
         const product = await tx.product.findUnique({ where: { id: it.productId } });
         if (!product) throw { status: 404, message: `Producto ${it.productId} no encontrado` };
         if (product.stock < it.quantity) throw { status: 400, message: `Stock insuficiente para producto ${product.name}` };
 
-        // ✅ CORRECCIÓN: Usar el unitPrice que viene del frontend (ya convertido a BOB)
+        const availableSerials = await tx.productSerial.findMany({
+          where: {
+            productId: it.productId,
+            serialNumber: { in: it.serialNumbers },
+            status: ProductSerialStatus.AVAILABLE
+          },
+          select: { serialNumber: true }
+        });
+
+        if (availableSerials.length !== it.serialNumbers.length) {
+          const found = new Set(availableSerials.map((item: { serialNumber: string }) => item.serialNumber));
+          const missing = it.serialNumbers.filter((serial: string) => !found.has(serial));
+          throw {
+            status: 400,
+            message: `Los siguientes números de serie no están disponibles para ${product.name}: ${missing.join(', ')}`
+          };
+        }
+
         const unitPrice = Number(it.unitPrice);
         const subtotal = unitPrice * Number(it.quantity);
         calculatedTotal += subtotal;
@@ -162,15 +203,11 @@ export const SaleService = {
         const originalPrice = it.originalPrice;
         const originalCurrency = it.originalCurrency || 'BOB';
 
-        // Si el producto está en otra moneda
         if (product.priceCurrency !== 'BOB') {
-          // Si tenemos originalPrice, calcular tasa implícita
           if (originalPrice && originalPrice > 0 && originalCurrency !== 'BOB') {
             conversionRate = unitPrice / originalPrice;
           } else {
-            // Si no hay originalPrice, obtener tasa actual
             try {
-              // getRate devuelve un número directamente
               conversionRate = await ExchangeRateService.getRate(product.priceCurrency, 'BOB');
             } catch (error) {
               console.error(`Error obteniendo tasa para ${product.priceCurrency}:`, error);
@@ -182,11 +219,12 @@ export const SaleService = {
         itemsToCreate.push({
           productId: it.productId,
           quantity: it.quantity,
-          unitPrice, //usa el precio del frontend
+          unitPrice,
           subtotal,
           originalPrice: it.originalPrice,
           originalCurrency: it.originalCurrency,
-          conversionRate: conversionRate
+          conversionRate: conversionRate,
+          serialNumbers: it.serialNumbers
         });
       }
       
@@ -304,6 +342,19 @@ export const SaleService = {
         });
       
         // Registrar el movimiento con los valores correctos
+        await tx.productSerial.updateMany({
+          where: {
+            productId: item.productId,
+            serialNumber: { in: item.serialNumbers },
+            status: ProductSerialStatus.AVAILABLE
+          },
+          data: {
+            status: ProductSerialStatus.SOLD,
+            saleId: created.id,
+            soldAt: created.createdAt
+          }
+        });
+
         await tx.stockMovement.create({
           data: {
             productId: item.productId,
@@ -312,6 +363,7 @@ export const SaleService = {
             previousStock: previousStock,
             newStock: newStock,
             saleId: created.id,
+            serialNumbers: item.serialNumbers,
             createdBy: actorUserId
           }
         });

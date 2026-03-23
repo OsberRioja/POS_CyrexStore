@@ -61,6 +61,7 @@ model Provider {
   id_provider    Int             @id @default(autoincrement())
   Product        Product[]
   stockMovements StockMovement[]
+  serialItems    ProductSerial[]
 }
 
 model Product {
@@ -91,6 +92,7 @@ model Product {
   returnItems    ReturnItem[]
   saleItems      SaleItem[]
   stockMovements StockMovement[]
+  serialItems    ProductSerial[]
 
   @@unique([sku, branchId])
 }
@@ -150,6 +152,7 @@ model Sale {
   returns        Return[]
   items          SaleItem[]
   payments       SalePayment[]
+  serialItems    ProductSerial[]
   cashBox        CashBox?        @relation("box_sales", fields: [cashBoxId], references: [id])
   branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   client         Cliente?        @relation(fields: [clientId], references: [id_cliente])
@@ -161,20 +164,43 @@ model Sale {
 }
 
 model SaleItem {
-  id        Int     @id @default(autoincrement())
-  saleId    String
-  productId String
-  quantity  Int
-  unitPrice Float
-  subtotal  Float
+  id               Int             @id @default(autoincrement())
+  saleId           String
+  productId        String
+  quantity         Int
+  unitPrice        Float
+  subtotal         Float
   originalPrice    Float?
   originalCurrency String?
   conversionRate   Float?
+  serialNumbers    String[]        @default([])
 
-  product   Product @relation(fields: [productId], references: [id])
-  sale      Sale    @relation(fields: [saleId], references: [id])
+  product          Product         @relation(fields: [productId], references: [id])
+  sale             Sale            @relation(fields: [saleId], references: [id])
 
   @@map("sale_items")
+}
+
+model ProductSerial {
+  id              String              @id @default(uuid())
+  productId       String
+  saleId          String?
+  serialNumber    String              @unique
+  status          ProductSerialStatus @default(AVAILABLE)
+  unitCost        Float?
+  providerId      Int?
+  purchasedAt     DateTime            @default(now())
+  soldAt          DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  product         Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sale            Sale?               @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  provider        Provider?           @relation(fields: [providerId], references: [id_provider])
+
+  @@index([productId, status])
+  @@index([saleId])
+  @@map("product_serials")
 }
 
 model SalePayment {
@@ -218,6 +244,7 @@ model StockMovement {
   saleId        String?
   notes         String?
   reason        String?
+  serialNumbers String[]      @default([])
   createdBy     String
   branchId      Int?
   createdAt     DateTime     @default(now())
@@ -420,6 +447,11 @@ enum PaymentStatus {
   OVERPAID
 
   @@map("payment_status")
+}
+
+enum ProductSerialStatus {
+  AVAILABLE
+  SOLD
 }
 
 enum MovementType {

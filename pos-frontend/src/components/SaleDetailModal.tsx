@@ -136,6 +136,11 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) =>
                         {item.product?.sku && (
                           <div className="text-xs text-gray-500">SKU: {item.product.sku}</div>
                         )}
+                        {Array.isArray(item.serialNumbers) && item.serialNumbers.length > 0 && (
+                          <div className="text-xs text-blue-600 mt-1">
+                            Series: {item.serialNumbers.join(', ')}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">{item.quantity}</td>
                       <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>

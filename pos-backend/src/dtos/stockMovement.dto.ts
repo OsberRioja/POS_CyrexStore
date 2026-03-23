@@ -9,6 +9,7 @@ export interface CreateStockMovementDTO {
   saleId?: string;
   notes?: string;
   reason?: string;
+  serialNumbers?: string[];
 }
 
 export interface UpdateProductPriceDTO {

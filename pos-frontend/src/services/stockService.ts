@@ -27,6 +27,7 @@ export const stockService = {
     unitCost: number;
     providerId?: number;
     notes?: string;
+    serialNumbers?: string[];
   }) => {
     return api.post(`/stock/purchase`, data);
   },
@@ -39,6 +40,7 @@ export const stockService = {
     quantity: number;
     reason: string;
     notes?: string;
+    serialNumbers?: string[];
   }) => {
     return api.post(`/stock/repair-out`, data);
   },
@@ -51,6 +53,7 @@ export const stockService = {
     quantity: number;
     reason: string;
     notes?: string;
+    serialNumbers?: string[];
   }) => {
     return api.post(`/stock/demo-out`, data);
   },
@@ -62,6 +65,7 @@ export const stockService = {
     saleId: string;
     items: Array<{ productId: string; quantity: number }>;
     notes?: string;
+    serialNumbers?: string[];
   }) => {
     return api.post(`/stock/return`, data);
   },
@@ -103,6 +107,11 @@ export const stockService = {
 
   // ========== PRODUCTOS ==========
 
+
+  getAvailableSerials: (productId: string) => {
+    return api.get(`/stock/product/${productId}/available-serials`);
+  },
+
   /**
    * Historial de un producto
    */
@@ -117,6 +126,7 @@ export const stockService = {
     costPrice?: number;
     salePrice?: number;
     notes?: string;
+    serialNumbers?: string[];
   }) => {
     return api.put(`/stock/product/${productId}/prices`, data);
   },
@@ -151,6 +161,7 @@ export const stockService = {
     quantity: number; // Positivo o negativo
     reason: string;
     notes?: string;
+    serialNumbers?: string[];
   }) => {
     return api.post(`/stock/adjustment`, data);
   },
@@ -165,6 +176,7 @@ export const stockService = {
     destination?: string;
     expectedReturnDate?: string;
     notes?: string;
+    serialNumbers?: string[];
   }) => {
     return api.post(`/stock/internal-use-out`, data);
   },

@@ -14,6 +14,7 @@ export const StockMovementRepository = {
     saleId?: string;
     notes?: string;
     reason?: string;
+    serialNumbers?: string[];
     createdBy: string;
   }) => {
     return prisma.stockMovement.create({

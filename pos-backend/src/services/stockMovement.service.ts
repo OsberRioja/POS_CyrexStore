@@ -1,4 +1,4 @@
-import { MovementType } from "@prisma/client";
+import { MovementType, ProductSerialStatus } from "@prisma/client";
 import { StockMovementRepository, PriceHistoryRepository } from "../repositories/stockMovement.repository";
 import { prisma } from "../prismaClient";
 
@@ -12,13 +12,31 @@ export const StockMovementService = {
     unitCost: number;
     providerId?: number;
     notes?: string;
+    serialNumbers?: string[];
   }, userId: string) {
     if (data.quantity <= 0) {
       throw { status: 400, message: "La cantidad debe ser mayor a 0" };
     }
 
+    const cleanedSerialNumbers = (data.serialNumbers ?? [])
+      .map((serial) => String(serial).trim())
+      .filter(Boolean);
+
+    if (cleanedSerialNumbers.length !== data.quantity) {
+      throw {
+        status: 400,
+        message: "Debe registrar exactamente un número de serie por cada unidad comprada"
+      };
+    }
+
+    if (new Set(cleanedSerialNumbers).size !== cleanedSerialNumbers.length) {
+      throw {
+        status: 400,
+        message: "Los números de serie no pueden repetirse dentro de la misma compra"
+      };
+    }
+
     return prisma.$transaction(async (tx) => {
-      // Obtener producto actual
       const product = await tx.product.findUnique({
         where: { id: data.productId }
       });
@@ -27,16 +45,36 @@ export const StockMovementService = {
         throw { status: 404, message: "Producto no encontrado" };
       }
 
+      const existingSerials = await tx.productSerial.findMany({
+        where: { serialNumber: { in: cleanedSerialNumbers } },
+        select: { serialNumber: true }
+      });
+
+      if (existingSerials.length > 0) {
+        throw {
+          status: 400,
+          message: `Los siguientes números de serie ya existen: ${existingSerials.map((item: { serialNumber: string }) => item.serialNumber).join(', ')}`
+        };
+      }
+
       const previousStock = product.stock;
       const newStock = previousStock + data.quantity;
 
-      // Actualizar stock del producto
       await tx.product.update({
         where: { id: data.productId },
         data: { stock: newStock }
       });
 
-      // Registrar movimiento
+      await tx.productSerial.createMany({
+        data: cleanedSerialNumbers.map((serialNumber) => ({
+          productId: data.productId,
+          serialNumber,
+          status: ProductSerialStatus.AVAILABLE,
+          unitCost: data.unitCost,
+          providerId: data.providerId
+        }))
+      });
+
       const movement = await tx.stockMovement.create({
         data: {
           productId: data.productId,
@@ -47,6 +85,7 @@ export const StockMovementService = {
           unitCost: data.unitCost,
           providerId: data.providerId,
           notes: data.notes,
+          serialNumbers: cleanedSerialNumbers,
           createdBy: userId
         },
         include: {
@@ -57,6 +96,31 @@ export const StockMovementService = {
       });
 
       return movement;
+    });
+  },
+
+  async getAvailableSerials(productId: string) {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true }
+    });
+
+    if (!product) {
+      throw { status: 404, message: "Producto no encontrado" };
+    }
+
+    return prisma.productSerial.findMany({
+      where: {
+        productId,
+        status: ProductSerialStatus.AVAILABLE
+      },
+      orderBy: { serialNumber: 'asc' },
+      select: {
+        id: true,
+        serialNumber: true,
+        purchasedAt: true,
+        unitCost: true
+      }
     });
   },
 

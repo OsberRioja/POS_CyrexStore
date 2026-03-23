@@ -10,6 +10,7 @@ interface Movement {
   unitCost?: number;
   notes?: string;
   reason?: string;
+  serialNumbers?: string[];
   createdAt: string;
   product: {
     name: string;
@@ -261,7 +262,12 @@ const StockMovementsTable: React.FC<StockMovementsTableProps> = ({ movements, on
                           <span className="font-medium">Razón:</span> {movement.reason}
                         </div>
                       )}
-                      {!movement.notes && !movement.reason && (
+                      {Array.isArray(movement.serialNumbers) && movement.serialNumbers.length > 0 && (
+                        <div className="text-xs text-purple-700" title={movement.serialNumbers.join(', ')}>
+                          <span className="font-medium">Series:</span> {movement.serialNumbers.join(', ')}
+                        </div>
+                      )}
+                      {!movement.notes && !movement.reason && (!movement.serialNumbers || movement.serialNumbers.length === 0) && (
                         <span className="text-gray-400">-</span>
                       )}
                     </div>
