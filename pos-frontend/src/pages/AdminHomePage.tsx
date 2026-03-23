@@ -181,14 +181,14 @@ export default function AdminHomePage() {
             color="green"
           />
           
-          <MetricCard
+          {/* <MetricCard
             title={`Usuarios Activos ${getPeriodTitle()}`}
             value={dashboardData?.globalSummary.activeUsersToday || 0}
             subtitle="Con ventas en el período"
             icon={<Users className="h-6 w-6" />}
             color="purple"
           />
-          
+           */}
           <MetricCard
             title="Sucursales con Alertas"
             value={dashboardData?.branchesWithAlerts?.length || 0}
