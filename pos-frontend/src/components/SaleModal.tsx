@@ -403,7 +403,7 @@ export default function SaleFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4"> 
-          <div className={`grid gap-3 ${currentUser?.role !== 'SELLER' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div className={`grid gap-3 ${currentUser?.role !== 'SELLER' ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {/* VENDEDOR - ocultar para vendedores */}
             {currentUser?.role !== 'SELLER' && (
               <div>
@@ -503,46 +503,6 @@ export default function SaleFormModal({
               </div>
             </div>
 
-            {/* PAYMENT METHODS (summary) */}
-            <div>
-              <label className="text-sm">Métodos de pago</label>
-              <div className="flex gap-2 items-center mt-1">
-                <select id="pm-select" className="border p-2 rounded flex-1">
-                  {methods.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-                <input id="pm-amt" placeholder="monto" className="border p-2 rounded w-28" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const sel = (document.getElementById("pm-select") as HTMLSelectElement).value;
-                    const amt = Number((document.getElementById("pm-amt") as HTMLInputElement).value);
-                    addPayment(Number(sel), amt);
-                    (document.getElementById("pm-amt") as HTMLInputElement).value = "";
-                  }}
-                  className="px-2 py-1 bg-indigo-600 text-white rounded"
-                >
-                  Añadir
-                </button>
-              </div>
-              <div className="mt-2">
-                {payments.map((p, i) => (
-                  <div key={i} className="text-sm flex justify-between items-center">
-                    <div>
-                      {methods.find((m) => m.id === p.paymentMethodId)?.name ?? p.paymentMethodId}: {Number(p.amount).toFixed(2)}
-                    </div>
-                    <div>
-                      <button type="button" onClick={() => removePayment(i)} className="px-2 py-1 text-sm border rounded">
-                        Quitar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* PRODUCT SEARCH + ITEMS */}
@@ -717,6 +677,49 @@ export default function SaleFormModal({
               </div>
             </div>
           )}
+
+          {/* PAYMENT METHODS - esquina inferior derecha */}
+          <div className="flex justify-end">
+            <div className="w-full max-w-md">
+              <label className="text-sm font-medium">Métodos de pago</label>
+              <div className="flex gap-2 items-center mt-1">
+                <select id="pm-select" className="border p-2 rounded flex-1">
+                  {methods.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                <input id="pm-amt" placeholder="monto" className="border p-2 rounded w-28" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sel = (document.getElementById("pm-select") as HTMLSelectElement).value;
+                    const amt = Number((document.getElementById("pm-amt") as HTMLInputElement).value);
+                    addPayment(Number(sel), amt);
+                    (document.getElementById("pm-amt") as HTMLInputElement).value = "";
+                  }}
+                  className="px-2 py-1 bg-indigo-600 text-white rounded"
+                >
+                  Añadir
+                </button>
+              </div>
+              <div className="mt-2">
+                {payments.map((p, i) => (
+                  <div key={i} className="text-sm flex justify-between items-center py-1">
+                    <div>
+                      {methods.find((m) => m.id === p.paymentMethodId)?.name ?? p.paymentMethodId}: {Number(p.amount).toFixed(2)}
+                    </div>
+                    <div>
+                      <button type="button" onClick={() => removePayment(i)} className="px-2 py-1 text-sm border rounded">
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <div className="flex justify-end items-center gap-3">
             <button type="button" onClick={onClose} className="px-3 py-1 border rounded">Cancelar</button>
