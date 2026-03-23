@@ -32,6 +32,20 @@ export const stockService = {
     return api.post(`/stock/purchase`, data);
   },
 
+
+  registerPurchaseBatch: (data: {
+    purchases: Array<{
+      productId: string;
+      quantity: number;
+      unitCost: number;
+      providerId?: number;
+      notes?: string;
+      serialNumbers?: string[];
+    }>;
+  }) => {
+    return api.post(`/stock/purchase-batch`, data);
+  },
+
   /**
    * Enviar a reparación
    */

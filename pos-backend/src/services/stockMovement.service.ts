@@ -1,6 +1,125 @@
-import { MovementType, ProductSerialStatus } from "@prisma/client";
+import { MovementType, ProductSerialStatus, Prisma } from "@prisma/client";
 import { StockMovementRepository, PriceHistoryRepository } from "../repositories/stockMovement.repository";
 import { prisma } from "../prismaClient";
+
+const normalizeSerialNumbers = (serialNumbers?: string[]) =>
+  (serialNumbers ?? [])
+    .map((serial) => String(serial).trim())
+    .filter(Boolean);
+
+const validatePurchaseSerialNumbers = (serialNumbers: string[], quantity: number) => {
+  if (serialNumbers.length !== quantity) {
+    throw {
+      status: 400,
+      message: "Debe registrar exactamente un número de serie por cada unidad comprada"
+    };
+  }
+
+  if (new Set(serialNumbers).size !== serialNumbers.length) {
+    throw {
+      status: 400,
+      message: "Los números de serie no pueden repetirse dentro de la misma compra"
+    };
+  }
+};
+
+const registerPurchaseTx = async (
+  tx: Prisma.TransactionClient,
+  data: {
+    productId: string;
+    quantity: number;
+    unitCost: number;
+    providerId?: number;
+    notes?: string;
+    serialNumbers?: string[];
+  },
+  userId: string
+) => {
+  if (data.quantity <= 0) {
+    throw { status: 400, message: "La cantidad debe ser mayor a 0" };
+  }
+
+  if (data.unitCost < 0) {
+    throw { status: 400, message: "El costo unitario no puede ser negativo" };
+  }
+
+  const cleanedSerialNumbers = normalizeSerialNumbers(data.serialNumbers);
+  validatePurchaseSerialNumbers(cleanedSerialNumbers, data.quantity);
+
+  const product = await tx.product.findUnique({
+    where: { id: data.productId }
+  });
+
+  if (!product) {
+    throw { status: 404, message: "Producto no encontrado" };
+  }
+
+  const existingSerials = await tx.productSerial.findMany({
+    where: { serialNumber: { in: cleanedSerialNumbers } },
+    select: { serialNumber: true }
+  });
+
+  if (existingSerials.length > 0) {
+    throw {
+      status: 400,
+      message: `Los siguientes números de serie ya existen: ${existingSerials.map((item: { serialNumber: string }) => item.serialNumber).join(', ')}`
+    };
+  }
+
+  const previousStock = product.stock;
+  const newStock = previousStock + data.quantity;
+
+  await tx.product.update({
+    where: { id: data.productId },
+    data: {
+      stock: newStock,
+      costPrice: data.unitCost,
+    }
+  });
+
+  if (product.costPrice !== data.unitCost) {
+    await tx.priceHistory.create({
+      data: {
+        productId: data.productId,
+        oldPrice: product.costPrice,
+        newPrice: data.unitCost,
+        priceType: 'cost',
+        changedBy: userId,
+        notes: 'Costo actualizado automáticamente con la última compra registrada'
+      }
+    });
+  }
+
+  await tx.productSerial.createMany({
+    data: cleanedSerialNumbers.map((serialNumber) => ({
+      productId: data.productId,
+      serialNumber,
+      status: ProductSerialStatus.AVAILABLE,
+      unitCost: data.unitCost,
+      providerId: data.providerId
+    }))
+  });
+
+  return tx.stockMovement.create({
+    data: {
+      productId: data.productId,
+      movementType: MovementType.PURCHASE,
+      quantity: data.quantity,
+      previousStock,
+      newStock,
+      unitCost: data.unitCost,
+      providerId: data.providerId,
+      notes: data.notes,
+      serialNumbers: cleanedSerialNumbers,
+      createdBy: userId
+    },
+    include: {
+      product: { select: { name: true, sku: true } },
+      provider: { select: { name: true } },
+      user: { select: { name: true } }
+    }
+  });
+};
 
 export const StockMovementService = {
   /**
@@ -14,88 +133,32 @@ export const StockMovementService = {
     notes?: string;
     serialNumbers?: string[];
   }, userId: string) {
-    if (data.quantity <= 0) {
-      throw { status: 400, message: "La cantidad debe ser mayor a 0" };
-    }
+    return prisma.$transaction((tx) => registerPurchaseTx(tx, data, userId));
+  },
 
-    const cleanedSerialNumbers = (data.serialNumbers ?? [])
-      .map((serial) => String(serial).trim())
-      .filter(Boolean);
-
-    if (cleanedSerialNumbers.length !== data.quantity) {
-      throw {
-        status: 400,
-        message: "Debe registrar exactamente un número de serie por cada unidad comprada"
-      };
-    }
-
-    if (new Set(cleanedSerialNumbers).size !== cleanedSerialNumbers.length) {
-      throw {
-        status: 400,
-        message: "Los números de serie no pueden repetirse dentro de la misma compra"
-      };
+  async registerPurchaseBatch(data: {
+    purchases: Array<{
+      productId: string;
+      quantity: number;
+      unitCost: number;
+      providerId?: number;
+      notes?: string;
+      serialNumbers?: string[];
+    }>;
+  }, userId: string) {
+    if (!Array.isArray(data.purchases) || data.purchases.length === 0) {
+      throw { status: 400, message: "Debe registrar al menos un producto en la compra" };
     }
 
     return prisma.$transaction(async (tx) => {
-      const product = await tx.product.findUnique({
-        where: { id: data.productId }
-      });
+      const movements = [];
 
-      if (!product) {
-        throw { status: 404, message: "Producto no encontrado" };
+      for (const purchase of data.purchases) {
+        const movement = await registerPurchaseTx(tx, purchase, userId);
+        movements.push(movement);
       }
 
-      const existingSerials = await tx.productSerial.findMany({
-        where: { serialNumber: { in: cleanedSerialNumbers } },
-        select: { serialNumber: true }
-      });
-
-      if (existingSerials.length > 0) {
-        throw {
-          status: 400,
-          message: `Los siguientes números de serie ya existen: ${existingSerials.map((item: { serialNumber: string }) => item.serialNumber).join(', ')}`
-        };
-      }
-
-      const previousStock = product.stock;
-      const newStock = previousStock + data.quantity;
-
-      await tx.product.update({
-        where: { id: data.productId },
-        data: { stock: newStock }
-      });
-
-      await tx.productSerial.createMany({
-        data: cleanedSerialNumbers.map((serialNumber) => ({
-          productId: data.productId,
-          serialNumber,
-          status: ProductSerialStatus.AVAILABLE,
-          unitCost: data.unitCost,
-          providerId: data.providerId
-        }))
-      });
-
-      const movement = await tx.stockMovement.create({
-        data: {
-          productId: data.productId,
-          movementType: MovementType.PURCHASE,
-          quantity: data.quantity,
-          previousStock,
-          newStock,
-          unitCost: data.unitCost,
-          providerId: data.providerId,
-          notes: data.notes,
-          serialNumbers: cleanedSerialNumbers,
-          createdBy: userId
-        },
-        include: {
-          product: { select: { name: true, sku: true } },
-          provider: { select: { name: true } },
-          user: { select: { name: true } }
-        }
-      });
-
-      return movement;
+      return movements;
     });
   },
 

@@ -15,6 +15,7 @@ router.get('/movements', StockMovementController.list);
 
 // Registrar compra de stock
 router.post('/purchase', StockMovementController.registerPurchase);
+router.post('/purchase-batch', StockMovementController.registerPurchaseBatch);
 
 // Registrar envío a reparación
 router.post('/repair-out', StockMovementController.registerRepairOut);

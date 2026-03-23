@@ -33,6 +33,27 @@ export const StockMovementController = {
     }
   },
 
+  async registerPurchaseBatch(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { purchases } = req.body;
+
+      if (!Array.isArray(purchases) || purchases.length === 0) {
+        return res.status(400).json({
+          error: "Debe enviar al menos un producto en la compra"
+        });
+      }
+
+      const movements = await StockMovementService.registerPurchaseBatch({ purchases }, userId);
+      return res.status(201).json({ data: movements });
+    } catch (err: any) {
+      console.error("POST /stock/purchase-batch:", err);
+      return res.status(err?.status || 500).json({
+        error: err?.message || "Error interno"
+      });
+    }
+  },
+
   /**
    * Registrar envío a reparación
    */

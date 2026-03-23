@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import StockMovementsTable from '../components/StockMovementsTable';
-import PurchaseStockModal from '../components/PurchaseStockModal';
+import BulkPurchaseStockModal from '../components/BulkPurchaseStockModal';
 import OutboundStockModal from '../components/OutboundStockModal';
 import UpdatePricesModal from '../components/UpdatePricesModal';
 import ProductHistoryModal from '../components/ProductHistoryModal';
@@ -58,7 +58,7 @@ export default function StockPage() {
 
   
   // Modales
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showBatchPurchaseModal, setShowBatchPurchaseModal] = useState(false);
   const [showRepairModal, setShowRepairModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showPricesModal, setShowPricesModal] = useState(false);
@@ -188,9 +188,13 @@ export default function StockPage() {
     }
   };
 
+  const handleOpenPurchaseModal = (product?: any) => {
+    setSelectedProduct(product || null);
+    setShowBatchPurchaseModal(true);
+  };
+
   const handlePurchase = (product: any) => {
-    setSelectedProduct(product);
-    setShowPurchaseModal(true);
+    handleOpenPurchaseModal(product);
   };
 
   const handleRepair = (product: any) => {
@@ -345,11 +349,18 @@ export default function StockPage() {
   return (
     <div className="p-6 space-y-6" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Inventario</h1>
           <p className="text-gray-600 mt-1">Control de stock, compras y movimientos</p>
         </div>
+        <button
+          onClick={() => handleOpenPurchaseModal()}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow"
+        >
+          <ShoppingCart size={18} />
+          Registrar compra
+        </button>
       </div>
 
       {/* Resumen */}
@@ -799,14 +810,19 @@ export default function StockPage() {
       )}
 
       {/* Modales */}
-      {showPurchaseModal && selectedProduct && (
-        <PurchaseStockModal
-          product={selectedProduct}
+      {showBatchPurchaseModal && (
+        <BulkPurchaseStockModal
+          products={products}
+          initialProduct={selectedProduct}
           onClose={() => {
-            setShowPurchaseModal(false);
+            setShowBatchPurchaseModal(false);
             setSelectedProduct(null);
           }}
-          onSuccess={handleSuccess}
+          onSuccess={() => {
+            setShowBatchPurchaseModal(false);
+            setSelectedProduct(null);
+            handleSuccess();
+          }}
         />
       )}
 
