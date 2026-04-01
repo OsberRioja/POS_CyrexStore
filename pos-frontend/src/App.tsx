@@ -23,6 +23,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ToastProvider } from "./context/ToastContext";
 import AdminHomePage from "./pages/AdminHomePage";
 import ReportsPage from "./pages/ReportsPage";
+import PurchasesPage from "./pages/purchasesPage";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -195,6 +196,15 @@ function MainApp() {
             {mainPage === "clientes" && <ClientsPage />}
             {mainPage === "proveedores" && <ProvidersPage />}
             {mainPage === "productos" && <ProductsPage />}
+            {mainPage === "compras" && user?.role !== 'SELLER' && <PurchasesPage />}
+            {mainPage === "compras" && user?.role === 'SELLER' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
             {mainPage === "comisiones" && (user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') && (
               <CommissionsReportPage />
             )}

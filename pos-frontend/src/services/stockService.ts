@@ -46,6 +46,22 @@ export const stockService = {
     return api.post(`/stock/purchase-batch`, data);
   },
 
+
+  listPurchases: (params?: {
+    page?: number;
+    limit?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    productId?: string;
+  }) => {
+    return api.get(`/stock/movements`, {
+      params: {
+        ...params,
+        movementType: 'PURCHASE'
+      }
+    });
+  },
+
   /**
    * Enviar a reparación
    */

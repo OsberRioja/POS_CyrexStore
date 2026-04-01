@@ -91,6 +91,12 @@ const SidebarProfessional: React.FC<SidebarProps> = ({ selected, onSelect, user 
       icon: <ShoppingCart size={20} />,
       color: 'text-indigo-500'
     },
+    showStock && {
+      id: 'compras',
+      label: 'Compras',
+      icon: <Receipt size={20} />,
+      color: 'text-emerald-500'
+    },
   ].filter(Boolean);
 
   const reportItems = [

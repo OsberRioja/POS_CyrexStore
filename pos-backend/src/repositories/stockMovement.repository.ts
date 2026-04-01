@@ -69,7 +69,7 @@ export const StockMovementRepository = {
         orderBy: { createdAt: 'desc' },
         include: {
           product: {
-            select: { id: true, name: true, sku: true, stock: true, branchId: true }
+            select: { id: true, name: true, sku: true, stock: true, branchId: true, priceCurrency: true }
           },
           provider: {
             select: { id_provider: true, name: true }
