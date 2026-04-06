@@ -9,7 +9,7 @@ import DashboardMoney from "../components/dashboard/DashboardMoney";
 import BranchRanking from "../components/dashboard/BranchRanking";
 import ProductRanking from "../components/dashboard/ProductRanking";
 import PeriodFilter from "../components/dashboard/PeriodFilter";
-import { Building2, Users, DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
+import { Building2, DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AdminHomePage() {
   const { user } = useAuth();
