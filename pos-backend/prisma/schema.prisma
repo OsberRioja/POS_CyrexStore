@@ -452,6 +452,10 @@ enum PaymentStatus {
 enum ProductSerialStatus {
   AVAILABLE
   SOLD
+  REPAIR
+  DEMO
+  INTERNAL_USE
+  TRANSFER
 }
 
 enum MovementType {
@@ -466,6 +470,8 @@ enum MovementType {
   ADJUSTMENT              //AJUSTE MANUAL DE STOCK
   INTERNAL_USE_OUT        //USO INTERNO
   INTERNAL_USE_RETURN     //RETORNO DE USO INTERNO
+  TRANSFER_OUT            //TRANSFERENCIA ENTRE TIENDAS (SALIDA)
+  TRANSFER_IN             //TRANSFERENCIA ENTRE TIENDAS (ENTRADA)
 }
 
 enum ReturnStatus {

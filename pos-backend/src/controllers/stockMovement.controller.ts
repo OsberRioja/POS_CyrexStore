@@ -60,7 +60,7 @@ export const StockMovementController = {
   async registerRepairOut(req: Request, res: Response) {
     try {
       const userId = (req as any).userId;
-      const { productId, quantity, reason, notes } = req.body;
+      const { productId, quantity, reason, notes, serialNumbers } = req.body;
 
       if (!productId || !quantity || !reason) {
         return res.status(400).json({ 
@@ -69,7 +69,7 @@ export const StockMovementController = {
       }
 
       const movement = await StockMovementService.registerOutbound(
-        { productId, quantity, movementType: 'REPAIR_OUT', reason, notes },
+        { productId, quantity, movementType: 'REPAIR_OUT', reason, notes, serialNumbers },
         userId
       );
 
@@ -88,7 +88,7 @@ export const StockMovementController = {
   async registerDemoOut(req: Request, res: Response) {
     try {
       const userId = (req as any).userId;
-      const { productId, quantity, reason, notes } = req.body;
+      const { productId, quantity, reason, notes, serialNumbers } = req.body;
 
       if (!productId || !quantity || !reason) {
         return res.status(400).json({ 
@@ -97,7 +97,7 @@ export const StockMovementController = {
       }
 
       const movement = await StockMovementService.registerOutbound(
-        { productId, quantity, movementType: 'DEMO_OUT', reason, notes },
+        { productId, quantity, movementType: 'DEMO_OUT', reason, notes, serialNumbers },
         userId
       );
 
@@ -501,7 +501,8 @@ export const StockMovementController = {
         reason, 
         destination, 
         expectedReturnDate, 
-        notes 
+        notes,
+        serialNumbers
       } = req.body;
     
       if (!productId || !quantity || !reason) {
@@ -517,7 +518,8 @@ export const StockMovementController = {
           reason, 
           destination, 
           expectedReturnDate: expectedReturnDate ? new Date(expectedReturnDate) : undefined, 
-          notes 
+          notes,
+          serialNumbers
         },
         userId
       );
@@ -527,6 +529,45 @@ export const StockMovementController = {
       console.error("POST /stock/internal-use-out:", err);
       return res.status(err?.status || 500).json({ 
         error: err?.message || "Error interno" 
+      });
+    }
+  },
+
+  async registerTransferBetweenBranches(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const {
+        productId,
+        destinationBranchId,
+        quantity,
+        reason,
+        notes,
+        serialNumbers
+      } = req.body;
+
+      if (!productId || !destinationBranchId || !quantity || !reason) {
+        return res.status(400).json({
+          error: "productId, destinationBranchId, quantity y reason son requeridos"
+        });
+      }
+
+      const transfer = await StockMovementService.registerTransferBetweenBranches(
+        {
+          productId,
+          destinationBranchId: Number(destinationBranchId),
+          quantity: Number(quantity),
+          reason,
+          notes,
+          serialNumbers
+        },
+        userId
+      );
+
+      return res.status(201).json(transfer);
+    } catch (err: any) {
+      console.error("POST /stock/transfer-between-branches:", err);
+      return res.status(err?.status || 500).json({
+        error: err?.message || "Error interno"
       });
     }
   },

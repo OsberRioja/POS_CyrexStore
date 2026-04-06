@@ -34,6 +34,7 @@ router.post('/adjustment', StockMovementController.registerAdjustment);
 
 // Registrar uso interno
 router.post('/internal-use-out', StockMovementController.registerInternalUseOut);
+router.post('/transfer-between-branches', StockMovementController.registerTransferBetweenBranches);
 
 // Obtener usos internos activos
 router.get('/active-internal-uses', StockMovementController.getActiveInternalUses);

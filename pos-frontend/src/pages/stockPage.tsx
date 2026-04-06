@@ -12,7 +12,8 @@ import {
   MonitorPlay,
   History,
   Building,
-  BarChart3
+  BarChart3,
+  ArrowRightLeft
 } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import StockMovementsTable from '../components/StockMovementsTable';
@@ -31,9 +32,10 @@ import SaleDetailsModal from '../components/SaleDetailModal';
 import AdjustStockModal from '../components/AdjustStockModal';
 import ActiveInternalUsesTable from '../components/ActiveInternalUsesTable';
 import InternalUseModal from '../components/InternalUseModal';
+import TransferBetweenBranchesModal from '../components/TransferBetweenBranchesModal';
 
 type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos' | 'active-internal-uses';
-type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN' | 'ADJUSMENT' | 'INTERNAL_USE_OUT' | 'INTERNAL_USE_RETURN';
+type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN' | 'ADJUSTMENT' | 'INTERNAL_USE_OUT' | 'INTERNAL_USE_RETURN' | 'TRANSFER_OUT' | 'TRANSFER_IN';
 
 export default function StockPage() {
   const [view, setView] = useState<ViewType>('movements');
@@ -50,6 +52,7 @@ export default function StockPage() {
   const [activeInternalUses, setActiveInternalUses] = useState<any[]>([]);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [showInternalUseModal, setShowInternalUseModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
   const [searchSaleId, setSearchSaleId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -225,6 +228,11 @@ export default function StockPage() {
   const handleInternalUse = (product: any) => {
     setSelectedProduct(product);
     setShowInternalUseModal(true);
+  };
+
+  const handleTransferBetweenBranches = (product: any) => {
+    setSelectedProduct(product);
+    setShowTransferModal(true);
   };
 
 
@@ -516,9 +524,11 @@ export default function StockPage() {
               <option value="REPAIR_OUT">Reparaciones</option>
               <option value="DEMO_OUT">Demos</option>
               <option value="RETURN_IN">Devoluciones</option>
-              <option value="ADJUSMENT">Ajustes</option>
+              <option value="ADJUSTMENT">Ajustes</option>
               <option value="INTERNAL_USE_OUT">Uso Interno</option>
               <option value="INTERNAL_USE_RETURN">Retorno Uso Interno</option>
+              <option value="TRANSFER_OUT">Transferencias enviadas</option>
+              <option value="TRANSFER_IN">Transferencias recibidas</option>
             </select>
           </div>
             
@@ -785,6 +795,13 @@ export default function StockPage() {
                             <Building size={18} />
                           </button>
                           <button
+                            onClick={() => handleTransferBetweenBranches(product)}
+                            className="p-2 text-cyan-600 hover:bg-cyan-50 rounded transition-colors"
+                            title="Transferir entre tiendas"
+                          >
+                            <ArrowRightLeft size={18} />
+                          </button>
+                          <button
                             onClick={() => handleViewHistory(product)}
                             className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                             title="Ver historial"
@@ -896,6 +913,17 @@ export default function StockPage() {
           product={selectedProduct}
           onClose={() => {
             setShowInternalUseModal(false);
+            setSelectedProduct(null);
+          }}
+          onSuccess={handleSuccess}
+        />
+      )}
+
+      {showTransferModal && selectedProduct && (
+        <TransferBetweenBranchesModal
+          product={selectedProduct}
+          onClose={() => {
+            setShowTransferModal(false);
             setSelectedProduct(null);
           }}
           onSuccess={handleSuccess}

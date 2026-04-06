@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import { useAuth } from '../context/authContext';
@@ -19,20 +19,67 @@ const InternalUseModal: React.FC<InternalUseModalProps> = ({
   onSuccess
 }) => {
   const { user } = useAuth();
+  const [availableSerials, setAvailableSerials] = useState<string[]>([]);
+  const [selectedSerials, setSelectedSerials] = useState<string[]>([]);
   const [form, setForm] = useState({
-    quantity: 1,
     reason: '',
     destination: '',
     expectedReturnDate: '',
     notes: ''
   });
   const [loading, setLoading] = useState(false);
+  const [loadingSerials, setLoadingSerials] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadSerials = async () => {
+      setLoadingSerials(true);
+      try {
+        const response = await stockService.getAvailableSerials(product.id);
+        const serials = (response.data?.data ?? []).map((item: any) => item.serialNumber);
+        setAvailableSerials(serials);
+        if (serials.length > 0) {
+          setSelectedSerials([serials[0]]);
+        }
+      } catch (err) {
+        setError('No se pudieron cargar las series disponibles');
+      } finally {
+        setLoadingSerials(false);
+      }
+    };
+
+    loadSerials();
+  }, [product.id]);
+
+  const updateSerialSelection = (index: number, value: string) => {
+    setSelectedSerials((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next.filter(Boolean);
+    });
+  };
+
+  const addSerialSelector = () => {
+    const remaining = availableSerials.filter((serial) => !selectedSerials.includes(serial));
+    if (remaining.length === 0) return;
+    setSelectedSerials((prev) => [...prev, remaining[0]]);
+  };
+
+  const removeSerialSelector = (index: number) => {
+    setSelectedSerials((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getSelectableSerials = (current?: string) =>
+    availableSerials.filter((serial) => serial === current || !selectedSerials.includes(serial));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.reason.trim()) {
       setError('La razón es obligatoria');
+      return;
+    }
+    if (selectedSerials.length === 0) {
+      setError('Debe seleccionar al menos una serie');
       return;
     }
 
@@ -42,11 +89,12 @@ const InternalUseModal: React.FC<InternalUseModalProps> = ({
     try {
       await stockService.registerInternalUseOut({
         productId: product.id,
-        quantity: form.quantity,
+        quantity: selectedSerials.length,
         reason: form.reason,
         destination: form.destination || undefined,
         expectedReturnDate: form.expectedReturnDate || undefined,
-        notes: form.notes
+        notes: form.notes,
+        serialNumbers: selectedSerials
       });
 
       onSuccess();
@@ -56,12 +104,6 @@ const InternalUseModal: React.FC<InternalUseModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  // Función para formatear la fecha mínima (hoy)
-  const getMinDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
   };
 
   return (
@@ -94,20 +136,50 @@ const InternalUseModal: React.FC<InternalUseModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Cantidad *
+                Ítems / números de serie *
               </label>
-              <input
-                type="number"
-                min="1"
-                max={product.stock}
-                value={form.quantity}
-                onChange={(e) => setForm({...form, quantity: parseInt(e.target.value) || 1})}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Máximo disponible: {product.stock}
-              </p>
+              {loadingSerials ? (
+                <p className="text-sm text-gray-500">Cargando series...</p>
+              ) : availableSerials.length === 0 ? (
+                <p className="text-sm text-red-600">No hay series disponibles</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedSerials.map((selectedSerial, idx) => (
+                    <div key={`internal-serial-${idx}`} className="flex gap-2">
+                      <select
+                        value={selectedSerial}
+                        onChange={(e) => updateSerialSelection(idx, e.target.value)}
+                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        {getSelectableSerials(selectedSerial).map((serial) => (
+                          <option key={serial} value={serial}>
+                            {serial}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => removeSerialSelector(idx)}
+                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md border"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addSerialSelector}
+                    disabled={selectedSerials.length >= availableSerials.length}
+                    className="text-sm px-3 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    + Agregar ítem por serie
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Seleccionados: {selectedSerials.length}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -218,7 +290,7 @@ const InternalUseModal: React.FC<InternalUseModalProps> = ({
             <button
               type="submit"
               form="internal-use-form"
-              disabled={loading || !form.reason.trim() || form.quantity < 1 || form.quantity > product.stock}
+              disabled={loading || !form.reason.trim() || selectedSerials.length < 1}
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Registrando...' : 'Confirmar Uso Interno'}

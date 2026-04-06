@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Wrench, MonitorPlay, Truck } from 'lucide-react';
 import { stockService } from '../services/stockService';
 
@@ -25,10 +25,12 @@ const OutboundStockModal: React.FC<OutboundStockModalProps> = ({
   onClose, 
   onSuccess 
 }) => {
-  const [quantity, setQuantity] = useState<number>(1);
+  const [availableSerials, setAvailableSerials] = useState<string[]>([]);
+  const [selectedSerials, setSelectedSerials] = useState<string[]>([]);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingSerials, setLoadingSerials] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isRepair = type === 'repair';
@@ -36,17 +38,53 @@ const OutboundStockModal: React.FC<OutboundStockModalProps> = ({
   const Icon = isRepair ? Wrench : MonitorPlay;
   const color = isRepair ? 'orange' : 'purple';
 
+  useEffect(() => {
+    const loadSerials = async () => {
+      setLoadingSerials(true);
+      try {
+        const response = await stockService.getAvailableSerials(product.id);
+        const serials = (response.data?.data ?? []).map((item: any) => item.serialNumber);
+        setAvailableSerials(serials);
+        if (serials.length > 0) {
+          setSelectedSerials([serials[0]]);
+        }
+      } catch (err) {
+        setError('No se pudieron cargar los números de serie disponibles');
+      } finally {
+        setLoadingSerials(false);
+      }
+    };
+
+    loadSerials();
+  }, [product.id]);
+
+  const updateSerialSelection = (index: number, value: string) => {
+    setSelectedSerials((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next.filter(Boolean);
+    });
+  };
+
+  const addSerialSelector = () => {
+    const remaining = availableSerials.filter((serial) => !selectedSerials.includes(serial));
+    if (remaining.length === 0) return;
+    setSelectedSerials((prev) => [...prev, remaining[0]]);
+  };
+
+  const removeSerialSelector = (index: number) => {
+    setSelectedSerials((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getSelectableSerials = (current?: string) =>
+    availableSerials.filter((serial) => serial === current || !selectedSerials.includes(serial));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (quantity <= 0) {
-      setError('La cantidad debe ser mayor a 0');
-      return;
-    }
-
-    if (quantity > product.stock) {
-      setError(`Stock insuficiente. Disponible: ${product.stock}`);
+    if (selectedSerials.length === 0) {
+      setError('Debe seleccionar al menos un número de serie');
       return;
     }
 
@@ -61,15 +99,17 @@ const OutboundStockModal: React.FC<OutboundStockModalProps> = ({
       if (isRepair) {
         await stockService.registerRepairOut({
           productId: product.id,
-          quantity,
+          quantity: selectedSerials.length,
           reason: reason.trim(),
+          serialNumbers: selectedSerials,
           notes: notes.trim() || undefined
         });
       } else {
         await stockService.registerDemoOut({
           productId: product.id,
-          quantity,
+          quantity: selectedSerials.length,
           reason: reason.trim(),
+          serialNumbers: selectedSerials,
           notes: notes.trim() || undefined
         });
       }
@@ -124,23 +164,53 @@ const OutboundStockModal: React.FC<OutboundStockModalProps> = ({
             </div>
           )}
 
-          {/* Cantidad */}
+          {/* Series */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cantidad *
+              Ítems / Números de serie *
             </label>
-            <input
-              type="number"
-              min="1"
-              max={product.stock}
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Stock después: {product.stock - quantity} unidades
-            </p>
+            {loadingSerials ? (
+              <p className="text-sm text-gray-500">Cargando series disponibles...</p>
+            ) : availableSerials.length === 0 ? (
+              <p className="text-sm text-red-600">No hay series disponibles para este producto</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedSerials.map((selectedSerial, idx) => (
+                  <div key={`serial-${idx}`} className="flex gap-2">
+                    <select
+                      value={selectedSerial}
+                      onChange={(e) => updateSerialSelection(idx, e.target.value)}
+                      className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      {getSelectableSerials(selectedSerial).map((serial) => (
+                        <option key={serial} value={serial}>
+                          {serial}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeSerialSelector(idx)}
+                      className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md border"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addSerialSelector}
+                  disabled={selectedSerials.length >= availableSerials.length}
+                  className="text-sm px-3 py-2 border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  + Agregar ítem por serie
+                </button>
+                <p className="text-xs text-gray-500">
+                  Seleccionados: {selectedSerials.length} | Stock después: {product.stock - selectedSerials.length}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Razón */}

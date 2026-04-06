@@ -23,6 +23,28 @@ const validatePurchaseSerialNumbers = (serialNumbers: string[], quantity: number
   }
 };
 
+const getUnavailableSerialsMessage = (serialNumbers: string[], foundSerials: { serialNumber: string }[]) => {
+  const found = new Set(foundSerials.map((item) => item.serialNumber));
+  const missing = serialNumbers.filter((serial) => !found.has(serial));
+  return missing.join(', ');
+};
+
+const validateOutboundSerialNumbers = (serialNumbers: string[], quantity: number) => {
+  if (serialNumbers.length !== quantity) {
+    throw {
+      status: 400,
+      message: "Debe seleccionar exactamente un número de serie por cada unidad"
+    };
+  }
+
+  if (new Set(serialNumbers).size !== serialNumbers.length) {
+    throw {
+      status: 400,
+      message: "Los números de serie no pueden repetirse"
+    };
+  }
+};
+
 const registerPurchaseTx = async (
   tx: Prisma.TransactionClient,
   data: {
@@ -196,10 +218,14 @@ export const StockMovementService = {
     movementType: 'REPAIR_OUT' | 'DEMO_OUT';
     reason: string;
     notes?: string;
+    serialNumbers?: string[];
   }, userId: string) {
     if (data.quantity <= 0) {
       throw { status: 400, message: "La cantidad debe ser mayor a 0" };
     }
+
+    const cleanedSerialNumbers = normalizeSerialNumbers(data.serialNumbers);
+    validateOutboundSerialNumbers(cleanedSerialNumbers, data.quantity);
 
     return prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
@@ -215,6 +241,22 @@ export const StockMovementService = {
         throw { status: 400, message: "Stock insuficiente" };
       }
 
+      const serials = await tx.productSerial.findMany({
+        where: {
+          productId: data.productId,
+          serialNumber: { in: cleanedSerialNumbers },
+          status: ProductSerialStatus.AVAILABLE
+        },
+        select: { id: true, serialNumber: true }
+      });
+
+      if (serials.length !== cleanedSerialNumbers.length) {
+        throw {
+          status: 400,
+          message: `Los siguientes números de serie no están disponibles: ${getUnavailableSerialsMessage(cleanedSerialNumbers, serials)}`
+        };
+      }
+
       const previousStock = product.stock;
       const newStock = previousStock - data.quantity;
 
@@ -222,6 +264,16 @@ export const StockMovementService = {
         where: { id: data.productId },
         data: { stock: newStock }
       });
+
+      await tx.productSerial.updateMany({
+        where: {
+          id: { in: serials.map((serial) => serial.id) }
+        },
+        data: {
+          status: data.movementType === 'REPAIR_OUT' ? ProductSerialStatus.REPAIR : ProductSerialStatus.DEMO
+        }
+      });
+
       //Asignar automáticamente el provider id si el producto tiene uno
       const movement = await tx.stockMovement.create({
         data: {
@@ -232,6 +284,7 @@ export const StockMovementService = {
           newStock,
           reason: data.reason,
           notes: data.notes,
+          serialNumbers: cleanedSerialNumbers,
           createdBy: userId,
           providerId: product.providerId 
         },
@@ -558,12 +611,24 @@ export const StockMovementService = {
       const quantity = Math.abs(repairMovement.quantity);
       const previousStock = product.stock;
       const newStock = previousStock + quantity;
+      const serialNumbers = normalizeSerialNumbers(repairMovement.serialNumbers);
 
       // Actualizar stock del producto
       await tx.product.update({
         where: { id: product.id },
         data: { stock: newStock }
       });
+
+      if (serialNumbers.length > 0) {
+        await tx.productSerial.updateMany({
+          where: {
+            productId: product.id,
+            serialNumber: { in: serialNumbers },
+            status: ProductSerialStatus.REPAIR
+          },
+          data: { status: ProductSerialStatus.AVAILABLE }
+        });
+      }
 
       // ← NUEVO: Marcar el movimiento original como completado
       await tx.stockMovement.update({
@@ -585,6 +650,7 @@ export const StockMovementService = {
           newStock,
           notes: data.notes,
           reason: data.resolution || 'Reparación completada',
+          serialNumbers,
           createdBy: userId,
           isCompleted: true // ← El retorno se marca como completado inmediatamente
         },
@@ -634,12 +700,24 @@ export const StockMovementService = {
       const quantity = Math.abs(demoMovement.quantity);
       const previousStock = product.stock;
       const newStock = previousStock + quantity;
+      const serialNumbers = normalizeSerialNumbers(demoMovement.serialNumbers);
     
       // Actualizar stock del producto
       await tx.product.update({
         where: { id: product.id },
         data: { stock: newStock }
       });
+
+      if (serialNumbers.length > 0) {
+        await tx.productSerial.updateMany({
+          where: {
+            productId: product.id,
+            serialNumber: { in: serialNumbers },
+            status: ProductSerialStatus.DEMO
+          },
+          data: { status: ProductSerialStatus.AVAILABLE }
+        });
+      }
     
       // ← NUEVO: Marcar el movimiento original como completado
       await tx.stockMovement.update({
@@ -661,6 +739,7 @@ export const StockMovementService = {
           newStock,
           notes: data.notes,
           reason: data.resolution || 'Reparación completada',
+          serialNumbers,
           createdBy: userId,
           isCompleted: true // ← El retorno se marca como completado inmediatamente
         },
@@ -756,6 +835,7 @@ export const StockMovementService = {
     destination?: string;
     expectedReturnDate?: Date;
     notes?: string;
+    serialNumbers?: string[];
   }, userId: string) {
     if (data.quantity <= 0) {
       throw { status: 400, message: "La cantidad debe ser mayor a 0" };
@@ -764,6 +844,9 @@ export const StockMovementService = {
     if (!data.reason || data.reason.trim() === '') {
       throw { status: 400, message: "La razón/justificación es obligatoria" };
     }
+
+    const cleanedSerialNumbers = normalizeSerialNumbers(data.serialNumbers);
+    validateOutboundSerialNumbers(cleanedSerialNumbers, data.quantity);
   
     return prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
@@ -777,6 +860,22 @@ export const StockMovementService = {
       if (product.stock < data.quantity) {
         throw { status: 400, message: "Stock insuficiente" };
       }
+
+      const serials = await tx.productSerial.findMany({
+        where: {
+          productId: data.productId,
+          serialNumber: { in: cleanedSerialNumbers },
+          status: ProductSerialStatus.AVAILABLE
+        },
+        select: { id: true, serialNumber: true }
+      });
+
+      if (serials.length !== cleanedSerialNumbers.length) {
+        throw {
+          status: 400,
+          message: `Los siguientes números de serie no están disponibles: ${getUnavailableSerialsMessage(cleanedSerialNumbers, serials)}`
+        };
+      }
     
       const previousStock = product.stock;
       const newStock = previousStock - data.quantity;
@@ -785,6 +884,13 @@ export const StockMovementService = {
       await tx.product.update({
         where: { id: data.productId },
         data: { stock: newStock }
+      });
+
+      await tx.productSerial.updateMany({
+        where: {
+          id: { in: serials.map((serial) => serial.id) }
+        },
+        data: { status: ProductSerialStatus.INTERNAL_USE }
       });
     
       // Registrar movimiento de salida por uso interno
@@ -797,6 +903,7 @@ export const StockMovementService = {
           newStock,
           reason: data.reason,
           notes: data.notes,
+          serialNumbers: cleanedSerialNumbers,
           destination: data.destination,
           expectedReturnDate: data.expectedReturnDate,
           createdBy: userId,
@@ -894,12 +1001,24 @@ export const StockMovementService = {
       const quantity = Math.abs(internalUseMovement.quantity);
       const previousStock = product.stock;
       const newStock = previousStock + quantity;
+      const serialNumbers = normalizeSerialNumbers(internalUseMovement.serialNumbers);
     
       // Actualizar stock del producto
       await tx.product.update({
         where: { id: product.id },
         data: { stock: newStock }
       });
+
+      if (serialNumbers.length > 0) {
+        await tx.productSerial.updateMany({
+          where: {
+            productId: product.id,
+            serialNumber: { in: serialNumbers },
+            status: ProductSerialStatus.INTERNAL_USE
+          },
+          data: { status: ProductSerialStatus.AVAILABLE }
+        });
+      }
     
       // Marcar el movimiento original como completado
       await tx.stockMovement.update({
@@ -921,6 +1040,7 @@ export const StockMovementService = {
           newStock,
           notes: data.notes,
           reason: data.condition || 'Producto devuelto de uso interno',
+          serialNumbers,
           createdBy: userId,
           isCompleted: true
         },
@@ -939,6 +1059,154 @@ export const StockMovementService = {
       });
     
       return returnMovement;
+    });
+  },
+
+  async registerTransferBetweenBranches(data: {
+    productId: string;
+    destinationBranchId: number;
+    quantity: number;
+    reason: string;
+    notes?: string;
+    serialNumbers?: string[];
+  }, userId: string) {
+    if (data.quantity <= 0) {
+      throw { status: 400, message: "La cantidad debe ser mayor a 0" };
+    }
+
+    const cleanedSerialNumbers = normalizeSerialNumbers(data.serialNumbers);
+    validateOutboundSerialNumbers(cleanedSerialNumbers, data.quantity);
+
+    return prisma.$transaction(async (tx) => {
+      const sourceProduct = await tx.product.findUnique({
+        where: { id: data.productId },
+        include: { branch: true }
+      });
+
+      if (!sourceProduct) {
+        throw { status: 404, message: "Producto no encontrado" };
+      }
+
+      if (sourceProduct.stock < data.quantity) {
+        throw { status: 400, message: "Stock insuficiente para la transferencia" };
+      }
+
+      if (sourceProduct.branchId === data.destinationBranchId) {
+        throw { status: 400, message: "La sucursal destino debe ser diferente a la sucursal origen" };
+      }
+
+      const destinationBranch = await tx.branch.findUnique({
+        where: { id: data.destinationBranchId }
+      });
+
+      if (!destinationBranch) {
+        throw { status: 404, message: "Sucursal destino no encontrada" };
+      }
+
+      const serials = await tx.productSerial.findMany({
+        where: {
+          productId: sourceProduct.id,
+          serialNumber: { in: cleanedSerialNumbers },
+          status: ProductSerialStatus.AVAILABLE
+        },
+        select: { id: true, serialNumber: true }
+      });
+
+      if (serials.length !== cleanedSerialNumbers.length) {
+        throw {
+          status: 400,
+          message: `Los siguientes números de serie no están disponibles: ${getUnavailableSerialsMessage(cleanedSerialNumbers, serials)}`
+        };
+      }
+
+      let destinationProduct = await tx.product.findFirst({
+        where: {
+          sku: sourceProduct.sku,
+          branchId: data.destinationBranchId
+        }
+      });
+
+      if (!destinationProduct) {
+        destinationProduct = await tx.product.create({
+          data: {
+            sku: sourceProduct.sku,
+            name: sourceProduct.name,
+            salePrice: sourceProduct.salePrice,
+            costPrice: sourceProduct.costPrice,
+            description: sourceProduct.description,
+            brand: sourceProduct.brand,
+            category: sourceProduct.category,
+            stock: 0,
+            branchId: data.destinationBranchId,
+            createdBy: userId,
+            providerId: sourceProduct.providerId,
+            imageUrl: sourceProduct.imageUrl,
+            imagePublicId: sourceProduct.imagePublicId,
+            isActive: sourceProduct.isActive,
+            priceCurrency: sourceProduct.priceCurrency
+          }
+        });
+      }
+
+      const sourcePreviousStock = sourceProduct.stock;
+      const sourceNewStock = sourcePreviousStock - data.quantity;
+      const destinationPreviousStock = destinationProduct.stock;
+      const destinationNewStock = destinationPreviousStock + data.quantity;
+
+      await tx.product.update({
+        where: { id: sourceProduct.id },
+        data: { stock: sourceNewStock }
+      });
+
+      await tx.product.update({
+        where: { id: destinationProduct.id },
+        data: { stock: destinationNewStock }
+      });
+
+      await tx.productSerial.updateMany({
+        where: {
+          id: { in: serials.map((serial) => serial.id) }
+        },
+        data: {
+          status: ProductSerialStatus.AVAILABLE,
+          productId: destinationProduct.id
+        }
+      });
+
+      const outboundMovement = await tx.stockMovement.create({
+        data: {
+          productId: sourceProduct.id,
+          movementType: MovementType.TRANSFER_OUT,
+          quantity: -data.quantity,
+          previousStock: sourcePreviousStock,
+          newStock: sourceNewStock,
+          reason: data.reason,
+          notes: data.notes,
+          destination: destinationBranch.name,
+          serialNumbers: cleanedSerialNumbers,
+          createdBy: userId,
+          branchId: sourceProduct.branchId
+        }
+      });
+
+      const inboundMovement = await tx.stockMovement.create({
+        data: {
+          productId: destinationProduct.id,
+          movementType: MovementType.TRANSFER_IN,
+          quantity: data.quantity,
+          previousStock: destinationPreviousStock,
+          newStock: destinationNewStock,
+          reason: `Transferencia recibida desde ${sourceProduct.branch.name}`,
+          notes: data.notes,
+          destination: sourceProduct.branch.name,
+          serialNumbers: cleanedSerialNumbers,
+          createdBy: userId,
+          branchId: destinationProduct.branchId,
+          isCompleted: true
+        }
+      });
+
+      return { outboundMovement, inboundMovement };
     });
   }
 };

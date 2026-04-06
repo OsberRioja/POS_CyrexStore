@@ -211,6 +211,17 @@ export const stockService = {
     return api.post(`/stock/internal-use-out`, data);
   },
 
+  registerTransferBetweenBranches: (data: {
+    productId: string;
+    destinationBranchId: number;
+    quantity: number;
+    reason: string;
+    notes?: string;
+    serialNumbers?: string[];
+  }) => {
+    return api.post(`/stock/transfer-between-branches`, data);
+  },
+
   /**
    * Obtener usos internos activos
    */
