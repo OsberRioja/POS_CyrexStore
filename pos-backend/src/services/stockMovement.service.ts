@@ -194,7 +194,7 @@ export const StockMovementService = {
       throw { status: 404, message: "Producto no encontrado" };
     }
 
-    return prisma.productSerial.findMany({
+    const serials = await prisma.productSerial.findMany({
       where: {
         productId,
         status: ProductSerialStatus.AVAILABLE
@@ -207,6 +207,30 @@ export const StockMovementService = {
         unitCost: true
       }
     });
+
+    if (serials.length === 0) {
+      return serials;
+    }
+
+    const serialNumbers = serials.map((item) => item.serialNumber);
+    const activeBlockedMovements = await prisma.stockMovement.findMany({
+      where: {
+        movementType: {
+          in: [MovementType.REPAIR_OUT, MovementType.DEMO_OUT, MovementType.INTERNAL_USE_OUT]
+        },
+        isCompleted: false,
+        serialNumbers: {
+          hasSome: serialNumbers
+        }
+      },
+      select: { serialNumbers: true }
+    });
+
+    const blockedSerials = new Set(
+      activeBlockedMovements.flatMap((movement) => movement.serialNumbers)
+    );
+
+    return serials.filter((item) => !blockedSerials.has(item.serialNumber));
   },
 
   /**

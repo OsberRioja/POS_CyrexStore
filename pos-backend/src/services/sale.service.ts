@@ -195,6 +195,45 @@ export const SaleService = {
           };
         }
 
+        const activeBlockedMovements = await tx.stockMovement.findMany({
+          where: {
+            movementType: {
+              in: ['REPAIR_OUT', 'DEMO_OUT', 'INTERNAL_USE_OUT']
+            },
+            isCompleted: false,
+            serialNumbers: {
+              hasSome: it.serialNumbers
+            }
+          },
+          select: {
+            movementType: true,
+            serialNumbers: true
+          }
+        });
+
+        if (activeBlockedMovements.length > 0) {
+          const blockedBySerial = new Map<string, string>();
+
+          for (const movement of activeBlockedMovements) {
+            for (const serial of movement.serialNumbers) {
+              if (it.serialNumbers.includes(serial) && !blockedBySerial.has(serial)) {
+                blockedBySerial.set(serial, movement.movementType);
+              }
+            }
+          }
+
+          if (blockedBySerial.size > 0) {
+            const details = Array.from(blockedBySerial.entries())
+              .map(([serial, movementType]) => `${serial} (${movementType})`)
+              .join(', ');
+
+            throw {
+              status: 400,
+              message: `No puede vender series con movimientos activos: ${details}`
+            };
+          }
+        }
+
         const unitPrice = Number(it.unitPrice);
         const subtotal = unitPrice * Number(it.quantity);
         calculatedTotal += subtotal;
