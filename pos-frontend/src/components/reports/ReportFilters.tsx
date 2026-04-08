@@ -232,7 +232,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <User className="h-4 w-4 inline mr-1" />
-              Vendedor
+              Vendedor / Supervisor
             </label>
             <select
               name="sellerIds"
@@ -248,7 +248,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
               ))}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Si no seleccionas vendedores, se incluirán todos los vendedores de la(s) sucursal(es) elegida(s).
+              Si no seleccionas usuarios, se incluirán todos los vendedores/supervisores de la(s) sucursal(es) elegida(s).
             </p>
           </div>
         )}

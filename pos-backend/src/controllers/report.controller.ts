@@ -184,6 +184,38 @@ export const reportController = {
     }
   },
 
+  async getPeriodSalesPreview(req: Request, res: Response) {
+    try {
+      const { startDate, endDate, branchId, sellerId, sellerIds, paymentMethodId } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Fecha inicio y fecha fin requeridas' });
+      }
+
+      const parsedSellerIds = typeof sellerIds === 'string'
+        ? sellerIds.split(',').map(id => id.trim()).filter(Boolean)
+        : undefined;
+
+      const filters = {
+        startDate: new Date(startDate as string),
+        endDate: new Date(endDate as string),
+        branchId: branchId ? parseInt(branchId as string) : undefined,
+        sellerId: sellerId as string,
+        sellerIds: parsedSellerIds,
+        paymentMethodId: paymentMethodId ? parseInt(paymentMethodId as string) : undefined,
+        reportType: 'sales' as const
+      };
+
+      const preview = await reportService.getPeriodSalesPreview(filters);
+      return res.json(preview);
+    } catch (error: any) {
+      console.error('Error generando preview de reporte de ventas:', error);
+      return res.status(error.status || 500).json({
+        error: error.message || 'Error interno del servidor'
+      });
+    }
+  },
+
   async downloadPeriodExpensesReport(req: Request, res: Response) {
     try {
       const { startDate, endDate, branchId, paymentMethodId } = req.query;

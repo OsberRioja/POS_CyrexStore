@@ -17,6 +17,7 @@ router.get('/daily/:cashBoxId', reportController.downloadDailyReport);
 router.get('/sellers', reportController.getAvailableSellers);
 router.get('/monthly-sales/:year/:month', reportController.downloadMonthlySalesReport);
 router.get('/period-sales', reportController.downloadPeriodSalesReport);
+router.get('/period-sales-preview', reportController.getPeriodSalesPreview);
 router.get('/period-expenses', reportController.downloadPeriodExpensesReport);
 router.get('/combined-report', reportController.downloadCombinedReport);
 

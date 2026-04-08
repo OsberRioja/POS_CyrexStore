@@ -1692,7 +1692,9 @@ export const reportService = {
   async getAvailableSellers(branchId?: number) {
     const sellers = await prisma.user.findMany({
       where: {
-        role: 'SELLER',
+        role: {
+          in: ['SELLER', 'SUPERVISOR']
+        },
         deleted: false,
         ...(branchId ? { branchId } : { branchId: { not: null } })
       },
@@ -1714,6 +1716,193 @@ export const reportService = {
     });
 
     return sellers;
+  },
+
+  async getPeriodSalesPreview(filters: PeriodReportFilters) {
+    const { startDate, endDate, branchId, sellerId, sellerIds, paymentMethodId } = filters;
+
+    const adjustedStartDate = new Date(startDate);
+    adjustedStartDate.setHours(0, 0, 0, 0);
+
+    const adjustedEndDate = new Date(endDate);
+    adjustedEndDate.setHours(23, 59, 59, 999);
+
+    const sales = await prisma.sale.findMany({
+      where: {
+        createdAt: {
+          gte: adjustedStartDate,
+          lte: adjustedEndDate
+        },
+        ...(branchId && { branchId }),
+        ...(sellerIds && sellerIds.length > 0
+          ? { sellerId: { in: sellerIds } }
+          : sellerId
+            ? { sellerId }
+            : {}),
+        ...(paymentMethodId && {
+          payments: {
+            some: { paymentMethodId }
+          }
+        })
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true
+              }
+            }
+          }
+        },
+        payments: {
+          include: {
+            paymentMethod: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        },
+        seller: {
+          select: {
+            id: true,
+            name: true,
+            role: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        client: {
+          select: {
+            nombre: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const totalSales = sales.length;
+    const totalAmount = sales.reduce((sum, sale) => sum + sale.total, 0);
+    const totalPaid = sales.reduce(
+      (sum, sale) => sum + sale.payments.reduce((pSum, payment) => pSum + payment.amount, 0),
+      0
+    );
+    const totalBalance = totalAmount - totalPaid;
+    const averageTicket = totalSales > 0 ? totalAmount / totalSales : 0;
+    const totalUnits = sales.reduce(
+      (sum, sale) => sum + sale.items.reduce((iSum, item) => iSum + item.quantity, 0),
+      0
+    );
+
+    const sellerRankingMap = new Map<string, { sellerId: string; sellerName: string; role: string; branchId: number; branchName: string; salesCount: number; totalAmount: number; totalUnits: number }>();
+    const productRankingMap = new Map<string, { productId: string; productName: string; sku: string; quantity: number; revenue: number }>();
+    const weekdayMap = new Map<string, { day: string; salesCount: number; totalAmount: number }>();
+    const branchRankingMap = new Map<number, { branchId: number; branchName: string; salesCount: number; totalAmount: number; averageTicket: number }>();
+
+    const weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+    sales.forEach((sale) => {
+      const sellerKey = `${sale.seller.id}-${sale.branchId}`;
+      const currentSeller = sellerRankingMap.get(sellerKey) || {
+        sellerId: sale.seller.id,
+        sellerName: sale.seller.name,
+        role: sale.seller.role,
+        branchId: sale.branch.id,
+        branchName: sale.branch.name,
+        salesCount: 0,
+        totalAmount: 0,
+        totalUnits: 0
+      };
+      currentSeller.salesCount += 1;
+      currentSeller.totalAmount += sale.total;
+      currentSeller.totalUnits += sale.items.reduce((sum, item) => sum + item.quantity, 0);
+      sellerRankingMap.set(sellerKey, currentSeller);
+
+      const weekdayName = weekDays[sale.createdAt.getDay()];
+      const currentWeekday = weekdayMap.get(weekdayName) || { day: weekdayName, salesCount: 0, totalAmount: 0 };
+      currentWeekday.salesCount += 1;
+      currentWeekday.totalAmount += sale.total;
+      weekdayMap.set(weekdayName, currentWeekday);
+
+      const currentBranch = branchRankingMap.get(sale.branch.id) || {
+        branchId: sale.branch.id,
+        branchName: sale.branch.name,
+        salesCount: 0,
+        totalAmount: 0,
+        averageTicket: 0
+      };
+      currentBranch.salesCount += 1;
+      currentBranch.totalAmount += sale.total;
+      currentBranch.averageTicket = currentBranch.totalAmount / currentBranch.salesCount;
+      branchRankingMap.set(sale.branch.id, currentBranch);
+
+      sale.items.forEach((item) => {
+        const productKey = item.product.id;
+        const currentProduct = productRankingMap.get(productKey) || {
+          productId: item.product.id,
+          productName: item.product.name,
+          sku: item.product.sku,
+          quantity: 0,
+          revenue: 0
+        };
+        currentProduct.quantity += item.quantity;
+        currentProduct.revenue += item.unitPrice * item.quantity;
+        productRankingMap.set(productKey, currentProduct);
+      });
+    });
+
+    const previewSales = sales.slice(0, 15).map((sale) => {
+      const paidAmount = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      return {
+        id: sale.id,
+        createdAt: sale.createdAt,
+        clientName: sale.client?.nombre || 'N/A',
+        sellerName: sale.seller.name,
+        sellerRole: sale.seller.role,
+        branchName: sale.branch.name,
+        total: sale.total,
+        paid: paidAmount,
+        balance: sale.total - paidAmount,
+        products: sale.items.map(item => ({
+          name: item.product.name,
+          sku: item.product.sku,
+          quantity: item.quantity
+        }))
+      };
+    });
+
+    return {
+      summary: {
+        totalSales,
+        totalAmount,
+        totalPaid,
+        totalBalance,
+        averageTicket,
+        totalUnits
+      },
+      previewSales,
+      rankings: {
+        sellers: Array.from(sellerRankingMap.values())
+          .sort((a, b) => b.totalAmount - a.totalAmount)
+          .slice(0, 15),
+        products: Array.from(productRankingMap.values())
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 15),
+        weekdays: Array.from(weekdayMap.values())
+          .sort((a, b) => b.totalAmount - a.totalAmount),
+        branches: Array.from(branchRankingMap.values())
+          .sort((a, b) => b.totalAmount - a.totalAmount)
+      },
+      generatedAt: new Date()
+    };
   },
 
   async generatePeriodExpensesReport(filters: PeriodReportFilters) {

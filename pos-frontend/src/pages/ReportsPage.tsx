@@ -9,7 +9,9 @@ export default function ReportsPage() {
   const { user } = useAuth();
   //const { currentBranchId } = useBranch();
   const [loading, setLoading] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const [activeReport, setActiveReport] = useState<'sales' | 'expenses' | 'combined'>('sales');
+  const [previewData, setPreviewData] = useState<any | null>(null);
   const [filters, setFilters] = useState({
     period: 'month',
     startDate: '',
@@ -23,6 +25,33 @@ export default function ReportsPage() {
   // Manejar cambio de filtros
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
+    setPreviewData(null);
+  };
+
+  const handlePreview = async () => {
+    if (!filters.startDate || !filters.endDate || activeReport !== 'sales') {
+      setPreviewData(null);
+      return;
+    }
+
+    setLoadingPreview(true);
+    try {
+      const preview = await reportService.getPeriodSalesPreview(
+        filters.startDate,
+        filters.endDate,
+        filters.branchId ? parseInt(filters.branchId) : undefined,
+        filters.sellerId || undefined,
+        filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined,
+        filters.sellerIds
+      );
+      setPreviewData(preview);
+    } catch (error: any) {
+      console.error('Error cargando previsualización:', error);
+      alert(error.message || 'Error al previsualizar reporte');
+      setPreviewData(null);
+    } finally {
+      setLoadingPreview(false);
+    }
   };
 
   // Descargar reporte según el tipo activo
@@ -145,7 +174,10 @@ export default function ReportsPage() {
             {reportTypes.map((report) => (
               <div
                 key={report.id}
-                onClick={() => setActiveReport(report.id as any)}
+                onClick={() => {
+                  setActiveReport(report.id as any);
+                  setPreviewData(null);
+                }}
                 className={`p-4 rounded-lg border cursor-pointer transition-all ${
                   activeReport === report.id
                     ? `border-${report.color}-300 bg-${report.color}-50`
@@ -183,16 +215,110 @@ export default function ReportsPage() {
 
         {/* Botón de descarga */}
         <div className="flex justify-end">
-          <button
-            onClick={handleDownloadReport}
-            disabled={loading || !filters.startDate || !filters.endDate}
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FileText size={20} />
-            {loading ? 'Generando Reporte...' : `Descargar Reporte de ${reportTypes.find(r => r.id === activeReport)?.name}`}
-          </button>
+          <div className="flex gap-3">
+            {activeReport === 'sales' && (
+              <button
+                onClick={handlePreview}
+                disabled={loadingPreview || !filters.startDate || !filters.endDate}
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingPreview ? 'Generando Vista...' : 'Previsualizar Filtros'}
+              </button>
+            )}
+            <button
+              onClick={handleDownloadReport}
+              disabled={loading || !filters.startDate || !filters.endDate}
+              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileText size={20} />
+              {loading ? 'Generando Reporte...' : `Descargar Reporte de ${reportTypes.find(r => r.id === activeReport)?.name}`}
+            </button>
+          </div>
         </div>
       </div>
+
+      {activeReport === 'sales' && previewData && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+          <h3 className="text-lg font-semibold text-gray-800">Previsualización de Resultados (Top 15)</h3>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="p-3 bg-blue-50 rounded-lg"><p className="text-xs text-gray-600">Ventas</p><p className="font-bold">{previewData.summary.totalSales}</p></div>
+            <div className="p-3 bg-green-50 rounded-lg"><p className="text-xs text-gray-600">Monto Total</p><p className="font-bold">Bs. {previewData.summary.totalAmount.toFixed(2)}</p></div>
+            <div className="p-3 bg-yellow-50 rounded-lg"><p className="text-xs text-gray-600">Pagado</p><p className="font-bold">Bs. {previewData.summary.totalPaid.toFixed(2)}</p></div>
+            <div className="p-3 bg-red-50 rounded-lg"><p className="text-xs text-gray-600">Saldo</p><p className="font-bold">Bs. {previewData.summary.totalBalance.toFixed(2)}</p></div>
+            <div className="p-3 bg-purple-50 rounded-lg"><p className="text-xs text-gray-600">Ticket Prom.</p><p className="font-bold">Bs. {previewData.summary.averageTicket.toFixed(2)}</p></div>
+            <div className="p-3 bg-cyan-50 rounded-lg"><p className="text-xs text-gray-600">Unidades</p><p className="font-bold">{previewData.summary.totalUnits}</p></div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-2">Ranking vendedores</h4>
+              <ul className="text-sm space-y-1">
+                {previewData.rankings.sellers.map((s: any, idx: number) => (
+                  <li key={`${s.sellerId}-${idx}`} className="flex justify-between border-b pb-1">
+                    <span>{idx + 1}. {s.sellerName} <span className="text-xs text-gray-500">({s.branchName})</span></span>
+                    <span className="font-medium">Bs. {s.totalAmount.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-2">Ranking productos</h4>
+              <ul className="text-sm space-y-1">
+                {previewData.rankings.products.map((p: any, idx: number) => (
+                  <li key={`${p.productId}-${idx}`} className="flex justify-between border-b pb-1">
+                    <span>{idx + 1}. {p.productName}</span>
+                    <span className="font-medium">{p.quantity} u</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-2">Ranking días de semana</h4>
+              <ul className="text-sm space-y-1">
+                {previewData.rankings.weekdays.map((d: any, idx: number) => (
+                  <li key={`${d.day}-${idx}`} className="flex justify-between border-b pb-1">
+                    <span>{idx + 1}. {d.day}</span>
+                    <span className="font-medium">Bs. {d.totalAmount.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-2">Primeras ventas filtradas</h4>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="text-left p-2">Fecha</th>
+                    <th className="text-left p-2">Sucursal</th>
+                    <th className="text-left p-2">Vendedor</th>
+                    <th className="text-left p-2">Cliente</th>
+                    <th className="text-right p-2">Total</th>
+                    <th className="text-right p-2">Pagado</th>
+                    <th className="text-right p-2">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewData.previewSales.map((sale: any) => (
+                    <tr key={sale.id} className="border-b">
+                      <td className="p-2">{new Date(sale.createdAt).toLocaleString('es-BO')}</td>
+                      <td className="p-2">{sale.branchName}</td>
+                      <td className="p-2">{sale.sellerName}</td>
+                      <td className="p-2">{sale.clientName}</td>
+                      <td className="p-2 text-right">Bs. {sale.total.toFixed(2)}</td>
+                      <td className="p-2 text-right">Bs. {sale.paid.toFixed(2)}</td>
+                      <td className="p-2 text-right">Bs. {sale.balance.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Información adicional */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
