@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, CalendarDays, CalendarRange, History, Building, User, CreditCard } from 'lucide-react';
 import { useBranch } from '../../hooks/useBranch';
 import { useAuth } from '../../context/authContext';
+import { reportService } from '../../services/reportService';
 
 interface ReportFiltersProps {
   onFilterChange: (filters: any) => void;
@@ -28,8 +29,10 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
     endDate: initialFilters.endDate || '',
     branchId: initialFilters.branchId || '',
     sellerId: initialFilters.sellerId || '',
+    sellerIds: initialFilters.sellerIds || [],
     paymentMethodId: initialFilters.paymentMethodId || '',
   });
+  const [availableSellers, setAvailableSellers] = useState<any[]>([]);
 
   // Lista de períodos predefinidos
   const periods = [
@@ -96,7 +99,11 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   // Manejar cambios en los filtros
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const newFilters = { ...filters, [name]: value };
+    const newFilters = {
+      ...filters,
+      [name]: value,
+      ...(name === 'branchId' ? { sellerId: '', sellerIds: [] as string[] } : {})
+    };
     setFilters(newFilters);
     onFilterChange(newFilters);
   };
@@ -104,11 +111,40 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   // Si el usuario no es admin global, limitar a su sucursal
   useEffect(() => {
     if (user?.branchId && user.branchId !== null) {
-      const newFilters = { ...filters, branchId: user.branchId.toString() };
+      const newFilters = { ...filters, branchId: user.branchId.toString(), sellerId: '', sellerIds: [] as string[] };
       setFilters(newFilters);
       onFilterChange(newFilters);
     }
   }, [user]);
+
+  // Cargar vendedores dinámicamente según sucursal seleccionada
+  useEffect(() => {
+    if (!(showSellerFilter && reportType === 'sales')) return;
+
+    const loadSellers = async () => {
+      try {
+        const branchId = filters.branchId ? parseInt(filters.branchId, 10) : undefined;
+        const sellers = await reportService.getAvailableSellers(branchId);
+        setAvailableSellers(sellers);
+      } catch (error) {
+        console.error('Error cargando vendedores:', error);
+        setAvailableSellers([]);
+      }
+    };
+
+    loadSellers();
+  }, [filters.branchId, showSellerFilter, reportType]);
+
+  const handleSellerMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedSellerIds = Array.from(e.target.selectedOptions, option => option.value);
+    const newFilters = {
+      ...filters,
+      sellerId: '',
+      sellerIds: selectedSellerIds
+    };
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
@@ -199,16 +235,21 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
               Vendedor
             </label>
             <select
-              name="sellerId"
-              value={filters.sellerId}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              name="sellerIds"
+              multiple
+              value={filters.sellerIds}
+              onChange={handleSellerMultiSelectChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-32"
             >
-              <option value="">Todos los vendedores</option>
-              {/* Esto se podría poblar con una llamada a la API de usuarios */}
-              <option value="seller-1">Vendedor 1</option>
-              <option value="seller-2">Vendedor 2</option>
+              {availableSellers.map((seller) => (
+                <option key={seller.id} value={seller.id}>
+                  {seller.name} {seller.userCode ? `(${seller.userCode})` : ''} {seller.branch?.name ? `- ${seller.branch.name}` : ''}
+                </option>
+              ))}
             </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Si no seleccionas vendedores, se incluirán todos los vendedores de la(s) sucursal(es) elegida(s).
+            </p>
           </div>
         )}
 

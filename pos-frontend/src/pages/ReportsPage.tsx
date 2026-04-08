@@ -16,6 +16,7 @@ export default function ReportsPage() {
     endDate: '',
     branchId: user?.branchId ? user.branchId.toString() : '',
     sellerId: '',
+    sellerIds: [] as string[],
     paymentMethodId: ''
   });
 
@@ -40,7 +41,8 @@ export default function ReportsPage() {
             filters.endDate,
             filters.branchId ? parseInt(filters.branchId) : undefined,
             filters.sellerId || undefined,
-            filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined
+            filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined,
+            filters.sellerIds
           );
           break;
         case 'expenses':

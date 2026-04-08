@@ -14,6 +14,7 @@ router.get('/payment-methods/:cashBoxId', reportController.downloadPaymentMethod
 router.get('/daily/:cashBoxId', reportController.downloadDailyReport);
 
 // Nuevos endpoints para reportes por período
+router.get('/sellers', reportController.getAvailableSellers);
 router.get('/monthly-sales/:year/:month', reportController.downloadMonthlySalesReport);
 router.get('/period-sales', reportController.downloadPeriodSalesReport);
 router.get('/period-expenses', reportController.downloadPeriodExpensesReport);

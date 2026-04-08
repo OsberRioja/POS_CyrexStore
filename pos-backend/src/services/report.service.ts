@@ -1403,7 +1403,7 @@ export const reportService = {
   },
 
   async generatePeriodSalesReport(filters: PeriodReportFilters) {
-    const { startDate, endDate, branchId, sellerId, paymentMethodId } = filters;
+    const { startDate, endDate, branchId, sellerId, sellerIds, paymentMethodId } = filters;
     
     // Ajustar horas para cubrir todo el día
     const adjustedStartDate = new Date(startDate);
@@ -1420,7 +1420,11 @@ export const reportService = {
           lte: adjustedEndDate
         },
         ...(branchId && { branchId }),
-        ...(sellerId && { sellerId }),
+        ...(sellerIds && sellerIds.length > 0
+          ? { sellerId: { in: sellerIds } }
+          : sellerId
+            ? { sellerId }
+            : {}),
         ...(paymentMethodId && {
           payments: {
             some: {
@@ -1683,6 +1687,33 @@ export const reportService = {
     // Generar buffer
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
+  },
+
+  async getAvailableSellers(branchId?: number) {
+    const sellers = await prisma.user.findMany({
+      where: {
+        role: 'SELLER',
+        deleted: false,
+        ...(branchId ? { branchId } : { branchId: { not: null } })
+      },
+      select: {
+        id: true,
+        userCode: true,
+        name: true,
+        branchId: true,
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: [
+        { name: 'asc' }
+      ]
+    });
+
+    return sellers;
   },
 
   async generatePeriodExpensesReport(filters: PeriodReportFilters) {

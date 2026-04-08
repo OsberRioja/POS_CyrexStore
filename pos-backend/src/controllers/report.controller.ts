@@ -2,6 +2,22 @@ import { Request, Response } from 'express';
 import { reportService } from '../services/report.service';
 
 export const reportController = {
+  async getAvailableSellers(req: Request, res: Response) {
+    try {
+      const { branchId } = req.query;
+      const sellers = await reportService.getAvailableSellers(
+        branchId ? parseInt(branchId as string) : undefined
+      );
+
+      return res.json(sellers);
+    } catch (error: any) {
+      console.error('Error obteniendo vendedores para reportes:', error);
+      return res.status(error.status || 500).json({
+        error: error.message || 'Error interno del servidor'
+      });
+    }
+  },
+
   async downloadSalesReport(req: Request, res: Response) {
     try {
       const { cashBoxId } = req.params;
@@ -130,17 +146,22 @@ export const reportController = {
 
   async downloadPeriodSalesReport(req: Request, res: Response) {
     try {
-      const { startDate, endDate, branchId, sellerId, paymentMethodId } = req.query;
+      const { startDate, endDate, branchId, sellerId, sellerIds, paymentMethodId } = req.query;
 
       if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Fecha inicio y fecha fin requeridas' });
       }
+
+      const parsedSellerIds = typeof sellerIds === 'string'
+        ? sellerIds.split(',').map(id => id.trim()).filter(Boolean)
+        : undefined;
 
       const filters = {
         startDate: new Date(startDate as string),
         endDate: new Date(endDate as string),
         branchId: branchId ? parseInt(branchId as string) : undefined,
         sellerId: sellerId as string,
+        sellerIds: parsedSellerIds,
         paymentMethodId: paymentMethodId ? parseInt(paymentMethodId as string) : undefined,
         reportType: 'sales' as const
       };
