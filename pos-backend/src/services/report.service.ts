@@ -1905,6 +1905,164 @@ export const reportService = {
     };
   },
 
+  async getPeriodExpensesPreview(filters: PeriodReportFilters) {
+    const { startDate, endDate, branchId, paymentMethodId } = filters;
+
+    const adjustedStartDate = new Date(startDate);
+    adjustedStartDate.setHours(0, 0, 0, 0);
+
+    const adjustedEndDate = new Date(endDate);
+    adjustedEndDate.setHours(23, 59, 59, 999);
+
+    const expenses = await prisma.expense.findMany({
+      where: {
+        createdAt: {
+          gte: adjustedStartDate,
+          lte: adjustedEndDate
+        },
+        ...(branchId && { branchId }),
+        ...(paymentMethodId && { paymentMethodId })
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        paymentMethod: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const totalExpenses = expenses.length;
+    const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const averageExpense = totalExpenses > 0 ? totalAmount / totalExpenses : 0;
+
+    const byConceptMap = new Map<string, { concept: string; count: number; totalAmount: number }>();
+    const byUserMap = new Map<string, { userId: string; userName: string; role: string; count: number; totalAmount: number }>();
+    const byWeekdayMap = new Map<string, { day: string; count: number; totalAmount: number }>();
+    const byBranchMap = new Map<number, { branchId: number; branchName: string; count: number; totalAmount: number }>();
+    const weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+    expenses.forEach((expense) => {
+      const concept = expense.concept || 'Sin concepto';
+      const currentConcept = byConceptMap.get(concept) || { concept, count: 0, totalAmount: 0 };
+      currentConcept.count += 1;
+      currentConcept.totalAmount += expense.amount;
+      byConceptMap.set(concept, currentConcept);
+
+      if (expense.user) {
+        const currentUser = byUserMap.get(expense.user.id) || {
+          userId: expense.user.id,
+          userName: expense.user.name,
+          role: expense.user.role,
+          count: 0,
+          totalAmount: 0
+        };
+        currentUser.count += 1;
+        currentUser.totalAmount += expense.amount;
+        byUserMap.set(expense.user.id, currentUser);
+      }
+
+      const weekdayName = weekDays[expense.createdAt.getDay()];
+      const currentDay = byWeekdayMap.get(weekdayName) || { day: weekdayName, count: 0, totalAmount: 0 };
+      currentDay.count += 1;
+      currentDay.totalAmount += expense.amount;
+      byWeekdayMap.set(weekdayName, currentDay);
+
+      const currentBranch = byBranchMap.get(expense.branch.id) || {
+        branchId: expense.branch.id,
+        branchName: expense.branch.name,
+        count: 0,
+        totalAmount: 0
+      };
+      currentBranch.count += 1;
+      currentBranch.totalAmount += expense.amount;
+      byBranchMap.set(expense.branch.id, currentBranch);
+    });
+
+    return {
+      summary: {
+        totalExpenses,
+        totalAmount,
+        averageExpense
+      },
+      previewExpenses: expenses.slice(0, 15),
+      rankings: {
+        concepts: Array.from(byConceptMap.values()).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 15),
+        users: Array.from(byUserMap.values()).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 15),
+        weekdays: Array.from(byWeekdayMap.values()).sort((a, b) => b.totalAmount - a.totalAmount),
+        branches: Array.from(byBranchMap.values()).sort((a, b) => b.totalAmount - a.totalAmount)
+      },
+      generatedAt: new Date()
+    };
+  },
+
+  async getCombinedPreview(filters: PeriodReportFilters) {
+    const salesPreview = await this.getPeriodSalesPreview(filters);
+    const expensesPreview = await this.getPeriodExpensesPreview(filters);
+
+    const netIncome = salesPreview.summary.totalAmount - expensesPreview.summary.totalAmount;
+    const margin = salesPreview.summary.totalAmount > 0
+      ? (netIncome / salesPreview.summary.totalAmount) * 100
+      : 0;
+
+    const branchProfitMap = new Map<string, { branchName: string; sales: number; expenses: number; net: number }>();
+    salesPreview.rankings.branches.forEach((branch: any) => {
+      branchProfitMap.set(branch.branchName, {
+        branchName: branch.branchName,
+        sales: branch.totalAmount,
+        expenses: 0,
+        net: branch.totalAmount
+      });
+    });
+    expensesPreview.rankings.branches.forEach((branch: any) => {
+      const current = branchProfitMap.get(branch.branchName) || {
+        branchName: branch.branchName,
+        sales: 0,
+        expenses: 0,
+        net: 0
+      };
+      current.expenses += branch.totalAmount;
+      current.net = current.sales - current.expenses;
+      branchProfitMap.set(branch.branchName, current);
+    });
+
+    return {
+      summary: {
+        totalSalesAmount: salesPreview.summary.totalAmount,
+        totalExpensesAmount: expensesPreview.summary.totalAmount,
+        netIncome,
+        margin,
+        totalSalesCount: salesPreview.summary.totalSales,
+        totalExpensesCount: expensesPreview.summary.totalExpenses
+      },
+      rankings: {
+        sellers: salesPreview.rankings.sellers,
+        products: salesPreview.rankings.products,
+        salesWeekdays: salesPreview.rankings.weekdays,
+        expenseWeekdays: expensesPreview.rankings.weekdays,
+        branchProfitability: Array.from(branchProfitMap.values()).sort((a, b) => b.net - a.net)
+      },
+      previewSales: salesPreview.previewSales,
+      previewExpenses: expensesPreview.previewExpenses,
+      generatedAt: new Date()
+    };
+  },
+
   async generatePeriodExpensesReport(filters: PeriodReportFilters) {
     const { startDate, endDate, branchId, paymentMethodId } = filters;
     

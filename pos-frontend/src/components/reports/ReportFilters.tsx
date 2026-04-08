@@ -146,6 +146,27 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
     onFilterChange(newFilters);
   };
 
+  const selectAllUsers = () => {
+    const allIds = availableSellers.map((seller) => seller.id);
+    const newFilters = {
+      ...filters,
+      sellerId: '',
+      sellerIds: allIds
+    };
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
+  const clearSelectedUsers = () => {
+    const newFilters = {
+      ...filters,
+      sellerId: '',
+      sellerIds: [] as string[]
+    };
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">Filtros del Reporte</h3>
@@ -250,6 +271,22 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             <p className="text-xs text-gray-500 mt-1">
               Si no seleccionas usuarios, se incluirán todos los vendedores/supervisores de la(s) sucursal(es) elegida(s).
             </p>
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                onClick={selectAllUsers}
+                className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+              >
+                Seleccionar todos
+              </button>
+              <button
+                type="button"
+                onClick={clearSelectedUsers}
+                className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Limpiar selección
+              </button>
+            </div>
           </div>
         )}
 

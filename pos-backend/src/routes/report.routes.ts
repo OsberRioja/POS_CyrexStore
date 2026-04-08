@@ -19,6 +19,8 @@ router.get('/monthly-sales/:year/:month', reportController.downloadMonthlySalesR
 router.get('/period-sales', reportController.downloadPeriodSalesReport);
 router.get('/period-sales-preview', reportController.getPeriodSalesPreview);
 router.get('/period-expenses', reportController.downloadPeriodExpensesReport);
+router.get('/period-expenses-preview', reportController.getPeriodExpensesPreview);
 router.get('/combined-report', reportController.downloadCombinedReport);
+router.get('/combined-preview', reportController.getCombinedPreview);
 
 export default router;

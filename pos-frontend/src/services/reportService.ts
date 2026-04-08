@@ -40,6 +40,44 @@ class ReportService {
     }
   }
 
+  async getPeriodExpensesPreview(startDate: string, endDate: string, branchId?: number, paymentMethodId?: number) {
+    try {
+      const params: any = { startDate, endDate };
+      if (branchId) params.branchId = branchId;
+      if (paymentMethodId) params.paymentMethodId = paymentMethodId;
+
+      const response = await axios.get(`${API_URL}/reports/period-expenses-preview`, {
+        headers: this.getAuthHeaders(),
+        params
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error cargando previsualización de gastos:', error);
+      throw new Error(error.response?.data?.error || 'Error cargando previsualización de gastos');
+    }
+  }
+
+  async getCombinedPreview(startDate: string, endDate: string, branchId?: number, sellerId?: string, paymentMethodId?: number, sellerIds?: string[]) {
+    try {
+      const params: any = { startDate, endDate };
+      if (branchId) params.branchId = branchId;
+      if (sellerId) params.sellerId = sellerId;
+      if (sellerIds && sellerIds.length > 0) params.sellerIds = sellerIds.join(',');
+      if (paymentMethodId) params.paymentMethodId = paymentMethodId;
+
+      const response = await axios.get(`${API_URL}/reports/combined-preview`, {
+        headers: this.getAuthHeaders(),
+        params
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error cargando previsualización combinada:', error);
+      throw new Error(error.response?.data?.error || 'Error cargando previsualización combinada');
+    }
+  }
+
   private getAuthHeaders() {
     const token = localStorage.getItem('token');
     return {

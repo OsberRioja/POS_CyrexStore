@@ -216,6 +216,64 @@ export const reportController = {
     }
   },
 
+  async getPeriodExpensesPreview(req: Request, res: Response) {
+    try {
+      const { startDate, endDate, branchId, paymentMethodId } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Fecha inicio y fecha fin requeridas' });
+      }
+
+      const filters = {
+        startDate: new Date(startDate as string),
+        endDate: new Date(endDate as string),
+        branchId: branchId ? parseInt(branchId as string) : undefined,
+        paymentMethodId: paymentMethodId ? parseInt(paymentMethodId as string) : undefined,
+        reportType: 'expenses' as const
+      };
+
+      const preview = await reportService.getPeriodExpensesPreview(filters);
+      return res.json(preview);
+    } catch (error: any) {
+      console.error('Error generando preview de reporte de gastos:', error);
+      return res.status(error.status || 500).json({
+        error: error.message || 'Error interno del servidor'
+      });
+    }
+  },
+
+  async getCombinedPreview(req: Request, res: Response) {
+    try {
+      const { startDate, endDate, branchId, sellerId, sellerIds, paymentMethodId } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Fecha inicio y fecha fin requeridas' });
+      }
+
+      const parsedSellerIds = typeof sellerIds === 'string'
+        ? sellerIds.split(',').map(id => id.trim()).filter(Boolean)
+        : undefined;
+
+      const filters = {
+        startDate: new Date(startDate as string),
+        endDate: new Date(endDate as string),
+        branchId: branchId ? parseInt(branchId as string) : undefined,
+        sellerId: sellerId as string,
+        sellerIds: parsedSellerIds,
+        paymentMethodId: paymentMethodId ? parseInt(paymentMethodId as string) : undefined,
+        reportType: 'combined' as const
+      };
+
+      const preview = await reportService.getCombinedPreview(filters);
+      return res.json(preview);
+    } catch (error: any) {
+      console.error('Error generando preview de reporte combinado:', error);
+      return res.status(error.status || 500).json({
+        error: error.message || 'Error interno del servidor'
+      });
+    }
+  },
+
   async downloadPeriodExpensesReport(req: Request, res: Response) {
     try {
       const { startDate, endDate, branchId, paymentMethodId } = req.query;

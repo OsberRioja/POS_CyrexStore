@@ -29,21 +29,40 @@ export default function ReportsPage() {
   };
 
   const handlePreview = async () => {
-    if (!filters.startDate || !filters.endDate || activeReport !== 'sales') {
+    if (!filters.startDate || !filters.endDate) {
       setPreviewData(null);
       return;
     }
 
     setLoadingPreview(true);
     try {
-      const preview = await reportService.getPeriodSalesPreview(
-        filters.startDate,
-        filters.endDate,
-        filters.branchId ? parseInt(filters.branchId) : undefined,
-        filters.sellerId || undefined,
-        filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined,
-        filters.sellerIds
-      );
+      let preview: any = null;
+      if (activeReport === 'sales') {
+        preview = await reportService.getPeriodSalesPreview(
+          filters.startDate,
+          filters.endDate,
+          filters.branchId ? parseInt(filters.branchId) : undefined,
+          filters.sellerId || undefined,
+          filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined,
+          filters.sellerIds
+        );
+      } else if (activeReport === 'expenses') {
+        preview = await reportService.getPeriodExpensesPreview(
+          filters.startDate,
+          filters.endDate,
+          filters.branchId ? parseInt(filters.branchId) : undefined,
+          filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined
+        );
+      } else {
+        preview = await reportService.getCombinedPreview(
+          filters.startDate,
+          filters.endDate,
+          filters.branchId ? parseInt(filters.branchId) : undefined,
+          filters.sellerId || undefined,
+          filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined,
+          filters.sellerIds
+        );
+      }
       setPreviewData(preview);
     } catch (error: any) {
       console.error('Error cargando previsualización:', error);
@@ -216,15 +235,13 @@ export default function ReportsPage() {
         {/* Botón de descarga */}
         <div className="flex justify-end">
           <div className="flex gap-3">
-            {activeReport === 'sales' && (
-              <button
-                onClick={handlePreview}
-                disabled={loadingPreview || !filters.startDate || !filters.endDate}
-                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loadingPreview ? 'Generando Vista...' : 'Previsualizar Filtros'}
-              </button>
-            )}
+            <button
+              onClick={handlePreview}
+              disabled={loadingPreview || !filters.startDate || !filters.endDate}
+              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingPreview ? 'Generando Vista...' : 'Previsualizar Filtros'}
+            </button>
             <button
               onClick={handleDownloadReport}
               disabled={loading || !filters.startDate || !filters.endDate}
@@ -316,6 +333,74 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeReport === 'expenses' && previewData && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+          <h3 className="text-lg font-semibold text-gray-800">Previsualización de Gastos (Top 15)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3 bg-red-50 rounded-lg"><p className="text-xs text-gray-600">Cantidad Gastos</p><p className="font-bold">{previewData.summary.totalExpenses}</p></div>
+            <div className="p-3 bg-orange-50 rounded-lg"><p className="text-xs text-gray-600">Monto Total</p><p className="font-bold">Bs. {previewData.summary.totalAmount.toFixed(2)}</p></div>
+            <div className="p-3 bg-amber-50 rounded-lg"><p className="text-xs text-gray-600">Gasto Promedio</p><p className="font-bold">Bs. {previewData.summary.averageExpense.toFixed(2)}</p></div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-2">Ranking por concepto</h4>
+              <ul className="text-sm space-y-1">
+                {previewData.rankings.concepts.map((c: any, idx: number) => (
+                  <li key={`${c.concept}-${idx}`} className="flex justify-between border-b pb-1">
+                    <span>{idx + 1}. {c.concept}</span><span className="font-medium">Bs. {c.totalAmount.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-2">Ranking por usuario</h4>
+              <ul className="text-sm space-y-1">
+                {previewData.rankings.users.map((u: any, idx: number) => (
+                  <li key={`${u.userId}-${idx}`} className="flex justify-between border-b pb-1">
+                    <span>{idx + 1}. {u.userName}</span><span className="font-medium">Bs. {u.totalAmount.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-2">Ranking por día de semana</h4>
+              <ul className="text-sm space-y-1">
+                {previewData.rankings.weekdays.map((d: any, idx: number) => (
+                  <li key={`${d.day}-${idx}`} className="flex justify-between border-b pb-1">
+                    <span>{idx + 1}. {d.day}</span><span className="font-medium">Bs. {d.totalAmount.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeReport === 'combined' && previewData && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+          <h3 className="text-lg font-semibold text-gray-800">Previsualización Combinada</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="p-3 bg-green-50 rounded-lg"><p className="text-xs text-gray-600">Ventas</p><p className="font-bold">Bs. {previewData.summary.totalSalesAmount.toFixed(2)}</p></div>
+            <div className="p-3 bg-red-50 rounded-lg"><p className="text-xs text-gray-600">Gastos</p><p className="font-bold">Bs. {previewData.summary.totalExpensesAmount.toFixed(2)}</p></div>
+            <div className="p-3 bg-blue-50 rounded-lg"><p className="text-xs text-gray-600">Neto</p><p className="font-bold">Bs. {previewData.summary.netIncome.toFixed(2)}</p></div>
+            <div className="p-3 bg-purple-50 rounded-lg"><p className="text-xs text-gray-600">Margen</p><p className="font-bold">{previewData.summary.margin.toFixed(2)}%</p></div>
+            <div className="p-3 bg-cyan-50 rounded-lg"><p className="text-xs text-gray-600"># Ventas</p><p className="font-bold">{previewData.summary.totalSalesCount}</p></div>
+            <div className="p-3 bg-yellow-50 rounded-lg"><p className="text-xs text-gray-600"># Gastos</p><p className="font-bold">{previewData.summary.totalExpensesCount}</p></div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-2">Rentabilidad por sucursal</h4>
+            <ul className="text-sm space-y-1">
+              {previewData.rankings.branchProfitability.map((b: any, idx: number) => (
+                <li key={`${b.branchName}-${idx}`} className="flex justify-between border-b pb-1">
+                  <span>{idx + 1}. {b.branchName}</span>
+                  <span className="font-medium">Neto Bs. {b.net.toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
