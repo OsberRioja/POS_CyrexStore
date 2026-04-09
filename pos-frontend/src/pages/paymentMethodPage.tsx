@@ -6,6 +6,7 @@ import { paymentMethodService } from "../services/paymentMethodService";
 import { reportService } from "../services/reportService";
 //import { useAuth } from "../context/authContext";
 import { Download } from "lucide-react";
+import { useDialog } from "../context/DialogContext";
 
 interface PaymentMethodsPageProps {
   cashBoxId?: number | null;
@@ -26,6 +27,7 @@ export default function PaymentMethodsPage({
   const [editing, setEditing] = useState<any | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const { alert, confirm } = useDialog();
 
   const load = async () => {
     setLoading(true);
@@ -69,19 +71,25 @@ export default function PaymentMethodsPage({
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Eliminar método de pago?")) return;
+    const shouldDelete = await confirm({
+      title: 'Eliminar método',
+      message: '¿Eliminar método de pago?',
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!shouldDelete) return;
     try {
       await paymentMethodService.remove(id);
       await load();
     } catch (err) {
       console.error(err);
-      alert("Error al eliminar");
+      alert("Error al eliminar", 'error');
     }
   };
 
    const handleDownloadPaymentMethodsReport = async () => {
     if (!cashBoxId) {
-      alert("No se puede generar el reporte: ID de caja no disponible");
+      alert("No se puede generar el reporte: ID de caja no disponible", 'warning');
       return;
     }
 
@@ -91,7 +99,7 @@ export default function PaymentMethodsPage({
       // Éxito silencioso - el archivo se descarga automáticamente
     } catch (error: any) {
       console.error("Error descargando reporte de métodos de pago:", error);
-      alert(error.message || "Error al descargar el reporte de métodos de pago");
+      alert(error.message || "Error al descargar el reporte de métodos de pago", 'error');
     } finally {
       setDownloadingReport(false);
     }

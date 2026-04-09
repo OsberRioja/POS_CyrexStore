@@ -15,6 +15,7 @@ import CashboxReportModal from "../components/CashboxReportModal";
 import { ReopenCashboxModal } from "../components/ReopenCashboxModal";
 import { EditSaleModal } from "../components/EditSaleModal";
 import { EditExpenseModal } from "../components/EditExpenseModal";
+import { useDialog } from "../context/DialogContext";
 
 export default function CashboxPage() {
   const { token } = useAuth();
@@ -25,7 +26,6 @@ export default function CashboxPage() {
   const [cashboxes, setCashboxes] = useState<any[]>([]);
   const [totalCashboxes, setTotalCashboxes] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [warning, setWarning] = useState<string | null>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [view, setView] = useState<"ventas" | "gastos" | "paymentMethods" | "history" | null>(null);
@@ -47,6 +47,7 @@ export default function CashboxPage() {
   const HISTORY_PER_PAGE = 10;
 
   const { hasPermission } = usePermissions();
+  const { alert, confirm } = useDialog();
  
   useEffect(() => {
     loadAll();
@@ -73,7 +74,6 @@ export default function CashboxPage() {
 
   async function loadAll() {
     setLoading(true);
-    setWarning(null);
     try {
       console.log('🔍 [1] Loading open cashbox...');
       const rOpen = await cashboxService.getOpen();
@@ -115,9 +115,6 @@ export default function CashboxPage() {
       }
     } catch(error) {
       console.error('❌ Error loading cashbox history:', error);
-      if (hasPermission(Permission.CASHBOX_READ)){
-        setWarning("Error cargando historial de cajas.");
-      }
       setCashboxes([]);
       setTotalCashboxes(0);
     } finally {
@@ -162,8 +159,18 @@ export default function CashboxPage() {
   };
 
   const handleCloseCashbox = async () => {
-    if (!openCashbox?.id) return alert("No hay caja abierta.");
-    if (!confirm("¿Cerrar caja ahora?")) return;
+    if (!openCashbox?.id) {
+      alert("No hay caja abierta.", 'warning');
+      return;
+    }
+
+    const shouldClose = await confirm({
+      title: 'Cerrar caja',
+      message: '¿Cerrar caja ahora?',
+      confirmText: 'Cerrar caja',
+      danger: true,
+    });
+    if (!shouldClose) return;
     try {
     setLoading(true);
     const response = await cashboxService.getClosePreview(openCashbox.id);
@@ -171,7 +178,7 @@ export default function CashboxPage() {
     setShowCloseModal(true);
   } catch (error) {
     console.error('Error getting close preview:', error);
-    alert('Error al obtener datos de cierre');
+    alert('Error al obtener datos de cierre', 'error');
   } finally {
     setLoading(false);
   }
@@ -211,19 +218,19 @@ export default function CashboxPage() {
     const activeCashbox = selectedCashbox || openCashbox;
     
     if (!activeCashbox) {
-      alert('No hay caja activa');
+      alert('No hay caja activa', 'warning');
       return;
     }
 
     // Permitir edición en cajas OPEN y REOPENED
     if (activeCashbox.status !== 'OPEN' && activeCashbox.status !== 'REOPENED') {
-      alert('Solo se pueden editar ventas en cajas abiertas');
+      alert('Solo se pueden editar ventas en cajas abiertas', 'warning');
       return;
     }
 
     // Verificar que la venta pertenezca a esta caja
     if (sale.cashBoxId !== activeCashbox.id) {
-      alert('Esta venta no pertenece a esta caja');
+      alert('Esta venta no pertenece a esta caja', 'warning');
       return;
     }
 
@@ -244,13 +251,13 @@ export default function CashboxPage() {
     const activeCashbox = selectedCashbox || openCashbox;
     
     if (!activeCashbox) {
-      alert('No hay caja activa');
+      alert('No hay caja activa', 'warning');
       return;
     }
 
     // Permitir edición en cajas OPEN y REOPENED
     if (activeCashbox.status !== 'OPEN' && activeCashbox.status !== 'REOPENED') {
-      alert('Solo se pueden editar gastos en cajas abiertas');
+      alert('Solo se pueden editar gastos en cajas abiertas', 'warning');
       return;
     }
 
@@ -265,7 +272,13 @@ export default function CashboxPage() {
     // Confirmación especial para cajas reabiertas
     const confirmMessage = `¿Cerrar caja reabierta #${openCashbox.id}?\n\nIMPORTANTE:\n• No se volverá a contar el efectivo\n• Se mantendrá el monto real original (Bs. ${openCashbox.realClosedAmount?.toFixed(2) || openCashbox.closedAmount?.toFixed(2)})\n• Solo se actualizarán los totales de ventas y gastos`;
     
-    if (!confirm(confirmMessage)) return;
+    const shouldCloseReopened = await confirm({
+      title: `Cerrar caja reabierta #${openCashbox.id}`,
+      message: confirmMessage,
+      confirmText: 'Cerrar reabierta',
+      danger: true,
+    });
+    if (!shouldCloseReopened) return;
     
     try {
       setLoading(true);
@@ -273,7 +286,7 @@ export default function CashboxPage() {
       await loadAll();
     } catch (error: any) {
       console.error('Error closing reopened cashbox:', error);
-      alert(error.response?.data?.error || 'Error al cerrar caja reabierta');
+      alert(error.response?.data?.error || 'Error al cerrar caja reabierta', 'error');
     } finally {
       setLoading(false);
     }

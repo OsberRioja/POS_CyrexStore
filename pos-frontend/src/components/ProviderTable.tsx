@@ -1,4 +1,5 @@
 import { deleteProvider } from "../services/providerService";
+import { useDialog } from "../context/DialogContext";
 
 export default function ProviderTable({
   providers,
@@ -15,14 +16,22 @@ export default function ProviderTable({
   canEdit: boolean;
   canDelete: boolean;
 }) {
+  const { confirm, alert } = useDialog();
+
   const handleDelete = async (id: number) => {
-    if (!confirm("Eliminar proveedor?")) return;
+    const shouldDelete = await confirm({
+      title: 'Eliminar proveedor',
+      message: '¿Eliminar proveedor?',
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!shouldDelete) return;
     try {
       await deleteProvider(id);
       onRefresh();
     } catch (err) {
       console.error(err);
-      alert("Error al eliminar proveedor");
+      alert("Error al eliminar proveedor", 'error');
     }
   };
 

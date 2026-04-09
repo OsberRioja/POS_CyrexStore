@@ -1,4 +1,5 @@
 import { userService } from "../services/userService";
+import { useDialog } from "../context/DialogContext";
 
 export default function UserTable({
   users,
@@ -15,20 +16,28 @@ export default function UserTable({
   canEdit: boolean;
   canDelete: boolean;
 }) {
+  const { confirm, alert } = useDialog();
+
   const handleDelete = async (id: string) => {
     if (!canDelete) {
-      alert("No tienes permisos para eliminar usuarios");
+      alert("No tienes permisos para eliminar usuarios", 'warning');
       return;
     }
 
-    if (!confirm("¿Estas Seguro de Querer Eliminar Este usuario?")) return;
+    const shouldDelete = await confirm({
+      title: 'Eliminar usuario',
+      message: '¿Estas Seguro de Querer Eliminar Este usuario?',
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!shouldDelete) return;
 
     try {
       await userService.delete(id);
       onRefresh();
     } catch(error) {
       console.error(error);
-      alert("Error al eliminar el usuario");
+      alert("Error al eliminar el usuario", 'error');
     }
   };
 

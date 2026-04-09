@@ -21,6 +21,7 @@ import { passwordService } from "./services/passwordService";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ToastProvider } from "./context/ToastContext";
+import { DialogProvider } from "./context/DialogContext";
 import AdminHomePage from "./pages/AdminHomePage";
 import ReportsPage from "./pages/ReportsPage";
 import PurchasesPage from "./pages/purchasesPage";
@@ -280,7 +281,9 @@ export default function App() {
       <CurrencyProvider>
         <SettingsProvider>
           <ToastProvider>
-            <MainAppWithErrorBoundary />
+            <DialogProvider>
+              <MainAppWithErrorBoundary />
+            </DialogProvider>
           </ToastProvider>
         </SettingsProvider>
       </CurrencyProvider>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import ProductPrice from '../services/ProductPrice';
+import { useDialog } from '../context/DialogContext';
 
 interface UpdatePricesModalProps {
   product: any;
@@ -15,6 +16,7 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm } = useDialog();
 
   // Función para obtener el símbolo de moneda
   const getCurrencySymbol = (currency: string = 'BOB') => {
@@ -54,12 +56,13 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
     }
 
     if (newSalePrice < newCostPrice) {
-      const confirmed = confirm(
-        `⚠️ ADVERTENCIA:\n\n` +
-        `El precio de venta es menor que el precio de costo.\n` +
-        `Esto generará pérdidas.\n\n` +
-        `¿Deseas continuar?`
-      );
+      const confirmed = await confirm({
+        title: 'Advertencia de margen',
+        message:
+          'El precio de venta es menor que el precio de costo.\nEsto generará pérdidas.\n\n¿Deseas continuar?',
+        confirmText: 'Continuar',
+        danger: true,
+      });
       if (!confirmed) return;
     }
 

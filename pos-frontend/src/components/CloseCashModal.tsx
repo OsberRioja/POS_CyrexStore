@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertCircle, CheckCircle, Calculator } from 'lucide-react';
 import { useCurrency } from '../context/currencyContext';
+import { useDialog } from '../context/DialogContext';
 
 interface CloseCashboxModalProps {
   cashbox: any;
@@ -39,6 +40,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
   );
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const { confirm, alert } = useDialog();
   
   const { formatCurrency } = useCurrency();
 
@@ -64,8 +66,14 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
     setCounts(prev => ({ ...prev, [value]: (prev[value] || 0) + amount }));
   };
 
-  const handleClearAll = () => {
-    if (confirm('¿Limpiar todos los valores?')) {
+  const handleClearAll = async () => {
+    const shouldClear = await confirm({
+      title: 'Limpiar conteo',
+      message: '¿Limpiar todos los valores?',
+      confirmText: 'Sí, limpiar',
+      danger: true,
+    });
+    if (shouldClear) {
       setCounts(DENOMINATIONS.reduce((acc, d) => ({ ...acc, [d.value]: 0 }), {}));
     }
   };
@@ -89,7 +97,7 @@ const CloseCashboxModal: React.FC<CloseCashboxModalProps> = ({
       });
     } catch (error) {
       console.error('Error closing cashbox:', error);
-      alert('Error al cerrar la caja');
+      alert('Error al cerrar la caja', 'error');
     } finally {
       setLoading(false);
     }

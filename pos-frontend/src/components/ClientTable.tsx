@@ -1,4 +1,5 @@
 import { clientService } from "../services/clientService";
+import { useDialog } from "../context/DialogContext";
 
 export default function ClientTable({
   clients,
@@ -15,14 +16,22 @@ export default function ClientTable({
   canEdit: boolean;
   canDelete: boolean;
 }) {
+  const { confirm, alert } = useDialog();
+
   const handleDelete = async (id: number) => {
-    if (!confirm("Eliminar cliente?")) return;
+    const shouldDelete = await confirm({
+      title: 'Eliminar cliente',
+      message: '¿Eliminar cliente?',
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!shouldDelete) return;
     try {
       await clientService.remove(id);
       onDelete();
     } catch (err) {
       console.error(err);
-      alert("Error al eliminar");
+      alert("Error al eliminar", 'error');
     }
   };
 

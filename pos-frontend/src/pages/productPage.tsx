@@ -7,6 +7,7 @@ import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
 import { useAuth } from "../context/authContext"; // ← importar useAuth
 import { useBranch } from "../hooks/useBranch"; // ← importar useBranch
+import { useDialog } from "../context/DialogContext";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -16,6 +17,7 @@ export default function ProductsPage() {
   const [showInactive, setShowInactive] = useState(false);
 
   const { hasPermission } = usePermissions();
+  const { confirm, alert } = useDialog();
   const { currentBranchId } = useAuth(); // ← obtener currentBranchId
   const { branches, currentBranchId: branchId } = useBranch(); // usar hook de sucursal
 
@@ -47,23 +49,34 @@ export default function ProductsPage() {
     setShowForm(true); 
   };
 
-  const openEdit = (p: any) => { 
+  const openEdit = async (p: any) => { 
     if (!p.isActive) {
-      if (!confirm("Este producto está desactivado. ¿Deseas editarlo?")) return;
+      const shouldContinue = await confirm({
+        title: 'Producto desactivado',
+        message: 'Este producto está desactivado. ¿Deseas editarlo?',
+        confirmText: 'Sí, editar',
+      });
+      if (!shouldContinue) return;
     }
     setSelected(p); 
     setShowForm(true); 
   };
 
   const handleDeactivate = async (productId: string) => {
-    if (!confirm("¿Desactivar este producto? No estará disponible para ventas.")) return;
+    const shouldDeactivate = await confirm({
+      title: 'Desactivar producto',
+      message: '¿Desactivar este producto? No estará disponible para ventas.',
+      confirmText: 'Desactivar',
+      danger: true,
+    });
+    if (!shouldDeactivate) return;
     try {
       await productService.deactivate(productId);
       loadProducts();
-      alert('Producto desactivado');
+      alert('Producto desactivado', 'success');
     } catch (err) {
       console.error(err);
-      alert("Error al desactivar producto");
+      alert("Error al desactivar producto", 'error');
     }
   };
 
@@ -71,10 +84,10 @@ export default function ProductsPage() {
     try {
       await productService.activate(productId);
       loadProducts();
-      alert('Producto activado');
+      alert('Producto activado', 'success');
     } catch (err) {
       console.error(err);
-      alert("Error al activar producto");
+      alert("Error al activar producto", 'error');
     }
   };
 

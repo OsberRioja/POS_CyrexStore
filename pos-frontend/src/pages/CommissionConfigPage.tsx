@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { CommissionConfigService } from '../services/commissionConfigService';
 import type { CommissionConfig, CreateCommissionConfigDTO, CommissionRange } from '../types/commission';
+import { useDialog } from '../context/DialogContext';
 
 export default function CommissionConfigPage() {
+  const { confirm } = useDialog();
   const [configs, setConfigs] = useState<CommissionConfig[]>([]);
   const [editingConfig, setEditingConfig] = useState<CommissionConfig | null>(null);
   const [formData, setFormData] = useState<CreateCommissionConfigDTO>({
@@ -80,7 +82,13 @@ export default function CommissionConfigPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta configuración?')) return;
+    const isConfirmed = await confirm({
+      title: 'Eliminar configuración',
+      message: '¿Estás seguro de eliminar esta configuración?',
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!isConfirmed) return;
     try {
       await CommissionConfigService.delete(id);
       setSuccess('Configuración eliminada correctamente');
