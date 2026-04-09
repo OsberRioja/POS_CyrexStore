@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building, Calendar, MapPin } from 'lucide-react';
 import { stockService } from '../services/stockService';
+import { useDialog } from '../context/DialogContext';
 
 interface InternalUse {
   id: number;
@@ -32,19 +33,27 @@ const ActiveInternalUsesTable: React.FC<ActiveInternalUsesTableProps> = ({
   internalUses, 
   onReturn 
 }) => {
+  const { confirm, alert } = useDialog();
+
   const handleReturn = async (movementId: number) => {
-    if (window.confirm('¿Está seguro de devolver este producto?')) {
-      try {
-        await stockService.returnInternalUse(movementId, {
-          notes: 'Devuelto manualmente',
-          condition: 'Buen estado'
-        });
-        alert('Producto devuelto exitosamente');
-        onReturn();
-      } catch (error) {
-        console.error('Error returning internal use:', error);
-        alert('Error al devolver el producto');
-      }
+    const shouldReturn = await confirm({
+      title: 'Devolver producto',
+      message: '¿Está seguro de devolver este producto?',
+      confirmText: 'Devolver',
+    });
+
+    if (!shouldReturn) return;
+
+    try {
+      await stockService.returnInternalUse(movementId, {
+        notes: 'Devuelto manualmente',
+        condition: 'Buen estado'
+      });
+      alert('Producto devuelto exitosamente', 'success');
+      onReturn();
+    } catch (error) {
+      console.error('Error returning internal use:', error);
+      alert('Error al devolver el producto', 'error');
     }
   };
 

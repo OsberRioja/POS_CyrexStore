@@ -2,6 +2,7 @@
 import { productService } from "../services/productService";
 import ProductPrice from "../services/ProductPrice";
 import { Eye, EyeOff } from 'lucide-react';
+import { useDialog } from "../context/DialogContext";
 
 export default function ProductTable({
   products,
@@ -24,14 +25,22 @@ export default function ProductTable({
   canDelete: boolean;
   canToggleActive: boolean;
 }) {
+  const { confirm, alert } = useDialog();
+
   const handleDelete = async (id: string) => {
-    if (!confirm("Eliminar producto?")) return;
+    const shouldDelete = await confirm({
+      title: 'Eliminar producto',
+      message: '¿Eliminar producto?',
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!shouldDelete) return;
     try {
       await productService.remove(id);
       onDelete();
     } catch (err) {
       console.error(err);
-      alert("Error al eliminar producto");
+      alert("Error al eliminar producto", 'error');
     }
   };
 

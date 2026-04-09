@@ -31,7 +31,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 5000 }
   };
 
   return (
-    <div className={`fixed top-4 right-4 z-50 max-w-sm w-full rounded-lg border shadow-lg p-4 ${backgrounds[type]}`}>
+    <div className={`max-w-sm w-full rounded-lg border shadow-lg p-4 pointer-events-auto ${backgrounds[type]}`}>
       <div className="flex items-start">
         <div className="flex-shrink-0">
           {icons[type]}
