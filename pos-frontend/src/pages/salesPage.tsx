@@ -17,10 +17,9 @@ interface SalesPageProps {
   isClosedCashbox?: boolean;
   cashboxId?: number;
   onEditSale?: (sale: any) => void;
-  isReopened?: boolean;
 }
 
-export default function SalesPage({ sales, onReload, openCashboxId, token, isClosedCashbox, cashboxId, onEditSale, isReopened }: SalesPageProps) {
+export default function SalesPage({ sales, onReload, openCashboxId, token, isClosedCashbox, cashboxId, onEditSale }: SalesPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -68,11 +67,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
   const filteredSales = (sales || []).filter((sale) => {
     if (!searchTerm.trim()) return true;
     const q = searchTerm.trim().toLowerCase();
-    return (
-      String(sale.saleNumber || '').includes(q) ||
-      String(sale.id || '').toLowerCase().includes(q) ||
-      String(sale.client?.nombre || '').toLowerCase().includes(q)
-    );
+    return String(sale.saleNumber || '').includes(q);
   });
 
   // Descargar reporte de ventas
@@ -135,7 +130,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar por N° de venta, ID o cliente..."
+          placeholder="Buscar por N° de venta..."
           className="w-full md:w-96 border border-gray-300 rounded px-3 py-2 text-sm"
         />
       </div>
@@ -170,7 +165,6 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
         onAddPayment={handleAddPayment}
         onEditSale={onEditSale}
         onReload={onReload}
-        isReopened={isReopened}
         onDownloadReceipt={handleDownloadReceipt}
       />
 

@@ -1,6 +1,6 @@
 export interface Sale {
     id: string;
-    saleNumber?: number;
+    saleNumber: number;
     total: number;
     totalPaid: number;
     balance: number;

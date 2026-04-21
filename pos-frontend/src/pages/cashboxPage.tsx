@@ -758,7 +758,6 @@ export default function CashboxPage() {
               isClosedCashbox={true}
               cashboxId={selectedCashbox.id}
               onEditSale={handleEditSale}
-              isReopened={selectedCashbox?.status === 'REOPENED'}
             />
           </div>
         )}

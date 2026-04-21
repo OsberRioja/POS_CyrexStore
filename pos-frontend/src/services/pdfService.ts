@@ -154,7 +154,6 @@ class PdfService {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
           <div>
             <strong>N° Venta:</strong> ${receiptData.saleNumber ?? receiptData.saleId}<br>
-            <strong>ID Interno:</strong> ${receiptData.saleId}<br>
             <strong>Fecha:</strong> ${formatDate(receiptData.date)}<br>
             <strong>Vendedor:</strong> ${receiptData.sellerName}
           </div>

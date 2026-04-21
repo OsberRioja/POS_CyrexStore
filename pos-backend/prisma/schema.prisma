@@ -137,7 +137,7 @@ model CashBox {
 
 model Sale {
   id             String          @id @default(uuid())
-  saleNumber     Int?            @unique @default(autoincrement())
+  saleNumber     Int             @unique @default(autoincrement())
   sellerId       String
   clientId       Int?
   total          Float

@@ -74,18 +74,8 @@ export const SaleRepository = {
       where.paymentStatus = paymentStatus;
     }
     if (search && search.trim()) {
-      const normalizedSearch = search.trim();
-      const saleNumber = Number.parseInt(normalizedSearch, 10);
-
-      where.OR = [
-        {
-          id: {
-            contains: normalizedSearch,
-            mode: "insensitive",
-          }
-        },
-        ...(Number.isInteger(saleNumber) ? [{ saleNumber }] : [])
-      ];
+      const saleNumber = Number.parseInt(search.trim(), 10);
+      where.saleNumber = Number.isInteger(saleNumber) ? saleNumber : -1;
     }
     if (dateFrom || dateTo) {
       where.createdAt = {};

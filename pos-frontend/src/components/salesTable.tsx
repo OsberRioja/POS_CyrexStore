@@ -24,7 +24,6 @@ interface SalesTableProps {
   onAddPayment?: (sale: Sale) => void;
   onReload?: () => void;
   onEditSale?: (sale: any) => void;
-  isReopened?: boolean;
   onDownloadReceipt?: (sale: Sale) => void;
 }
 
@@ -34,7 +33,6 @@ const SalesTable: React.FC<SalesTableProps> = ({
   onAddPayment, 
   onReload,
   onEditSale,
-  isReopened,
   onDownloadReceipt
 }) => {
   const { user } = useAuth();
@@ -161,11 +159,8 @@ const SalesTable: React.FC<SalesTableProps> = ({
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div className="font-semibold text-blue-700">
-                    #{sale.saleNumber ?? sale.id.slice(0, 8)}
+                    {sale.saleNumber ? `#${sale.saleNumber}` : 'Sin número'}
                   </div>
-                  {sale.saleNumber && (
-                    <div className="text-xs text-gray-500">{sale.id.slice(0, 8)}...</div>
-                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {formatDate(sale.createdAt)}
