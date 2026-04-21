@@ -7,6 +7,7 @@ import { User } from "@prisma/client";
 import { generateTemporaryPassword } from "../utils/passwordGenerator";
 import { emailService } from "./email.service";
 import { env } from "../env";
+import { normalizeCountryCode, normalizePhoneNumber, validatePhoneOrThrow } from "../utils/phone";
 
 const SALT_ROUNDS = 10;
 const CREATE_RETRY = 5;
@@ -45,9 +46,14 @@ function isValidEmail(email: string): boolean {
 
 export const UserService = {
   async createUser(dto: CreateUserDTO, currentUserBranchId?: number | null) {
-    if (!dto.firstName || !dto.lastNamePaterno || !dto.lastNameMaterno || !dto.email || !dto.role || !dto.phone) {
-      throw { status: 400, message: "nombre, apellido paterno, apellido materno, email, rol y teléfono son requeridos" };
+    if (!dto.firstName || !dto.lastNamePaterno || !dto.lastNameMaterno || !dto.email || !dto.role || !dto.phone || !dto.countryCode || !dto.country) {
+      throw { status: 400, message: "nombre, apellidos, email, rol, country, countryCode y phone son requeridos" };
     }
+
+    const normalizedPhone = normalizePhoneNumber(dto.phone);
+    const normalizedCountryCode = normalizeCountryCode(dto.countryCode);
+    const normalizedCountry = dto.country.trim();
+    validatePhoneOrThrow(normalizedPhone, normalizedCountryCode, normalizedCountry);
 
     if (!isValidEmail(dto.email)) {
       throw { status: 400, message: "formato de email inválido" };
@@ -119,7 +125,9 @@ export const UserService = {
           lastNameMaterno: dto.lastNameMaterno.trim(),
           email: dto.email,
           password: passwordHash,   // enviar la contraseña ya hasheada
-          phone: dto.phone ?? null,
+          countryCode: normalizedCountryCode,
+          country: normalizedCountry,
+          phone: normalizedPhone ?? null,
           role: role as "ADMIN" | "SUPERVISOR" | "SELLER",
           passwordChangeRequired: true,
           branchId: userBranchId ?? undefined,
@@ -227,6 +235,8 @@ export const UserService = {
       lastNameMaterno?: string;
       password?: string;
       email?: string;
+      countryCode?: string;
+      country?: string;
       phone?: string;
       role?: "ADMIN" | "SUPERVISOR" | "SELLER";
       passwordChangeRequired?: boolean;
@@ -255,6 +265,15 @@ export const UserService = {
       updatedData.lastNamePaterno = lastNamePaterno;
       updatedData.lastNameMaterno = lastNameMaterno;
     }
+
+    const mergedPhone = normalizePhoneNumber(data.phone ?? existing.phone);
+    const mergedCountryCode = normalizeCountryCode(data.countryCode ?? existing.countryCode);
+    const mergedCountry = (data.country ?? existing.country ?? "").trim();
+    validatePhoneOrThrow(mergedPhone, mergedCountryCode, mergedCountry);
+
+    updatedData.phone = mergedPhone;
+    updatedData.countryCode = mergedCountryCode;
+    updatedData.country = mergedCountry;
 
     const user = await UserRepository.updateUser(id, updatedData);
     if (!user) throw { status: 404, message: "Usuario no encontrado"};

@@ -5,10 +5,12 @@ export interface CreateUserPayload {
   lastNamePaterno: string;
   lastNameMaterno: string;
   email: string;
+  countryCode: string;
+  country: string;
   phone: string;
   role: "ADMIN" | "SUPERVISOR" | "SELLER";
   userCode?: number;
-  branchId?: number; // ← Ahora se incluirá automáticamente
+  branchId?: number;
 }
 
 export interface UpdateUserPayload {
@@ -16,6 +18,8 @@ export interface UpdateUserPayload {
   lastNamePaterno?: string;
   lastNameMaterno?: string;
   email?: string;
+  countryCode?: string;
+  country?: string;
   phone?: string;
   role?: "ADMIN" | "SUPERVISOR" | "SELLER";
   password?: string;
@@ -23,21 +27,10 @@ export interface UpdateUserPayload {
 }
 
 export const userService = {
-  // Obtener todos los usuarios
   getUsers: () => api.get('/users'),
-
-  // Obtener usuario por ID
   getUserById: (id: string) => api.get(`/users/${id}`),
-
-  // Crear usuario
   create: (payload: CreateUserPayload) => api.post('/users', payload),
-
-  // Actualizar usuario
   update: (id: string, payload: UpdateUserPayload) => api.put(`/users/${id}`, payload),
-
-  // Eliminar usuario
   delete: (id: string) => api.delete(`/users/${id}`),
-
-  // Buscar usuarios
   search: (query: string) => api.get('/users', { params: { q: query } }),
 };

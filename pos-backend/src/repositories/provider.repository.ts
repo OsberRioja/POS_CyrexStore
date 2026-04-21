@@ -8,6 +8,8 @@ export const providerRepository = {
     return prisma.provider.create({
       data: {
         name: dto.name,
+        countryCode: dto.countryCode,
+        country: dto.country,
         phone: dto.phone,
       },
     });
@@ -29,6 +31,8 @@ export const providerRepository = {
 
     const data: any = {};
     if (dto.name !== undefined) data.name = dto.name;
+    if (dto.countryCode !== undefined) data.countryCode = dto.countryCode;
+    if (dto.country !== undefined) data.country = dto.country;
     if (dto.phone !== undefined) data.phone = dto.phone;
 
     return prisma.provider.update({

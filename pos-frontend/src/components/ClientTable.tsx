@@ -58,7 +58,7 @@ export default function ClientTable({
               {/* <td className="p-3 border font-semibold">{c.id_cliente ?? c.id ?? c.idCliente}</td> */}
               <td className="p-3 border">{(c.tipo_cliente ?? c.tipoCliente ?? "").toString()}</td>
               <td className="p-3 border">{c.nombre ?? c.name ?? c.nombre}</td>
-              <td className="p-3 border">{c.telefono ?? c.phone}</td>
+              <td className="p-3 border">{`+${c.countryCode ?? "591"} ${c.phone ?? c.telefono ?? ""}`}</td>
               <td className="p-3 border">{c.genero ?? c.gender ?? "-"}</td>
               <td className="p-3 border">{c.fecha_nacimiento ? new Date(c.fecha_nacimiento).toLocaleDateString() : "-"}</td>
               {(canEdit || canDelete) &&(

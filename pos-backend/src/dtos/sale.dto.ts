@@ -23,7 +23,10 @@ export interface CreateSaleDTO {
     id_cliente?: number; // si existe
     tipoCliente?: "PERSONA" | "EMPRESA"; 
     nombre?: string; 
-    telefono?: string; 
+    telefono?: string;
+    countryCode?: string;
+    country?: string;
+    phone?: string; 
     genero?: string; 
     fecha_nacimiento?: string 
   } // crear al vuelo o usar existente
@@ -57,6 +60,9 @@ export const createSaleSchema = z.object({
     tipoCliente: z.enum(['PERSONA', 'EMPRESA']).optional(),
     nombre: z.string().min(1).optional(),
     telefono: z.string().optional(),
+    countryCode: z.string().optional(),
+    country: z.string().optional(),
+    phone: z.string().optional(),
     genero: z.string().optional(),
     fecha_nacimiento: z.string().optional(),
   }).optional(),

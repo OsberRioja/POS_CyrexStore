@@ -23,6 +23,7 @@ export const ClienteRepository = {
       // Construir condiciones OR (case-insensitive)
       where.OR = [
         { nombre: { contains: text, mode: "insensitive" } },
+        { phone: { contains: text, mode: "insensitive" } },
         { telefono: { contains: text, mode: "insensitive" } },
         { genero: { contains: text, mode: "insensitive" } },
         // Buscar por tipo_cliente SOLO si el texto coincide con algún valor del enum
@@ -53,7 +54,10 @@ export const ClienteRepository = {
     const data: any = {
       tipo_cliente: dto.tipoCliente,
       nombre: dto.nombre,
-      telefono: dto.telefono,
+      countryCode: dto.countryCode,
+      country: dto.country,
+      phone: dto.phone ?? dto.telefono ?? "",
+      telefono: dto.phone ?? dto.telefono ?? "",
       genero: dto.genero ?? null,
       fecha_nacimiento: dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : null,
     };
@@ -73,7 +77,13 @@ export const ClienteRepository = {
     const data: any = {};
     if (dto.tipoCliente !== undefined) data.tipo_cliente = dto.tipoCliente;
     if (dto.nombre !== undefined) data.nombre = dto.nombre;
-    if (dto.telefono !== undefined) data.telefono = dto.telefono;
+    if (dto.countryCode !== undefined) data.countryCode = dto.countryCode;
+    if (dto.country !== undefined) data.country = dto.country;
+    if (dto.phone !== undefined || dto.telefono !== undefined) {
+      const normalizedPhone = dto.phone ?? dto.telefono ?? "";
+      data.phone = normalizedPhone;
+      data.telefono = normalizedPhone;
+    }
     if (dto.genero !== undefined) data.genero = dto.genero;
     if (dto.fechaNacimiento !== undefined) data.fecha_nacimiento = dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : null;
 

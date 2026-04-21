@@ -81,6 +81,8 @@ export const UserController = {
         lastNameMaterno?: string;
         password?: string;
         email?: string;
+        countryCode?: string;
+        country?: string;
         phone?: string;
         role?: "ADMIN" | "SUPERVISOR" | "SELLER";
         branchId?: number | null; // ← NUEVO: permitir actualizar branchId
