@@ -16,6 +16,7 @@ export const usePdfGenerator = () => {
       // Transformar datos de la venta al formato del comprobante
       const receiptData: ReceiptData = {
         saleId: saleData.id,
+        saleNumber: saleData.saleNumber,
         date: saleData.createdAt,
         clientName: saleData.client?.nombre || 'Cliente General',
         clientPhone: saleData.client?.telefono,
@@ -26,7 +27,8 @@ export const usePdfGenerator = () => {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           subtotal: item.subtotal,
-          sku: item.product?.sku
+          sku: item.product?.sku,
+          serialNumbers: item.serialNumbers || []
         })) || [],
         payments: saleData.payments?.map((payment: any) => ({
           method: payment.paymentMethod?.name || 'N/A',
@@ -55,7 +57,8 @@ export const usePdfGenerator = () => {
   const downloadReceipt = async (saleData: any, filename?: string) => {
     try {
       const pdfBlob = await generateReceipt(saleData);
-      const defaultFilename = `comprobante-${saleData.id}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const saleRef = saleData.saleNumber ?? saleData.id;
+      const defaultFilename = `comprobante-${saleRef}-${new Date().toISOString().split('T')[0]}.pdf`;
       pdfService.downloadPDF(pdfBlob, filename || defaultFilename);
     } catch (error) {
       console.error('Error al descargar comprobante:', error);

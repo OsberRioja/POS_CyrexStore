@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, Plus, RefreshCw, Edit } from 'lucide-react';
+import { Eye, Plus, RefreshCw, Edit, Download } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import ReturnModal from './ReturnModal';
 import { returnService } from '../services/returnService';
@@ -7,6 +7,7 @@ import FormattedPrice from './FormattedPrice';
 
 interface Sale {
   id: string;
+  saleNumber?: number;
   total: number;
   totalPaid: number;
   balance: number;
@@ -24,6 +25,7 @@ interface SalesTableProps {
   onReload?: () => void;
   onEditSale?: (sale: any) => void;
   isReopened?: boolean;
+  onDownloadReceipt?: (sale: Sale) => void;
 }
 
 const SalesTable: React.FC<SalesTableProps> = ({ 
@@ -32,7 +34,8 @@ const SalesTable: React.FC<SalesTableProps> = ({
   onAddPayment, 
   onReload,
   onEditSale,
-  isReopened
+  isReopened,
+  onDownloadReceipt
 }) => {
   const { user } = useAuth();
 
@@ -120,6 +123,9 @@ const SalesTable: React.FC<SalesTableProps> = ({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                N° Venta
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Fecha
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -153,6 +159,14 @@ const SalesTable: React.FC<SalesTableProps> = ({
                   sale.paymentStatus !== 'PAID' ? 'bg-red-25 border-l-4 border-red-400' : ''
                 }`}
               >
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <div className="font-semibold text-blue-700">
+                    #{sale.saleNumber ?? sale.id.slice(0, 8)}
+                  </div>
+                  {sale.saleNumber && (
+                    <div className="text-xs text-gray-500">{sale.id.slice(0, 8)}...</div>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {formatDate(sale.createdAt)}
                 </td>
@@ -199,6 +213,16 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     >
                       <Eye size={16} />
                     </button>
+
+                    {onDownloadReceipt && (
+                      <button
+                        onClick={() => onDownloadReceipt(sale)}
+                        className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
+                        title="Descargar comprobante"
+                      >
+                        <Download size={16} />
+                      </button>
+                    )}
                     
                     {sale.paymentStatus === 'PARTIAL' && onAddPayment && (
                       <button

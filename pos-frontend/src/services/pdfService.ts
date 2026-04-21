@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 
 export interface ReceiptData {
   saleId: string;
+  saleNumber?: number;
   date: string;
   clientName: string;
   clientPhone?: string;
@@ -14,6 +15,7 @@ export interface ReceiptData {
     unitPrice: number;
     subtotal: number;
     sku?: string;
+    serialNumbers?: string[];
   }>;
   payments: Array<{
     method: string;
@@ -151,7 +153,8 @@ class PdfService {
         <!-- Información de la venta -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
           <div>
-            <strong>N° Venta:</strong> ${receiptData.saleId}<br>
+            <strong>N° Venta:</strong> ${receiptData.saleNumber ?? receiptData.saleId}<br>
+            <strong>ID Interno:</strong> ${receiptData.saleId}<br>
             <strong>Fecha:</strong> ${formatDate(receiptData.date)}<br>
             <strong>Vendedor:</strong> ${receiptData.sellerName}
           </div>
@@ -180,6 +183,7 @@ class PdfService {
                   <td style="padding: 8px 5px;">
                     ${item.name}
                     ${item.sku ? `<br><small style="color: #666;">SKU: ${item.sku}</small>` : ''}
+                    ${item.serialNumbers?.length ? `<br><small style="color: #0a66c2;">Series: ${item.serialNumbers.join(', ')}</small>` : ''}
                   </td>
                   <td style="text-align: center; padding: 8px 5px;">${item.quantity}</td>
                   <td style="text-align: right; padding: 8px 5px;">${formatCurrency(item.unitPrice)}</td>

@@ -61,9 +61,10 @@ export const SaleRepository = {
     dateFrom?: string;
     dateTo?: string;
     paymentStatus?: PaymentStatus;
+    search?: string;
     branchId?: number; // ← NUEVO: Filtrar por sucursal
   }) {
-    const { page = 1, limit = 20, sellerId, cashBoxId, dateFrom, dateTo, paymentStatus, branchId } = opts;
+    const { page = 1, limit = 20, sellerId, cashBoxId, dateFrom, dateTo, paymentStatus, search, branchId } = opts;
 
     const where: any = {};
 
@@ -71,6 +72,20 @@ export const SaleRepository = {
     if (cashBoxId !== undefined) where.cashBoxId = Number(cashBoxId);
     if (paymentStatus) {
       where.paymentStatus = paymentStatus;
+    }
+    if (search && search.trim()) {
+      const normalizedSearch = search.trim();
+      const saleNumber = Number.parseInt(normalizedSearch, 10);
+
+      where.OR = [
+        {
+          id: {
+            contains: normalizedSearch,
+            mode: "insensitive",
+          }
+        },
+        ...(Number.isInteger(saleNumber) ? [{ saleNumber }] : [])
+      ];
     }
     if (dateFrom || dateTo) {
       where.createdAt = {};

@@ -47,6 +47,7 @@ class SaleServiceClass {
     paymentStatus?: string;
     dateFrom?: string;
     dateTo?: string;
+    search?: string;
   } = {}) {
     console.log('SaleService.list called with params:', params);
     

@@ -5,6 +5,7 @@ import SaleDetailsModal from "../components/SaleDetailModal";
 import AddPaymentModal from "../components/AddPaymentModal";
 import { reportService } from "../services/reportService";
 import { Download } from "lucide-react";
+import { usePdfGenerator } from "../hooks/usePdfGenerator";
 //import { useAuth } from "../context/authContext";
 import { useBranch } from "../hooks/useBranch";
 
@@ -25,6 +26,8 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { downloadReceipt, isGenerating } = usePdfGenerator();
 
   //const { currentBranchId } = useAuth();
   const { branches, currentBranchId: branchId } = useBranch();
@@ -52,6 +55,25 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
     setSelectedSale(null);
     await onReload();
   };
+
+  const handleDownloadReceipt = async (sale: any) => {
+    try {
+      await downloadReceipt(sale);
+    } catch (error: any) {
+      console.error('Error descargando comprobante:', error);
+      alert(error.message || 'No se pudo descargar el comprobante');
+    }
+  };
+
+  const filteredSales = (sales || []).filter((sale) => {
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.trim().toLowerCase();
+    return (
+      String(sale.saleNumber || '').includes(q) ||
+      String(sale.id || '').toLowerCase().includes(q) ||
+      String(sale.client?.nombre || '').toLowerCase().includes(q)
+    );
+  });
 
   // Descargar reporte de ventas
   const handleDownloadSalesReport = async () => {
@@ -108,6 +130,16 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
         </div>
       </div>
 
+      <div className="mb-3">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar por N° de venta, ID o cliente..."
+          className="w-full md:w-96 border border-gray-300 rounded px-3 py-2 text-sm"
+        />
+      </div>
+
       {/* Información adicional para cajas cerradas */}
       {isClosedCashbox && cashboxId && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -133,13 +165,18 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
       )}
 
       <SalesTable
-        sales={sales || []}
+        sales={filteredSales}
         onViewSale={handleViewSale}
         onAddPayment={handleAddPayment}
         onEditSale={onEditSale}
         onReload={onReload}
         isReopened={isReopened}
+        onDownloadReceipt={handleDownloadReceipt}
       />
+
+      {isGenerating && (
+        <p className="text-xs text-blue-600 mt-2">Generando comprobante...</p>
+      )}
 
       {showModal && openCashboxId && (
         <SaleFormModal

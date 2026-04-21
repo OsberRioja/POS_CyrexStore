@@ -54,6 +54,7 @@ export const list = async (req: Request, res: Response) => {
     const dateFrom = typeof req.query.dateFrom === "string" ? req.query.dateFrom : undefined;
     const dateTo = typeof req.query.dateTo === "string" ? req.query.dateTo : undefined;
     const paymentStatus = req.query.paymentStatus ? req.query.paymentStatus as PaymentStatus : undefined;
+    const search = typeof req.query.search === "string" ? req.query.search : undefined;
 
     // Obtener branchId del usuario autenticado
     const userBranchId = (req as any).user?.branchId;
@@ -83,6 +84,7 @@ export const list = async (req: Request, res: Response) => {
       dateFrom, 
       dateTo,
       paymentStatus,
+      search,
       branchId: targetBranchId
     });
     return res.json(result);

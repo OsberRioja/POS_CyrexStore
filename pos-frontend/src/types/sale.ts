@@ -1,5 +1,6 @@
 export interface Sale {
     id: string;
+    saleNumber?: number;
     total: number;
     totalPaid: number;
     balance: number;
@@ -24,6 +25,7 @@ export interface SaleItem {
     originalPrice?: number;
     originalCurrency?: string;
     conversionRate?: number;
+    serialNumbers?: string[];
     product?: {
         name: string;
         sku: string;

@@ -548,6 +548,7 @@ export const SaleService = {
     dateFrom?: string;
     dateTo?: string;
     paymentStatus?: PaymentStatus;
+    search?: string;
     branchId?: number;
   }) {
     return SaleRepository.findAll(params);

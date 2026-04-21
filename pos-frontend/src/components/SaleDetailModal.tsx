@@ -60,7 +60,8 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) =>
         <div className="flex justify-between items-center p-6 border-b">
           <div>
             <h2 className="text-2xl font-bold">Detalles de Venta</h2>
-            <p className="text-sm text-gray-600">ID: {sale.id}</p>
+            <p className="text-sm text-gray-600">N° Venta: {sale.saleNumber ?? sale.id.slice(0, 8)}</p>
+            <p className="text-xs text-gray-500">ID interno: {sale.id}</p>
           </div>
           <button
             onClick={onClose}
