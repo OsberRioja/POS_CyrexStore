@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Building, Calendar, MapPin } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import { useDialog } from '../context/DialogContext';
+import PaginationControls from './PaginationControls';
 
 interface InternalUse {
   id: number;
@@ -34,6 +35,8 @@ const ActiveInternalUsesTable: React.FC<ActiveInternalUsesTableProps> = ({
   onReturn 
 }) => {
   const { confirm, alert } = useDialog();
+  const [page, setPage] = useState(1);
+  const INTERNAL_USES_PER_PAGE = 10;
 
   const handleReturn = async (movementId: number) => {
     const shouldReturn = await confirm({
@@ -66,6 +69,9 @@ const ActiveInternalUsesTable: React.FC<ActiveInternalUsesTableProps> = ({
     );
   }
 
+  const totalPages = Math.max(1, Math.ceil(internalUses.length / INTERNAL_USES_PER_PAGE));
+  const paginatedInternalUses = internalUses.slice((page - 1) * INTERNAL_USES_PER_PAGE, page * INTERNAL_USES_PER_PAGE);
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <table className="w-full">
@@ -81,7 +87,7 @@ const ActiveInternalUsesTable: React.FC<ActiveInternalUsesTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {internalUses.map((use) => (
+          {paginatedInternalUses.map((use) => (
             <tr key={use.id} className="hover:bg-gray-50">
               <td className="px-6 py-4">
                 <div>
@@ -143,6 +149,17 @@ const ActiveInternalUsesTable: React.FC<ActiveInternalUsesTableProps> = ({
           ))}
         </tbody>
       </table>
+      {internalUses.length > 0 && (
+        <div className="px-6 pb-4">
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={internalUses.length}
+            pageSize={INTERNAL_USES_PER_PAGE}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
     </div>
   );
 };

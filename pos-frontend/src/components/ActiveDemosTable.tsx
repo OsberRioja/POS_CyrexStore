@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { MonitorPlay, CheckCircle, Clock, Search } from 'lucide-react';
 import CompleteDemoModal from './CompleteDemoModal';
+import PaginationControls from './PaginationControls';
 
 interface ActiveDemo {
   id: number;
@@ -28,14 +29,18 @@ interface ActiveDemosTableProps {
 
 const ActiveDemosTable: React.FC<ActiveDemosTableProps> = ({ demos, onComplete }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedDemo, setSelectedDemo] = useState<ActiveDemo | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const DEMOS_PER_PAGE = 10;
 
   const filteredDemos = demos.filter(demo =>
     demo.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     demo.product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
     demo.reason.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const totalPages = Math.max(1, Math.ceil(filteredDemos.length / DEMOS_PER_PAGE));
+  const paginatedDemos = filteredDemos.slice((page - 1) * DEMOS_PER_PAGE, page * DEMOS_PER_PAGE);
 
   const handleComplete = (demo: ActiveDemo) => {
     setSelectedDemo(demo);
@@ -76,7 +81,10 @@ const ActiveDemosTable: React.FC<ActiveDemosTableProps> = ({ demos, onComplete }
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
             placeholder="Buscar por producto, SKU o razón..."
             className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -98,7 +106,7 @@ const ActiveDemosTable: React.FC<ActiveDemosTableProps> = ({ demos, onComplete }
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredDemos.map((demo) => {
+            {paginatedDemos.map((demo) => {
               const daysInDemo = getDaysInDemo(demo.createdAt);
               
               return (
@@ -163,6 +171,18 @@ const ActiveDemosTable: React.FC<ActiveDemosTableProps> = ({ demos, onComplete }
           <div className="text-center py-12 text-gray-500">
             <Search size={48} className="mx-auto mb-4 text-gray-400" />
             <p>No se encontraron demos</p>
+          </div>
+        )}
+
+        {filteredDemos.length > 0 && (
+          <div className="px-6 pb-4">
+            <PaginationControls
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={filteredDemos.length}
+              pageSize={DEMOS_PER_PAGE}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

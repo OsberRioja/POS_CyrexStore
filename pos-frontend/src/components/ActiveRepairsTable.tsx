@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Wrench, CheckCircle, Clock, Search, Truck } from 'lucide-react';
 import CompleteRepairModal from './CompleteRepairModal';
+import PaginationControls from './PaginationControls';
 
 interface ActiveRepair {
   id: number;
@@ -36,8 +37,10 @@ interface ActiveRepairsTableProps {
 
 const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComplete }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedRepair, setSelectedRepair] = useState<ActiveRepair | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const REPAIRS_PER_PAGE = 10;
 
   const filteredRepairs = repairs.filter(repair =>
     repair.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -46,6 +49,8 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
     (repair.provider?.name.toLowerCase().includes(searchTerm.toLowerCase())) || // ← BUSCAR POR PROVEEDOR
     (repair.product.provider?.name.toLowerCase().includes(searchTerm.toLowerCase())) // ← BUSCAR POR PROVEEDOR DEL PRODUCTO
   );
+  const totalPages = Math.max(1, Math.ceil(filteredRepairs.length / REPAIRS_PER_PAGE));
+  const paginatedRepairs = filteredRepairs.slice((page - 1) * REPAIRS_PER_PAGE, page * REPAIRS_PER_PAGE);
 
   // Función para obtener el proveedor a mostrar (prioridad: movimiento > producto)
   const getDisplayProvider = (repair: ActiveRepair) => {
@@ -91,7 +96,10 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
             placeholder="Buscar por producto, SKU, razón o proveedor..."
             className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -114,7 +122,7 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredRepairs.map((repair) => {
+            {paginatedRepairs.map((repair) => {
               const daysInRepair = getDaysInRepair(repair.createdAt);
               const displayProvider = getDisplayProvider(repair);
               
@@ -193,6 +201,18 @@ const ActiveRepairsTable: React.FC<ActiveRepairsTableProps> = ({ repairs, onComp
           <div className="text-center py-12 text-gray-500">
             <Search size={48} className="mx-auto mb-4 text-gray-400" />
             <p>No se encontraron reparaciones</p>
+          </div>
+        )}
+
+        {filteredRepairs.length > 0 && (
+          <div className="px-6 pb-4">
+            <PaginationControls
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={filteredRepairs.length}
+              pageSize={REPAIRS_PER_PAGE}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

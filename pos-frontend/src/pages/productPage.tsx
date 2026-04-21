@@ -8,6 +8,7 @@ import { PermissionGuard } from "../components/PermissionGuard";
 import { useAuth } from "../context/authContext"; // ← importar useAuth
 import { useBranch } from "../hooks/useBranch"; // ← importar useBranch
 import { useDialog } from "../context/DialogContext";
+import PaginationControls from "../components/PaginationControls";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -148,29 +149,13 @@ export default function ProductsPage() {
       />
 
       {!loading && filteredProducts.length > 0 && (
-        <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
-          <p className="text-sm text-slate-600">
-            Mostrando {(currentPage - 1) * PRODUCTS_PER_PAGE + 1}-
-            {Math.min(currentPage * PRODUCTS_PER_PAGE, filteredProducts.length)} de {filteredProducts.length} productos
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="h-10 min-w-[110px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm font-medium text-slate-600">{currentPage} / {totalPages}</span>
-            <button
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage >= totalPages}
-              className="h-10 min-w-[110px] rounded-xl bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Siguiente
-            </button>
-          </div>
-        </div>
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredProducts.length}
+          pageSize={PRODUCTS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       )}
 
       {showForm && (

@@ -33,6 +33,7 @@ import AdjustStockModal from '../components/AdjustStockModal';
 import ActiveInternalUsesTable from '../components/ActiveInternalUsesTable';
 import InternalUseModal from '../components/InternalUseModal';
 import TransferBetweenBranchesModal from '../components/TransferBetweenBranchesModal';
+import PaginationControls from '../components/PaginationControls';
 
 type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos' | 'active-internal-uses';
 type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN' | 'ADJUSTMENT' | 'INTERNAL_USE_OUT' | 'INTERNAL_USE_RETURN' | 'TRANSFER_OUT' | 'TRANSFER_IN';
@@ -54,8 +55,10 @@ export default function StockPage() {
   const [showInternalUseModal, setShowInternalUseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [productsPage, setProductsPage] = useState(1);
+  const [movementsPage, setMovementsPage] = useState(1);
 
   const PRODUCTS_PER_PAGE = 12;
+  const MOVEMENTS_PER_PAGE = 15;
 
   const [searchSaleId, setSearchSaleId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -103,7 +106,7 @@ export default function StockPage() {
     setLoading(true);
     try {
       const [movementsRes, productsRes, summaryRes] = await Promise.all([
-        stockService.listMovements({ limit: 50 }),
+        stockService.listMovements({ limit: 500 }),
         loadProducts(),
         stockService.getSummary()
       ]);
@@ -131,7 +134,7 @@ export default function StockPage() {
 
   const loadMovements = async () => {
     try {
-      const filters: any = { limit: 50 };
+      const filters: any = { limit: 500 };
       if (movementTypeFilter !== 'ALL') {
         filters.movementType = movementTypeFilter;
       }
@@ -187,11 +190,20 @@ export default function StockPage() {
   useEffect(() => {
     setProductsPage(1);
   }, [searchTerm, view, filteredProducts.length]);
+  useEffect(() => {
+    setMovementsPage(1);
+  }, [movementTypeFilter, searchSaleId, movements.length, searchResults?.length, view]);
 
   const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
   const paginatedProducts = filteredProducts.slice(
     (productsPage - 1) * PRODUCTS_PER_PAGE,
     productsPage * PRODUCTS_PER_PAGE
+  );
+  const activeMovements = searchResults || movements;
+  const totalMovementPages = Math.max(1, Math.ceil(activeMovements.length / MOVEMENTS_PER_PAGE));
+  const paginatedMovements = activeMovements.slice(
+    (movementsPage - 1) * MOVEMENTS_PER_PAGE,
+    movementsPage * MOVEMENTS_PER_PAGE
   );
 
   // Función para cargar usos internos
@@ -572,7 +584,7 @@ export default function StockPage() {
 
           {/* 🎯 CONTENEDOR CON SCROLL HORIZONTAL - AQUÍ ESTÁ LA SOLUCIÓN */}
             <StockMovementsTable
-              movements={searchResults || movements}
+              movements={paginatedMovements}
               onViewSale={(sale) => {
                 saleService.searchById(sale.id)
                   .then(response => {
@@ -588,6 +600,15 @@ export default function StockPage() {
                   });
               }}
             />
+            {activeMovements.length > 0 && (
+              <PaginationControls
+                currentPage={movementsPage}
+                totalPages={totalMovementPages}
+                totalItems={activeMovements.length}
+                pageSize={MOVEMENTS_PER_PAGE}
+                onPageChange={setMovementsPage}
+              />
+            )}
         </div>
       )}
 
@@ -837,28 +858,14 @@ export default function StockPage() {
             )}
 
             {filteredProducts.length > 0 && (
-              <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
-                <p className="text-sm text-slate-600">
-                  Mostrando {(productsPage - 1) * PRODUCTS_PER_PAGE + 1}-
-                  {Math.min(productsPage * PRODUCTS_PER_PAGE, filteredProducts.length)} de {filteredProducts.length}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setProductsPage((prev) => Math.max(1, prev - 1))}
-                    disabled={productsPage === 1}
-                    className="h-10 min-w-[110px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Anterior
-                  </button>
-                  <span className="text-sm font-medium text-slate-600">{productsPage} / {totalProductPages}</span>
-                  <button
-                    onClick={() => setProductsPage((prev) => Math.min(totalProductPages, prev + 1))}
-                    disabled={productsPage >= totalProductPages}
-                    className="h-10 min-w-[110px] rounded-xl bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Siguiente
-                  </button>
-                </div>
+              <div className="px-6 pb-4">
+                <PaginationControls
+                  currentPage={productsPage}
+                  totalPages={totalProductPages}
+                  totalItems={filteredProducts.length}
+                  pageSize={PRODUCTS_PER_PAGE}
+                  onPageChange={setProductsPage}
+                />
               </div>
             )}
           </div>
