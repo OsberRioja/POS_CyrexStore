@@ -6,6 +6,7 @@ import { CashBoxRepository } from "../repositories/cashBox.repository";
 import { PaymentMethodRepository } from "../repositories/paymentMethod.repository";
 import { CommissionCalculationService } from "./commissionCalculation.service";
 import  { ExchangeRateService }  from "./exchangeRate.service";
+import { normalizeCountryCode, normalizePhoneNumber } from "../utils/phone";
 
 const prisma = new PrismaClient();
 
@@ -144,7 +145,9 @@ export const SaleService = {
             throw { status: 400, message: "Si envia client sin id, debe incluir client.nombre para crear cliente" };
           }
           const tipo_cliente = dto.client.tipoCliente === "EMPRESA" ? "EMPRESA" : "PERSONA";
-          const telefono = dto.client.telefono ? String(dto.client.telefono) : "";
+          const normalizedPhone = normalizePhoneNumber(dto.client.phone ?? dto.client.telefono ?? "");
+          const countryCode = normalizeCountryCode(dto.client.countryCode ?? "591");
+          const country = String(dto.client.country ?? "Bolivia");
           const genero = dto.client.genero ? String(dto.client.genero) : null;
           const fecha_nacimiento = dto.client.fecha_nacimiento ? new Date(dto.client.fecha_nacimiento) : null;
 
@@ -152,7 +155,10 @@ export const SaleService = {
             data: {
               nombre,
               tipo_cliente,
-              telefono,
+              countryCode,
+              country,
+              phone: normalizedPhone,
+              telefono: normalizedPhone,
               genero,
               fecha_nacimiento,
             },

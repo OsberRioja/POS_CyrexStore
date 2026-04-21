@@ -2,6 +2,7 @@
 import { ClienteRepository } from "../repositories/client.repository";
 import type { CreateClienteDTO } from "../dtos/createClient.dto";
 import type { UpdateClienteDTO } from "../dtos/updateClient.dto";
+import { normalizeCountryCode, normalizePhoneNumber, validatePhoneOrThrow } from "../utils/phone";
 
 export const ClienteService = {
   /**
@@ -23,8 +24,12 @@ export const ClienteService = {
 
   // ← NOTA: No se modifica createCliente - clientes son globales
   async createCliente(dto: CreateClienteDTO) {
-    // aquí podrías añadir validaciones de negocio (ej: formato de teléfono)
-    return ClienteRepository.create(dto);
+    const phone = normalizePhoneNumber(dto.phone ?? dto.telefono);
+    const countryCode = normalizeCountryCode(dto.countryCode);
+    const country = (dto.country ?? "").trim();
+    validatePhoneOrThrow(phone, countryCode, country);
+
+    return ClienteRepository.create({ ...dto, phone, telefono: phone, countryCode, country });
   },
 
   // ← NOTA: No se modifica listClientes - clientes son globales
@@ -39,10 +44,15 @@ export const ClienteService = {
   },
 
   async updateCliente(id: number, dto: UpdateClienteDTO) {
-    // opcional: verificar existencia antes de update
     const exists = await ClienteRepository.findById(id);
     if (!exists) throw { status: 404, message: "Cliente no encontrado" };
-    return ClienteRepository.update(id, dto);
+
+    const mergedPhone = normalizePhoneNumber(dto.phone ?? dto.telefono ?? exists.phone ?? exists.telefono);
+    const mergedCountryCode = normalizeCountryCode(dto.countryCode ?? exists.countryCode);
+    const mergedCountry = (dto.country ?? exists.country ?? "").trim();
+    validatePhoneOrThrow(mergedPhone, mergedCountryCode, mergedCountry);
+
+    return ClienteRepository.update(id, { ...dto, phone: mergedPhone, telefono: mergedPhone, countryCode: mergedCountryCode, country: mergedCountry });
   },
 
   async deleteCliente(id: number) {

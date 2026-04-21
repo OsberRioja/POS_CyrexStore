@@ -13,6 +13,8 @@ export const UserRepository = {
         lastNameMaterno: dto.lastNameMaterno,
         email: dto.email,
         password: dto.password ?? "",
+        countryCode: dto.countryCode,
+        country: dto.country,
         phone: dto.phone ?? null,
         role: dto.role,
         passwordChangeRequired: dto.passwordChangeRequired ?? false,
@@ -110,6 +112,8 @@ export const UserRepository = {
       lastNameMaterno?: string;
       password?: string;
       email?: string;
+      countryCode?: string;
+      country?: string;
       phone?: string;
       role?: "ADMIN" | "SUPERVISOR" | "SELLER";
       passwordChangeRequired?: boolean;
@@ -129,6 +133,8 @@ export const UserRepository = {
         ...(data.lastNameMaterno !== undefined && { lastNameMaterno: data.lastNameMaterno }),
         ...(data.password && { password: data.password }),
         ...(data.email && { email: data.email }),
+        ...(data.countryCode && { countryCode: data.countryCode }),
+        ...(data.country && { country: data.country }),
         ...(data.phone && { phone: data.phone }),
         ...(data.role && { role: data.role }),
         ...(data.passwordChangeRequired !== undefined && {

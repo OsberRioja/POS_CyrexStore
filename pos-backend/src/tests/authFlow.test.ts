@@ -28,6 +28,8 @@ export class AuthFlowTests {
       lastNamePaterno: 'de',
       lastNameMaterno: 'Prueba',
       email: `test${Date.now()}@example.com`,
+      countryCode: '591',
+      country: 'Bolivia',
       phone: '123456789',
       role: 'SELLER' as const
     };

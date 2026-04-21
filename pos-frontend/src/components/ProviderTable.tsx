@@ -53,7 +53,7 @@ export default function ProviderTable({
           {providers.map((p) => (
             <tr key={p.id_provider ?? p.id ?? p.idProveedor} className="odd:bg-white even:bg-gray-50">
               <td className="p-3 border">{p.nombre ?? p.name}</td>
-              <td className="p-3 border">{p.telefono ?? p.phone}</td>
+              <td className="p-3 border">{`+${p.countryCode ?? "591"} ${p.phone ?? p.telefono ?? ""}`}</td>
               <td className="p-3 border">{p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}</td>
               {(canEdit || canDelete) && (
                 <td className="p-3 border flex gap-2">

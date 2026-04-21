@@ -73,7 +73,7 @@ export default function UserTable({
               <td className="p-3 border font-semibold">{getCode(u)}</td>
               <td className="p-3 border">{getDisplayName(u)}</td>
               <td className="p-3 border">{u.email}</td>
-              <td className="p-3 border">{u.phone}</td>
+              <td className="p-3 border">{`+${u.countryCode ?? "591"} ${u.phone ?? ""}`}</td>
               <td className="p-3 border">
                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                   u.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
