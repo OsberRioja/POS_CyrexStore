@@ -59,7 +59,17 @@ export const usePdfGenerator = () => {
       const pdfBlob = await generateReceipt(saleData);
       const saleRef = saleData.saleNumber ?? saleData.id;
       const defaultFilename = `comprobante-${saleRef}-${new Date().toISOString().split('T')[0]}.pdf`;
-      pdfService.downloadPDF(pdfBlob, filename || defaultFilename);
+      const finalFilename = filename || defaultFilename;
+      pdfService.downloadPDF(pdfBlob, finalFilename);
+      const formData = new FormData();
+      formData.append('file', pdfBlob, finalFilename);
+      formData.append('saleId', saleData.id.toString());
+
+      await fetch('http://localhost:3000/api/comprobantes/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
     } catch (error) {
       console.error('Error al descargar comprobante:', error);
       throw error;
