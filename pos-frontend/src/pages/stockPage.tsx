@@ -53,6 +53,9 @@ export default function StockPage() {
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [showInternalUseModal, setShowInternalUseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [productsPage, setProductsPage] = useState(1);
+
+  const PRODUCTS_PER_PAGE = 12;
 
   const [searchSaleId, setSearchSaleId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -180,6 +183,16 @@ export default function StockPage() {
     );
     setFilteredProducts(filtered);
   };
+
+  useEffect(() => {
+    setProductsPage(1);
+  }, [searchTerm, view, filteredProducts.length]);
+
+  const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+  const paginatedProducts = filteredProducts.slice(
+    (productsPage - 1) * PRODUCTS_PER_PAGE,
+    productsPage * PRODUCTS_PER_PAGE
+  );
 
   // Función para cargar usos internos
   const loadActiveInternalUses = async () => {
@@ -364,7 +377,7 @@ export default function StockPage() {
         </div>
         <button
           onClick={() => handleOpenPurchaseModal()}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm transition"
         >
           <ShoppingCart size={18} />
           Registrar compra
@@ -455,7 +468,7 @@ export default function StockPage() {
       <div className="flex gap-2 overflow-x-auto pb-2">
         <button
           onClick={() => setView('movements')}
-          className={`px-4 py-2 rounded-lg font-medium ${
+          className={`px-4 py-2 rounded-xl font-medium transition ${
             view === 'movements'
               ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -465,7 +478,7 @@ export default function StockPage() {
         </button>
         <button
           onClick={() => setView('products')}
-          className={`px-4 py-2 rounded-lg font-medium ${
+          className={`px-4 py-2 rounded-xl font-medium transition ${
             view === 'products'
               ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -475,25 +488,25 @@ export default function StockPage() {
         </button>
         <button 
           onClick={() => setView('active-repairs')}
-          className={`px-4 py-2 rounded-lg font-medium ${
+          className={`px-4 py-2 rounded-xl font-medium transition ${
             view === 'active-repairs' 
-              ? 'bg-orange-600 text-white' 
+              ? 'bg-blue-600 text-white' 
               : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
           🔧 Reparaciones
         </button>
         <button
           onClick={() => setView('active-demos')} 
-            className={`px-4 py-2 rounded-lg font-medium ${
+            className={`px-4 py-2 rounded-xl font-medium transition ${
               view === 'active-demos' 
-                ? 'bg-purple-600 text-white' 
+                ? 'bg-blue-600 text-white' 
                 : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
           🎮 Demos
         </button>
         <button
           onClick={() => setView('active-internal-uses')}
-          className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+          className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition ${
             view === 'active-internal-uses'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-700 hover:bg-gray-50'
           }`}
         >
@@ -671,7 +684,7 @@ export default function StockPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredProducts.map((product) => {
+                {paginatedProducts.map((product) => {
                   const margin = product.costPrice ? 
                     ((product.salePrice - product.costPrice) / product.costPrice * 100).toFixed(0) : 'N/A';
                   const stockStatus = product.stock === 0 ? 'out' : product.stock <= 5 ? 'low' : 'ok';
@@ -820,6 +833,32 @@ export default function StockPage() {
               <div className="text-center py-12 text-gray-500">
                 <Package size={48} className="mx-auto mb-4 text-gray-400" />
                 <p>No se encontraron productos</p>
+              </div>
+            )}
+
+            {filteredProducts.length > 0 && (
+              <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
+                <p className="text-sm text-slate-600">
+                  Mostrando {(productsPage - 1) * PRODUCTS_PER_PAGE + 1}-
+                  {Math.min(productsPage * PRODUCTS_PER_PAGE, filteredProducts.length)} de {filteredProducts.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setProductsPage((prev) => Math.max(1, prev - 1))}
+                    disabled={productsPage === 1}
+                    className="h-10 min-w-[110px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-sm font-medium text-slate-600">{productsPage} / {totalProductPages}</span>
+                  <button
+                    onClick={() => setProductsPage((prev) => Math.min(totalProductPages, prev + 1))}
+                    disabled={productsPage >= totalProductPages}
+                    className="h-10 min-w-[110px] rounded-xl bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Siguiente
+                  </button>
+                </div>
               </div>
             )}
           </div>

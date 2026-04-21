@@ -15,6 +15,9 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<any | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const PRODUCTS_PER_PAGE = 10;
 
   const { hasPermission } = usePermissions();
   const { confirm, alert } = useDialog();
@@ -43,6 +46,10 @@ export default function ProductsPage() {
   useEffect(() => { 
     loadProducts(); 
   }, [currentBranchId, showInactive]); // ← NUEVO: recargar cuando cambie la sucursal
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [showInactive, currentBranchId, products.length]);
 
   const openNew = () => { 
     setSelected(null); 
@@ -92,6 +99,11 @@ export default function ProductsPage() {
   };
 
   const filteredProducts = showInactive ? products : products.filter(p => p.isActive);
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * PRODUCTS_PER_PAGE,
+    currentPage * PRODUCTS_PER_PAGE
+  );
 
   return (
     <div>
@@ -124,7 +136,7 @@ export default function ProductsPage() {
       </div>
 
       <ProductTable 
-        products={filteredProducts}
+        products={paginatedProducts}
         loading={loading}
         onEdit={openEdit} 
         onDelete={loadProducts} 
@@ -134,6 +146,32 @@ export default function ProductsPage() {
         canDelete={hasPermission(Permission.PRODUCT_DELETE)}
         canToggleActive={hasPermission(Permission.PRODUCT_TOGGLE_ACTIVE)}
       />
+
+      {!loading && filteredProducts.length > 0 && (
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <p className="text-sm text-slate-600">
+            Mostrando {(currentPage - 1) * PRODUCTS_PER_PAGE + 1}-
+            {Math.min(currentPage * PRODUCTS_PER_PAGE, filteredProducts.length)} de {filteredProducts.length} productos
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="h-10 min-w-[110px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <span className="text-sm font-medium text-slate-600">{currentPage} / {totalPages}</span>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage >= totalPages}
+              className="h-10 min-w-[110px] rounded-xl bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <ProductForm

@@ -76,6 +76,18 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [expandedLineId, setExpandedLineId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (lines.length === 0) {
+      setExpandedLineId(null);
+      return;
+    }
+
+    if (!expandedLineId || !lines.some((line) => line.localId === expandedLineId)) {
+      setExpandedLineId(lines[0].localId);
+    }
+  }, [expandedLineId, lines]);
 
   useEffect(() => {
     const loadProviders = async () => {
@@ -196,7 +208,7 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Registrar compra de stock</h2>
@@ -205,7 +217,7 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><X size={24} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-3"><Search size={18} className="text-blue-600" /><h3 className="font-semibold text-blue-900">Agregar productos</h3></div>
             <input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Buscar por nombre, SKU o categoría" className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -213,7 +225,11 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
               {filteredProducts.slice(0, 20).map((product) => {
                 const symbol = getCurrencySymbol(product.priceCurrency);
                 return (
-                  <button key={product.id} type="button" onClick={() => setLines((current) => [...current, createLineFromProduct(product)])} className="w-full text-left px-4 py-3 hover:bg-blue-50">
+                  <button key={product.id} type="button" onClick={() => {
+                    const newLine = createLineFromProduct(product);
+                    setLines((current) => [...current, newLine]);
+                    setExpandedLineId(newLine.localId);
+                  }} className="w-full text-left px-4 py-3 hover:bg-blue-50">
                     <div className="font-medium text-gray-900">{product.name}</div>
                     <div className="text-xs text-gray-500">SKU: {product.sku} • Stock: {product.stock} • Costo: {symbol} {Number(product.costPrice || 0).toFixed(2)}</div>
                   </button>
@@ -224,17 +240,27 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
 
           {lines.map((line, index) => {
             const symbol = getCurrencySymbol(line.product?.priceCurrency);
+            const isExpanded = expandedLineId === line.localId;
+
             return (
-              <div key={line.localId} className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-100 px-4 py-3 flex items-center justify-between">
-                  <div>
+              <div key={line.localId} className="border rounded-xl overflow-hidden">
+                <div className="bg-gray-100 px-4 py-3 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedLineId((current) => current === line.localId ? null : line.localId)}
+                    className="text-left flex-1"
+                  >
                     <h3 className="font-semibold text-gray-900">{index + 1}. {line.product.name}</h3>
                     <p className="text-xs text-gray-500">SKU: {line.product.sku} • Moneda: {line.product?.priceCurrency || 'BOB'}</p>
+                  </button>
+                  <div className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
+                    {symbol} {(line.quantity * line.unitCost).toFixed(2)}
                   </div>
                   <button type="button" onClick={() => setLines((current) => current.filter((item) => item.localId !== line.localId))} className="p-2 text-red-600 hover:bg-red-50 rounded-md"><Trash2 size={18} /></button>
                 </div>
 
-                <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {isExpanded && (
+                <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-5">
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -287,7 +313,7 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
                     <div className="border rounded-lg overflow-hidden">
                       <div className="px-4 py-3 bg-gray-100 flex items-center justify-between">
                         <p className="text-xs text-gray-500">{line.serialNumbers.filter((serial) => serial.trim()).length}/{line.quantity} series</p>
-                        <button type="button" onClick={() => updateLine(line.localId, (current) => syncQuantity(current, current.quantity + 1))} className="inline-flex items-center gap-2 px-3 py-2 border rounded-md text-sm hover:bg-white"><Plus size={16} />Añadir fila</button>
+                          <button type="button" onClick={() => updateLine(line.localId, (current) => syncQuantity(current, current.quantity + 1))} className="inline-flex items-center gap-2 px-3 py-2 border rounded-md text-sm hover:bg-white"><Plus size={16} />Añadir fila</button>
                       </div>
                       <div className="max-h-72 overflow-y-auto divide-y">
                         {line.serialNumbers.map((serial, serialIndex) => (
@@ -300,6 +326,7 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
                     </div>
                   </div>
                 </div>
+                )}
               </div>
             );
           })}

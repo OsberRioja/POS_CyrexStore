@@ -294,6 +294,14 @@ export default function CashboxPage() {
 
   if (loading) return <div className="p-6">Cargando caja...</div>;
 
+  const cashboxActionBase =
+    'h-11 min-w-[140px] rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-1';
+  const cashboxPrimary = `${cashboxActionBase} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500`;
+  const cashboxPrimarySoft = `${cashboxActionBase} bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 focus:ring-blue-400`;
+  const cashboxDanger = `${cashboxActionBase} bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500`;
+  const cashboxWarning = `${cashboxActionBase} bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-500`;
+  const cashboxNeutral = `${cashboxActionBase} bg-slate-200 text-slate-700 hover:bg-slate-300 focus:ring-slate-400`;
+
 
   const TableHistorialCajas = ({ 
     boxes, 
@@ -604,28 +612,28 @@ export default function CashboxPage() {
             <p className="text-sm text-gray-600">Modo solo lectura</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button 
               onClick={() => setView("ventas")} 
-              className="px-3 py-2 bg-blue-500 text-white rounded"
+              className={view === 'ventas' ? cashboxPrimary : cashboxPrimarySoft}
             >
               Ventas
             </button>
             <button 
               onClick={() => setView("gastos")} 
-              className="px-3 py-2 bg-blue-500 text-white rounded"
+              className={view === 'gastos' ? cashboxPrimary : cashboxPrimarySoft}
             >
               Gastos
             </button>
             <button 
               onClick={() => setView("paymentMethods")} 
-              className="px-3 py-2 bg-blue-500 text-white rounded"
+              className={view === 'paymentMethods' ? cashboxPrimary : cashboxPrimarySoft}
             >
               Métodos de pago
             </button>
             <button 
               onClick={handleCloseDetails} 
-              className="px-3 py-2 bg-gray-500 text-white rounded"
+              className={cashboxNeutral}
             >
               Volver
             </button>
@@ -651,14 +659,14 @@ export default function CashboxPage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleCloseReopened}  // Usar la nueva función
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+                  className={cashboxWarning}
                 >
                   Cerrar Reapertura
                 </button>
 
                 <button
                   onClick={() => setShowReportModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                  className={cashboxPrimary}
                 >
                   📊 Ver Reporte
                 </button>
@@ -670,7 +678,7 @@ export default function CashboxPage() {
                 onClick={() => {
                   setShowReportModal(true);
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                className={cashboxPrimary}
               >
                 📊 Ver Reporte Completo
               </button>
@@ -806,33 +814,33 @@ export default function CashboxPage() {
           )}
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {/* Botones siempre visibles para caja abierta */}
           {openCashbox && (
             <>
               <button onClick={() => setView("ventas")} 
-                className={`px-4 py-2 rounded ${view === "ventas" ? 'bg-blue-600' : 'bg-blue-500'} text-white`}>
+                className={view === 'ventas' ? cashboxPrimary : cashboxPrimarySoft}>
                 Ventas
               </button>
               <button onClick={() => setView("gastos")} 
-                className={`px-4 py-2 rounded ${view === "gastos" ? 'bg-blue-600' : 'bg-blue-500'} text-white`}>
+                className={view === 'gastos' ? cashboxPrimary : cashboxPrimarySoft}>
                 Gastos
               </button>
               <button onClick={() => setView("paymentMethods")} 
-                className={`px-4 py-2 rounded ${view === "paymentMethods" ? 'bg-blue-600' : 'bg-blue-500'} text-white`}>
+                className={view === 'paymentMethods' ? cashboxPrimary : cashboxPrimarySoft}>
                 Métodos de Pago
               </button>
               
               <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
                 {openCashbox.status === 'OPEN' && (
                   <button onClick={handleCloseCashbox} 
-                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded">
+                    className={cashboxDanger}>
                     Cerrar Caja
                   </button>
                 )}
                 {openCashbox.status === 'REOPENED' && (
                   <button onClick={handleCloseReopened} 
-                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded">
+                    className={cashboxWarning}>
                     Finalizar Reapertura
                   </button>
                 )}
@@ -844,7 +852,7 @@ export default function CashboxPage() {
           <PermissionGuard permission={Permission.CASHBOX_OPEN_CLOSE}>
             {!openCashbox && (
               <button onClick={() => setShowOpenModal(true)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+                className={cashboxPrimary}>
                 + Abrir Caja
               </button>
             )}
@@ -862,7 +870,7 @@ export default function CashboxPage() {
                   setView(null);
                 }
               }} 
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded"
+              className={cashboxPrimary}
             >
               {showAllHistory ? 'Ocultar Historial' : '📋 Ver Historial'}
             </button>
