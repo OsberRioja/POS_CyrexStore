@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
 import { errorHandler } from './middlewares/errorHandler';
 import { prisma } from './prismaClient';
 import clientRoutes from './routes/client.routes';
@@ -29,6 +30,7 @@ import branchRoutes from "./routes/branch.routes"
 import dashboardRoutes from "./routes/dashboard.routes";
 import saleEditRoutes from './routes/saleEdit.routes';
 import expenseEditRoutes from './routes/expenseEdit.routes';
+import comprobanteRoutes from './routes/receipt.routes';
 
 const app = express();
 
@@ -37,6 +39,7 @@ app.use(express.json()); // <- DEBE estar ANTES de las rutas
 app.use(helmet());
 app.use(cors());
 app.use(morgan('dev'));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // ✅ 2. SEGUNDO: Rutas
 app.get("/", (req, res) => {
@@ -66,6 +69,7 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sales-edit', saleEditRoutes);
 app.use('/api/expenses-edit', expenseEditRoutes);
+app.use('/api/receipts', comprobanteRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);

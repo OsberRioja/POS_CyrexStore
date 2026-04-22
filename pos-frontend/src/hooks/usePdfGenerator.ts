@@ -65,7 +65,7 @@ export const usePdfGenerator = () => {
       formData.append('file', pdfBlob, finalFilename);
       formData.append('saleId', saleData.id.toString());
 
-      await fetch('http://localhost:3000/api/comprobantes/upload', {
+      await fetch('http://localhost:3000/api/receipts/upload', {
         method: 'POST',
         body: formData,
       });
