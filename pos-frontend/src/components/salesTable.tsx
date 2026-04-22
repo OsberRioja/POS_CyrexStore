@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, Plus, RefreshCw, Edit, Download } from 'lucide-react';
+import { Eye, Plus, RefreshCw, Edit, Download, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import ReturnModal from './ReturnModal';
 import { returnService } from '../services/returnService';
@@ -25,6 +25,7 @@ interface SalesTableProps {
   onReload?: () => void;
   onEditSale?: (sale: any) => void;
   onDownloadReceipt?: (sale: Sale) => void;
+  onSendWhatsApp?: (sale: Sale) => void;
 }
 
 const SalesTable: React.FC<SalesTableProps> = ({ 
@@ -33,7 +34,8 @@ const SalesTable: React.FC<SalesTableProps> = ({
   onAddPayment, 
   onReload,
   onEditSale,
-  onDownloadReceipt
+  onDownloadReceipt,
+  onSendWhatsApp
 }) => {
   const { user } = useAuth();
 
@@ -216,6 +218,16 @@ const SalesTable: React.FC<SalesTableProps> = ({
                         title="Descargar comprobante"
                       >
                         <Download size={16} />
+                      </button>
+                    )}
+
+                    {onSendWhatsApp && (
+                      <button
+                        onClick={() => onSendWhatsApp(sale)}
+                        className='text-green-600 hover:text-green-900 p-1 rounded'
+                        title='Enviar comprobante por WhatsApp'
+                      >
+                        <MessageCircle size={16} />
                       </button>
                     )}
                     

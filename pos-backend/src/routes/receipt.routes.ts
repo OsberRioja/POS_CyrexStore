@@ -16,9 +16,9 @@ const storage: StorageEngine = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'public/receipts');
   },
-  filename: (req: MulterRequest, file, cb) => {
-    const saleId = req.body.saleId || 'unknown';
-    const uniqueName = `venta-${saleId}-${Date.now()}.pdf`;
+  filename: (req, file, cb) => {
+    const originalName = file.originalname || 'comprobante.pdf';
+    const uniqueName = `${Date.now()}-${originalName}`;
     cb(null, uniqueName);
   },
 });

@@ -57,18 +57,13 @@ export const usePdfGenerator = () => {
   const downloadReceipt = async (saleData: any, filename?: string) => {
     try {
       const pdfBlob = await generateReceipt(saleData);
+
       const saleRef = saleData.saleNumber ?? saleData.id;
       const defaultFilename = `comprobante-${saleRef}-${new Date().toISOString().split('T')[0]}.pdf`;
       const finalFilename = filename || defaultFilename;
-      pdfService.downloadPDF(pdfBlob, finalFilename);
-      const formData = new FormData();
-      formData.append('file', pdfBlob, finalFilename);
-      formData.append('saleId', saleData.id.toString());
 
-      await fetch('http://localhost:3000/api/receipts/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      // ✅ SOLO descarga
+      pdfService.downloadPDF(pdfBlob, finalFilename);
 
     } catch (error) {
       console.error('Error al descargar comprobante:', error);
@@ -76,9 +71,56 @@ export const usePdfGenerator = () => {
     }
   };
 
+  const sendReceiptWhatsApp = async (saleData: any) => {
+    try {
+      const pdfBlob = await generateReceipt(saleData);
+
+      const saleRef = saleData.saleNumber ?? saleData.id;
+      const filename = `comprobante-${saleRef}.pdf`;
+
+      // Subir al backend
+      const formData = new FormData();
+      formData.append('file', pdfBlob, filename);
+      formData.append('saleId', saleData.id.toString());
+
+      const response = await fetch('http://localhost:3000/api/comprobantes/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      const pdfUrl = data.pdfUrl;
+
+      // 📱 Número del cliente
+      const phone = saleData.client?.telefono;
+
+      if (!phone) {
+        alert('El cliente no tiene número de teléfono');
+        return;
+      }
+
+      // 💬 Mensaje
+      const message = `Hola ${saleData.client?.nombre || 'cliente'}, aquí tienes tu comprobante:\n${pdfUrl}`;
+
+      // Abrir WhatsApp
+      sendToWhatsApp(phone, message);
+
+    } catch (error) {
+      console.error('Error enviando por WhatsApp:', error);
+      alert('No se pudo enviar el comprobante por WhatsApp');
+    }
+  };  
+
+  const sendToWhatsApp = (phone: string, message: string) => {
+    const encodedMessage = encodeURIComponent(message);
+    const url = `https://wa.me/${phone}?text=${encodedMessage}`;
+    window.open(url, '_blank');
+  }
+
   return {
     generateReceipt,
     downloadReceipt,
+    sendReceiptWhatsApp,
     isGenerating,
     progress
   };

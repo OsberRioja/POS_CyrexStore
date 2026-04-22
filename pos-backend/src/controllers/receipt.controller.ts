@@ -23,7 +23,9 @@ export const uploadComprobante = (req: MulterRequest, res: Response) => {
 
     const fileName = req.file.filename;
 
-    const fileUrl = `http://localhost:3000/receipts/${fileName}`;
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+
+    const fileUrl = `${baseUrl}/receipts/${fileName}`;
 
     return res.json({
       message: 'Archivo guardado correctamente',

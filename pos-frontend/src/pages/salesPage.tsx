@@ -64,6 +64,15 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
     }
   };
 
+  const sendReceiptWhatsApp = async (sale: any) => {
+    try {
+      await downloadReceipt(sale); // Esto sube el PDF al backend y obtiene la URL
+    } catch (error: any) {
+      console.error('Error descargando comprobante:', error);
+      alert(error.message || 'No se pudo descargar el comprobante');
+    }
+  };
+
   const filteredSales = (sales || []).filter((sale) => {
     if (!searchTerm.trim()) return true;
     const q = searchTerm.trim().toLowerCase();
@@ -166,6 +175,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
         onEditSale={onEditSale}
         onReload={onReload}
         onDownloadReceipt={handleDownloadReceipt}
+        onSendWhatsApp={sendReceiptWhatsApp}
       />
 
       {isGenerating && (
