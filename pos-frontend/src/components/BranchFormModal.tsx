@@ -9,7 +9,7 @@ interface BranchFormModalProps {
 }
 
 export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFormModalProps) {
-  const { createBranch } = useBranch();
+  const { createBranch, updateBranch } = useBranch();
   const [formData, setFormData] = useState({
     name: branch?.name || "",
     address: branch?.address || "",
@@ -42,14 +42,18 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
     setError(null);
 
     try {
-      const newBranch = await createBranch({
+      const payload = {
         name: name,
         address: formData.address.trim() || undefined,
         phone: formData.phone.trim() || undefined,
-      });
+      };
+
+      const savedBranch = branch?.id
+        ? await updateBranch(branch.id, payload)
+        : await createBranch(payload);
       
       // Llamar onSuccess con la nueva sucursal creada
-      onSuccess(newBranch);
+      onSuccess(savedBranch);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -161,10 +165,10 @@ export default function BranchFormModal({ onClose, onSuccess, branch }: BranchFo
                 {isLoading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creando...
+                    {branch ? "Guardando..." : "Creando..."}
                   </>
                 ) : (
-                  "Crear Sucursal"
+                  branch ? "Guardar Cambios" : "Crear Sucursal"
                 )}
               </button>
             </div>
