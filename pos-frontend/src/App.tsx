@@ -25,6 +25,7 @@ import { DialogProvider } from "./context/DialogContext";
 import AdminHomePage from "./pages/AdminHomePage";
 import ReportsPage from "./pages/ReportsPage";
 import PurchasesPage from "./pages/purchasesPage";
+import BranchSettingsPage from "./pages/BranchSettingsPage";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -244,6 +245,17 @@ function MainApp() {
               <ReceiptSettingsPage onBack={() => setMainPage(null)} />
             )}
             {mainPage === "config-comprobante" && user?.role === 'SELLER' && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center text-gray-500">
+                  <div className="text-xl">⛔</div>
+                  <p>No tienes permisos para acceder a esta sección</p>
+                </div>
+              </div>
+            )}
+            {mainPage === "config-sucursales" && user?.role === 'ADMIN' && (
+              <BranchSettingsPage />
+            )}
+            {mainPage === "config-sucursales" && user?.role !== 'ADMIN' && (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center text-gray-500">
                   <div className="text-xl">⛔</div>

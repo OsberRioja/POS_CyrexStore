@@ -132,6 +132,12 @@ const SidebarProfessional: React.FC<SidebarProps> = ({ selected, onSelect, user 
       label: 'Comprobante',
       icon: <Receipt size={18} />,
       color: 'text-gray-500'
+    },
+    {
+      id: 'config-sucursales',
+      label: 'Sucursales',
+      icon: <Building size={18} />,
+      color: 'text-blue-400'
     }
   ];
 

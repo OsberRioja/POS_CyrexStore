@@ -60,6 +60,25 @@ export function useBranch() {
     }
   }, [reloadBranches]);
 
+  const updateBranch = useCallback(async (
+    branchId: number,
+    branchData: { name?: string; address?: string; phone?: string; isActive?: boolean }
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await branchService.update(branchId, branchData);
+      await reloadBranches();
+      return response.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Error al actualizar sucursal';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [reloadBranches]);
+
   return {
     // Estados
     currentBranchId,
@@ -77,6 +96,7 @@ export function useBranch() {
     exitToAdminHome,
     reloadBranches,
     createBranch,
+    updateBranch,
     
     // Utilidades
     hasBranch: !!currentBranchId,
