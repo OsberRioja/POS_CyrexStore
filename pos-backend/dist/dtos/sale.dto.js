@@ -36,7 +36,6 @@ exports.createSaleSchema = zod_1.z.object({
         amount: zod_1.z.number().positive('El monto debe ser positivo'),
     })).min(1, 'Debe incluir al menos un pago'),
     allowPartialPayment: zod_1.z.boolean().optional(),
-    createdBy: zod_1.z.string().uuid().optional(),
     note: zod_1.z.string().optional(),
     cashBoxId: zod_1.z.number().int().positive().optional(),
 });

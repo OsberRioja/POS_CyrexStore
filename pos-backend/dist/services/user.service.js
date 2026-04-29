@@ -181,8 +181,8 @@ exports.UserService = {
         // Si no conseguimos crear tras reintentos
         throw { status: 500, message: "No se pudo generar un usercode único. Intenta de nuevo." };
     },
-    async listUsers(currentUserBranchId, queryBranchId) {
-        const effectiveBranchId = currentUserBranchId ?? queryBranchId;
+    async listUsers(currentUserBranchId, queryBranchId, includeAllBranches = false) {
+        const effectiveBranchId = includeAllBranches ? undefined : (currentUserBranchId ?? queryBranchId);
         return user_repository_1.UserRepository.findAll(effectiveBranchId);
     },
     async getUserById(id) {

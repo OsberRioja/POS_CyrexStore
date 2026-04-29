@@ -149,8 +149,11 @@ const getById = async (req, res) => {
             console.log(`❌ [GET BY ID] Venta ${id} no encontrada en sucursal ${targetBranchId}`);
             return res.status(404).json({ error: "Venta no encontrada" });
         }
+        const createdByUser = sale.createdBy
+            ? await prisma.user.findUnique({ where: { id: sale.createdBy }, select: { id: true, name: true, userCode: true } })
+            : null;
         console.log(`✅ [GET BY ID] Venta encontrada: ${id}`);
-        return res.json(sale);
+        return res.json({ ...sale, createdBy: createdByUser });
     }
     catch (err) {
         console.error("❌ [GET BY ID] Error:", err);

@@ -33,7 +33,6 @@ export interface CreateSaleDTO {
   items: SaleItemDTO[];
   payments: SalePaymentDTO[]; // suma puede ser menor al total (anticipo)
   allowPartialPayment?: boolean; // NUEVO: indica si se permite pago parcial
-  createdBy?: string; // quien registró
   note?: string; // opcional
   cashBoxId?: number | null; // opcional
   // NOTA: branchId se obtiene del usuario autenticado, no del DTO
@@ -77,7 +76,6 @@ export const createSaleSchema = z.object({
     amount: z.number().positive('El monto debe ser positivo'),
   })).min(1, 'Debe incluir al menos un pago'),
   allowPartialPayment: z.boolean().optional(),
-  createdBy: z.string().uuid().optional(),
   note: z.string().optional(),
   cashBoxId: z.number().int().positive().optional(),
 });

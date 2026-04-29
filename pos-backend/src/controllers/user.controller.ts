@@ -28,7 +28,8 @@ export const UserController = {
     try {
       const currentUserBranchId = (req as any).user?.branchId;
       const queryBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
-      const users = await UserService.listUsers(currentUserBranchId, queryBranchId);
+      const includeAllBranches = req.query.allBranches === 'true';
+      const users = await UserService.listUsers(currentUserBranchId, queryBranchId, includeAllBranches);
       return res.json(users);
     } catch (err: any) {
       return res.status(500).json({ error: "Error al listar usuarios" });

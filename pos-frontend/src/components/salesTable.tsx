@@ -14,6 +14,7 @@ interface Sale {
   paymentStatus: 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERPAID';
   createdAt: string;
   seller: { name: string; userCode: number };
+  createdBy?: { name: string; userCode?: number } | null;
   client?: { nombre: string; telefono: string };
   hasReturn?: boolean;
 }
@@ -144,7 +145,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                 Estado
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Vendedor
+                Vendedor / Registró
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Acciones
@@ -199,6 +200,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                   <div>
                     <div className="font-medium">{sale.seller?.name}</div>
                     <div className="text-gray-500 text-xs">#{sale.seller?.userCode}</div>
+                    <div className="text-gray-400 text-xs">Registró: {sale.createdBy?.name ?? 'N/A'}</div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
