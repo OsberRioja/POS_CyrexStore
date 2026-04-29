@@ -5,6 +5,7 @@ import { getProviders } from "../services/providerService";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
+import VisualBranchSelector from "../components/VisualBranchSelector";
 
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<any[]>([]);
@@ -55,9 +56,12 @@ export default function ProvidersPage() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Proveedores</h2>
-        <PermissionGuard permission={Permission.PROVIDER_CREATE}>
-          <button onClick={() => { setSelected(null); setShowForm(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded">+ NUEVO</button>
-        </PermissionGuard>
+        <div className="flex items-center gap-3">
+          <VisualBranchSelector />
+          <PermissionGuard permission={Permission.PROVIDER_CREATE}>
+            <button onClick={() => { setSelected(null); setShowForm(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded">+ NUEVO</button>
+          </PermissionGuard>
+        </div>
       </div>
 
       <ProviderTable 

@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const user_controller_1 = require("../controllers/user.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const permissions_1 = require("../types/permissions");
+const router = (0, express_1.Router)();
+router.post("/", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_CREATE), user_controller_1.UserController.create);
+router.get("/", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_READ), user_controller_1.UserController.list);
+router.get("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_READ), user_controller_1.UserController.getOne);
+router.get("/code/:usercode", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_READ), user_controller_1.UserController.getByUserCode);
+router.get("/email/:email", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_READ), user_controller_1.UserController.getByEmail);
+router.get("/name/:name", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_READ), user_controller_1.UserController.getByName);
+router.put("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_UPDATE), user_controller_1.UserController.updateUser);
+router.delete("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.USER_DELETE), user_controller_1.UserController.deleteUser);
+exports.default = router;

@@ -27,7 +27,7 @@ export interface UpdateUserPayload {
 }
 
 export const userService = {
-  getUsers: () => api.get('/users'),
+  getUsers: (branchId?: number) => api.get('/users', { params: branchId ? { branchId } : {} }),
   getUserById: (id: string) => api.get(`/users/${id}`),
   create: (payload: CreateUserPayload) => api.post('/users', payload),
   update: (id: string, payload: UpdateUserPayload) => api.put(`/users/${id}`, payload),

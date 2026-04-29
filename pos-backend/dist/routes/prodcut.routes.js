@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const product_controller_1 = require("../controllers/product.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const permissions_1 = require("../types/permissions");
+const router = (0, express_1.Router)();
+router.post("/", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_CREATE), product_controller_1.productController.create);
+router.get("/", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_READ), product_controller_1.productController.getAll);
+router.get("/metadata", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_READ), product_controller_1.productController.getMetadata);
+router.get("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_READ), product_controller_1.productController.getById);
+router.put("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_UPDATE), product_controller_1.productController.update);
+router.delete("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_DELETE), product_controller_1.productController.delete);
+router.patch("/:id/deactivate", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_TOGGLE_ACTIVE), product_controller_1.productController.deactivate);
+router.patch("/:id/activate", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.PRODUCT_TOGGLE_ACTIVE), product_controller_1.productController.activate);
+exports.default = router;

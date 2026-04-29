@@ -6,6 +6,7 @@ import { useDebounce } from "../hooks/useDebounce";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
+import VisualBranchSelector from "../components/VisualBranchSelector";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -160,6 +161,7 @@ export default function ClientsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-700">Clientes</h2>
         <div className="flex items-center gap-3">
+          <VisualBranchSelector />
           <PermissionGuard permission={Permission.CLIENT_READ}>
             <input
               value={query}

@@ -22,6 +22,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ToastProvider } from "./context/ToastContext";
 import { DialogProvider } from "./context/DialogContext";
+import { VisualBranchFilterProvider } from "./context/visualBranchFilterContext";
 import AdminHomePage from "./pages/AdminHomePage";
 import ReportsPage from "./pages/ReportsPage";
 import PurchasesPage from "./pages/purchasesPage";
@@ -294,8 +295,10 @@ export default function App() {
         <SettingsProvider>
           <ToastProvider>
             <DialogProvider>
+        <VisualBranchFilterProvider>
               <MainAppWithErrorBoundary />
-            </DialogProvider>
+            </VisualBranchFilterProvider>
+      </DialogProvider>
           </ToastProvider>
         </SettingsProvider>
       </CurrencyProvider>

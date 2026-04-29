@@ -26,9 +26,9 @@ export const UserController = {
 
   async list(req: Request, res: Response) {
     try {
-      // ← NUEVO: Obtener branchId del usuario autenticado
       const currentUserBranchId = (req as any).user?.branchId;
-      const users = await UserService.listUsers(currentUserBranchId);
+      const queryBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
+      const users = await UserService.listUsers(currentUserBranchId, queryBranchId);
       return res.json(users);
     } catch (err: any) {
       return res.status(500).json({ error: "Error al listar usuarios" });
