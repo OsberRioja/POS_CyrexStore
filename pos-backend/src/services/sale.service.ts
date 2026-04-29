@@ -14,7 +14,12 @@ export const SaleService = {
   round2(value: number): number {
     return Math.round(value * 100) / 100;
   },
-  calculateDiscount(subtotal: number, discountType?: "PERCENTAGE" | "FIXED" | null, discountValue?: number | null): number {
+  calculateDiscount(subtotal: number, discountType?: "PERCENTAGE" | "FIXED" | null, discountValue?: number | null, discountAmount?: number | null): number {
+    if ((!discountType || discountValue == null) && discountAmount != null) {
+      const amount = Number(discountAmount);
+      if (Number.isNaN(amount) || amount < 0) throw { status: 400, message: "Monto de descuento inválido" };
+      return this.round2(amount);
+    }
     if (!discountType || discountValue == null) return 0;
     const value = Number(discountValue);
     if (Number.isNaN(value)) throw { status: 400, message: "Valor de descuento inválido" };
@@ -121,6 +126,7 @@ export const SaleService = {
         conversionRate: Number(it.conversionRate) || 1, // Tasa de cambio
         discountType: it.discountType ?? null,
         discountValue: it.discountValue ?? null,
+        discountAmount: it.discountAmount ?? null,
         serialNumbers
       });
     }
@@ -273,7 +279,7 @@ export const SaleService = {
 
         const unitPrice = Number(it.unitPrice);
         const subtotal = this.round2(unitPrice * Number(it.quantity));
-        const discountAmountRaw = this.calculateDiscount(subtotal, it.discountType, it.discountValue);
+        const discountAmountRaw = this.calculateDiscount(subtotal, it.discountType, it.discountValue, it.discountAmount);
         if (discountAmountRaw > subtotal) {
           throw { status: 400, message: `El descuento del item ${product.name} no puede ser mayor al subtotal` };
         }
@@ -318,7 +324,7 @@ export const SaleService = {
       let netCashAmount = totalPaid;
 
       const subtotalAfterItemsDiscount = this.round2(Math.max(0, saleSubtotal - itemsDiscountTotal));
-      const globalDiscountAmountRaw = this.calculateDiscount(subtotalAfterItemsDiscount, dto.globalDiscountType, dto.globalDiscountValue);
+      const globalDiscountAmountRaw = this.calculateDiscount(subtotalAfterItemsDiscount, dto.globalDiscountType, dto.globalDiscountValue, dto.globalDiscountAmount);
       if (globalDiscountAmountRaw > subtotalAfterItemsDiscount) {
         throw { status: 400, message: "El descuento global no puede ser mayor al subtotal de la venta" };
       }

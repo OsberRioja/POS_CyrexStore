@@ -10,10 +10,12 @@ interface CreateSalePayload {
     unitPrice: number;
     discountType?: 'PERCENTAGE' | 'FIXED' | null;
     discountValue?: number | null;
+    discountAmount?: number | null;
     serialNumbers?: string[];
   }>;
   globalDiscountType?: 'PERCENTAGE' | 'FIXED' | null;
   globalDiscountValue?: number | null;
+  globalDiscountAmount?: number | null;
   payments: Array<{
     paymentMethodId: number;
     amount: number;

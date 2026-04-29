@@ -452,9 +452,10 @@ export default function SaleFormModal({
       sellerUserCode: sellerSelected ? sellerSelected.userCode : undefined,
       sellerId: sellerSelected ? sellerSelected.id : undefined,
       client: { id_cliente: clientSelected.id_cliente },
-      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice, discountType: it.discountType, discountValue: it.discountValue, originalPrice: it.originalPrice, originalCurrency: it.originalCurrency, conversionRate: it.conversionRate, serialNumbers: it.serialNumbers })),
+      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice, discountType: it.discountType, discountValue: it.discountValue, discountAmount: it.discountAmount, originalPrice: it.originalPrice, originalCurrency: it.originalCurrency, conversionRate: it.conversionRate, serialNumbers: it.serialNumbers })),
       globalDiscountType,
       globalDiscountValue: globalDiscountType ? globalDiscountValue : null,
+      globalDiscountAmount,
       payments: payments.map((p) => ({ paymentMethodId: p.paymentMethodId, amount: p.amount })),
       allowPartialPayment: allowPartialPayment, // NUEVO: enviar flag
       cashBoxId,
@@ -735,7 +736,11 @@ export default function SaleFormModal({
               )}
 
               <div className="flex justify-between">
-                <span>Total a pagar:</span>
+                <span>Total final a pagar:</span>
+                <span className="font-semibold">Bs. {itemsTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total pagado:</span>
                 <span className="font-semibold">Bs. {paymentsTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
