@@ -2,6 +2,22 @@ import { Request, Response } from "express";
 import { productService } from "../services/product.service";
 
 export const productController = {
+  sanitizeCostPriceByRole(data: any, role?: string) {
+    if (role === "ADMIN") return data;
+
+    const sanitizeProduct = (product: any) => {
+      if (!product || typeof product !== "object") return product;
+      const { costPrice: _costPrice, ...rest } = product;
+      return rest;
+    };
+
+    if (Array.isArray(data)) {
+      return data.map(sanitizeProduct);
+    }
+
+    return sanitizeProduct(data);
+  },
+
   async create(req: Request, res: Response) {
     try {
       const userId = (req as any).userId ?? (req as any).user?.sub ?? (req as any).user?.id;
@@ -9,7 +25,8 @@ export const productController = {
 
       const dto = req.body;
       const created = await productService.createProduct(dto, String(userId));
-      return res.status(201).json(created);
+      const userRole = (req as any).user?.role as string | undefined;
+      return res.status(201).json(productController.sanitizeCostPriceByRole(created, userRole));
     } catch (err: any) {
       console.error("POST /products error:", err);
       return res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
@@ -53,7 +70,8 @@ export const productController = {
         );
       }
       
-      res.json(products);
+      const userRole = (req as any).user?.role as string | undefined;
+      res.json(productController.sanitizeCostPriceByRole(products, userRole));
     } catch (error: any) {
       console.error("GET /products error:", error);
       res.status(500).json({ error: error?.message || "Error interno" });
@@ -63,7 +81,8 @@ export const productController = {
   async getById(req: Request, res: Response) {
     try {
       const product = await productService.getProductById(req.params.id);
-      res.json(product);
+      const userRole = (req as any).user?.role as string | undefined;
+      res.json(productController.sanitizeCostPriceByRole(product, userRole));
     } catch (error: any) {
       res.status(404).json({ error: error.message });
     }
@@ -84,7 +103,8 @@ export const productController = {
   async update(req: Request, res: Response) {
     try {
       const product = await productService.updateProduct(req.params.id, req.body);
-      res.json(product);
+      const userRole = (req as any).user?.role as string | undefined;
+      res.json(productController.sanitizeCostPriceByRole(product, userRole));
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

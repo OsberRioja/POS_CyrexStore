@@ -22,7 +22,7 @@ export default function ProductsPage() {
 
   const { hasPermission } = usePermissions();
   const { confirm, alert } = useDialog();
-  const { currentBranchId } = useAuth(); // ← obtener currentBranchId
+  const { currentBranchId, user } = useAuth(); // ← obtener currentBranchId
   const { branches, currentBranchId: branchId } = useBranch(); // usar hook de sucursal
 
   // Obtener nombre de la sucursal actual
@@ -139,6 +139,7 @@ export default function ProductsPage() {
       <ProductTable 
         products={paginatedProducts}
         loading={loading}
+        canViewCost={user?.role === 'ADMIN'}
         onEdit={openEdit} 
         onDelete={loadProducts} 
         onDeactivate={handleDeactivate} 

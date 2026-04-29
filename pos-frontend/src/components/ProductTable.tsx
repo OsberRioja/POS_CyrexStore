@@ -7,6 +7,7 @@ import { useDialog } from "../context/DialogContext";
 export default function ProductTable({
   products,
   loading,
+  canViewCost,
   onEdit,
   onDelete,
   onDeactivate,
@@ -17,6 +18,7 @@ export default function ProductTable({
 }: {    
   products: any[];
   loading: boolean;
+  canViewCost: boolean;
   onEdit: (p: any) => void;
   onDelete: () => void;
   onDeactivate: (productId: string) => void;
@@ -99,7 +101,7 @@ export default function ProductTable({
                     costPrice: p.costPrice,
                     priceCurrency: p.priceCurrency || 'BOB' // Valor por defecto
                   }}
-                  showCost={true}
+                  showCost={canViewCost}
                   showOriginal={true}
                   className="text-sm"
                 />
