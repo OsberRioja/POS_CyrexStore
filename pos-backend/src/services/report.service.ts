@@ -1849,7 +1849,7 @@ export const reportService = {
         const currentProduct = productRankingMap.get(productKey) || {
           productId: item.product.id,
           productName: item.product.name,
-          sku: item.product.sku,
+          sku: item.product.sku || "",
           quantity: 0,
           revenue: 0
         };
@@ -1873,7 +1873,7 @@ export const reportService = {
         balance: sale.total - paidAmount,
         products: sale.items.map(item => ({
           name: item.product.name,
-          sku: item.product.sku,
+          sku: item.product.sku || "",
           quantity: item.quantity
         }))
       };

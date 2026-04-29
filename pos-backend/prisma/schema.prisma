@@ -73,7 +73,8 @@ model Provider {
 
 model Product {
   id             String          @id @default(uuid())
-  sku            String
+  sku            String?
+  codigoInterno  String
   name           String
   salePrice      Float
   costPrice      Float
@@ -102,6 +103,7 @@ model Product {
   serialItems    ProductSerial[]
 
   @@unique([sku, branchId])
+  @@unique([codigoInterno, branchId])
 }
 
 model PaymentMethod {

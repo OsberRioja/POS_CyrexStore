@@ -7,6 +7,7 @@ import { imageUploadService } from "../services/imageUploadService";
 
 type FormState = {
   sku: string;
+  codigoInterno: string;
   name: string;
   description?: string;
   costPrice: string; // string en el form mientras el usuario escribe
@@ -32,6 +33,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
 
   const [form, setForm] = useState<FormState>({
     sku: product?.sku ?? "",
+    codigoInterno: product?.codigoInterno ?? "",
     name: product?.name ?? "",
     description: product?.description ?? "",
     costPrice: product?.costPrice != null ? String(product.costPrice) : "",
@@ -56,6 +58,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     // cuando cambia el producto (editar), reasignar form
     setForm({
       sku: product?.sku ?? "",
+      codigoInterno: product?.codigoInterno ?? "",
       name: product?.name ?? "",
       description: product?.description ?? "",
       costPrice: product?.costPrice != null ? String(product.costPrice) : "",
@@ -143,8 +146,11 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       const cost = form.costPrice.trim() === "" ? NaN : Number(form.costPrice.replace(",", "."));
       const sale = form.salePrice.trim() === "" ? NaN : Number(form.salePrice.replace(",", "."));
 
-      if (!form.sku.trim() || !form.name.trim()) {
-        throw new Error("SKU y nombre son requeridos");
+      if (!form.name.trim()) {
+        throw new Error("Nombre es requerido");
+      }
+      if (!/^\d{7}$/.test(form.codigoInterno.trim())) {
+        throw new Error("Código interno debe tener exactamente 7 dígitos numéricos");
       }
       if (!isEditing &&(Number.isNaN(cost) || Number.isNaN(sale))) {
         throw new Error("Precio de costo y precio de venta deben ser números válidos");
@@ -168,7 +174,8 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       }
 
       const payload: ProductPayload = {
-        sku: form.sku.trim(),
+        sku: form.sku.trim() || undefined,
+        codigoInterno: form.codigoInterno.trim(),
         name: form.name.trim(),
         description: form.description?.trim() || undefined,
         costPrice: cost,
@@ -256,7 +263,17 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
             </div>
           </div>
 
-          <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" className="border p-2 rounded col-span-2" required />
+          <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU (opcional)" className="border p-2 rounded col-span-2" />
+          <div className="col-span-2 grid grid-cols-[1fr_auto] gap-2">
+            <input name="codigoInterno" value={form.codigoInterno} onChange={handleChange} placeholder="Código interno (7 dígitos)" className="border p-2 rounded" required pattern="\d{7}" maxLength={7} />
+            <button
+              type="button"
+              className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              onClick={() => setForm((prev) => ({ ...prev, codigoInterno: String(Math.floor(Math.random() * 10_000_000)).padStart(7, '0') }))}
+            >
+              Generar código automáticamente
+            </button>
+          </div>
           <input name="name" value={form.name} onChange={handleChange} placeholder="Nombre" className="border p-2 rounded col-span-2" required />
           <textarea name="description" value={form.description} onChange={(e) => setForm({...form, description: e.target.value })} placeholder="Descripción" className="border p-2 rounded col-span-2" />
           <input name="category" list="category-options" value={form.category} onChange={handleChange} placeholder="Categoría" className="border p-2 rounded" />

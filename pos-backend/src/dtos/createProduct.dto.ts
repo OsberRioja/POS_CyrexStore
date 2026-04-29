@@ -1,5 +1,6 @@
 export interface CreateProductDTO {
-  sku: string;
+  sku?: string;
+  codigoInterno: string;
   name: string;
   description?: string;
   costPrice: number;

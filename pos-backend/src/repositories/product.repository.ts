@@ -10,7 +10,8 @@ export const productRepository = {
     return prisma.product.create({
       data: {
         createdBy,
-        sku: dto.sku,
+        sku: dto.sku ?? "",
+        codigoInterno: dto.codigoInterno,
         name: dto.name,
         description: dto.description,   
         costPrice: dto.costPrice,

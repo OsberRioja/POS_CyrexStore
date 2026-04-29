@@ -1145,7 +1145,7 @@ export const StockMovementService = {
 
       let destinationProduct = await tx.product.findFirst({
         where: {
-          sku: sourceProduct.sku,
+          sku: sourceProduct.sku || "",
           branchId: data.destinationBranchId
         }
       });
@@ -1153,7 +1153,7 @@ export const StockMovementService = {
       if (!destinationProduct) {
         destinationProduct = await tx.product.create({
           data: {
-            sku: sourceProduct.sku,
+            sku: sourceProduct.sku || "",
             name: sourceProduct.name,
             salePrice: sourceProduct.salePrice,
             costPrice: sourceProduct.costPrice,
@@ -1167,7 +1167,8 @@ export const StockMovementService = {
             imageUrl: sourceProduct.imageUrl,
             imagePublicId: sourceProduct.imagePublicId,
             isActive: sourceProduct.isActive,
-            priceCurrency: sourceProduct.priceCurrency
+            priceCurrency: sourceProduct.priceCurrency,
+            codigoInterno: sourceProduct.codigoInterno
           }
         });
       }

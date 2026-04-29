@@ -5,10 +5,24 @@ import { prisma } from "../prismaClient";
 import { normalizeTextField } from "../utils/normalizeTextField";
 
 export const productService = {
+  async generateUniqueCodigoInterno(tx: typeof prisma) {
+    for (let i = 0; i < 20; i++) {
+      const codigo = String(Math.floor(Math.random() * 10_000_000)).padStart(7, "0");
+      const exists = await tx.product.findFirst({ where: { codigoInterno: codigo }, select: { id: true } });
+      if (!exists) return codigo;
+    }
+    throw { status: 500, message: "No se pudo generar un código interno único" };
+  },
+
   async createProduct(dto: CreateProductDTO, userId: string) {
     // validaciones mínimas
-    if (!dto.sku || !dto.name || dto.salePrice == null || dto.costPrice == null) {
-      throw { status: 400, message: "sku, name, costPrice y salePrice son requeridos" };
+    if (!dto.name || dto.salePrice == null || dto.costPrice == null) {
+      throw { status: 400, message: "name, costPrice y salePrice son requeridos" };
+    }
+
+    const codigoInterno = dto.codigoInterno?.trim();
+    if (!codigoInterno || !/^\d{7}$/.test(codigoInterno)) {
+      throw { status: 400, message: "codigoInterno es requerido y debe tener exactamente 7 dígitos numéricos" };
     }
 
     // Validar moneda
@@ -25,14 +39,24 @@ export const productService = {
         const normalizedCategory = normalizeTextField(dto.category);
         const normalizedBrand = normalizeTextField(dto.brand);
 
-        const existingSku = await tx.product.findFirst({
-          where: {
-            sku: dto.sku.trim()
+        if (dto.sku?.trim()) {
+          const existingSku = await tx.product.findFirst({
+            where: {
+              sku: dto.sku.trim()
+            }
+          });
+
+          if (existingSku) {
+            throw { status: 400, message: `El SKU '${dto.sku}' ya existe.` };
           }
+        }
+
+        const existingCodigoInterno = await tx.product.findFirst({
+          where: { codigoInterno }
         });
 
-        if (existingSku) {
-          throw { status: 400, message: `El SKU '${dto.sku}' ya existe.` };
+        if (existingCodigoInterno) {
+          throw { status: 400, message: `El código interno '${codigoInterno}' ya existe.` };
         }
 
         const activeBranches = await tx.branch.findMany({
@@ -49,7 +73,8 @@ export const productService = {
         for (const branch of activeBranches) {
           const created = await tx.product.create({
             data: {
-              sku: dto.sku.trim(),
+              sku: dto.sku?.trim() || "",
+              codigoInterno,
               name: dto.name.trim(),
               description: dto.description?.trim(),
               costPrice: dto.costPrice,

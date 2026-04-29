@@ -1,7 +1,8 @@
 import api from './api';
 
 export type ProductPayload = {
-  sku: string;
+  sku?: string;
+  codigoInterno: string;
   name: string;
   description?: string;
   costPrice: number;

@@ -49,7 +49,7 @@ export const productController = {
         const searchTerm = q.toString().toLowerCase();
         products = products.filter((p: any) =>
           p.name.toLowerCase().includes(searchTerm) ||
-          p.sku.toLowerCase().includes(searchTerm)
+          (p.sku || "").toLowerCase().includes(searchTerm) || (p.codigoInterno || "").toLowerCase().includes(searchTerm)
         );
       }
       
