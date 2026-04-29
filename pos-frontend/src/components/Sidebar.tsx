@@ -41,7 +41,7 @@ const SidebarProfessional: React.FC<SidebarProps> = ({ selected, onSelect, user 
   const showProviders = user?.role !== 'SELLER';
   const showReports = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR';
   const showSettings = user?.role === 'ADMIN';
-  const showDashboard = user && (user.branchId !== null || isInBranchMode);
+  const showDashboard = !!user;
   const showExitButton = user?.role === 'ADMIN' && user?.branchId === null && isInBranchMode;
 
   const toggleMenu = (menu: string) => {

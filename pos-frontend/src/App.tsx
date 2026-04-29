@@ -61,7 +61,7 @@ function MainApp() {
     isInBranchMode
   } = useAuth();
   const [authView, setAuthView] = useState<"login" | "forgot-password" | "reset-password">("login");
-  const [mainPage, setMainPage] = useState<string | null>(null);
+  const [mainPage, setMainPage] = useState<string | null>("dashboard");
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
   
