@@ -69,6 +69,18 @@ export const productController = {
     }
   },
 
+  async getMetadata(req: Request, res: Response) {
+    try {
+      const userBranchId = (req as any).user?.branchId;
+      const targetBranchId = userBranchId ?? (req.query.branchId ? Number(req.query.branchId) : undefined);
+      const metadata = await productService.getProductMetadata(targetBranchId);
+      res.json(metadata);
+    } catch (error: any) {
+      console.error("GET /products/metadata error:", error);
+      res.status(500).json({ error: error?.message || "Error interno" });
+    }
+  },
+
   async update(req: Request, res: Response) {
     try {
       const product = await productService.updateProduct(req.params.id, req.body);

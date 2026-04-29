@@ -27,6 +27,8 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(product?.imageUrl || null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [brandOptions, setBrandOptions] = useState<string[]>([]);
 
   const [form, setForm] = useState<FormState>({
     sku: product?.sku ?? "",
@@ -44,6 +46,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
 
   useEffect(() => {
     loadSuppliers();
+    loadMetadata();
     if (product?.imageUrl) {
       setImagePreview(product.imageUrl);
     }
@@ -79,6 +82,20 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     } catch (err) {
       console.error("Error cargando proveedores", err);
       setSuppliers([]);
+    }
+  };
+
+  const normalizeTextField = (value?: string) => value?.trim().replace(/\s+/g, " ") || "";
+
+  const loadMetadata = async () => {
+    try {
+      const res = await productService.getMetadata();
+      setCategoryOptions(res.data?.categories ?? []);
+      setBrandOptions(res.data?.brands ?? []);
+    } catch (err) {
+      console.error("Error cargando metadata de productos", err);
+      setCategoryOptions([]);
+      setBrandOptions([]);
     }
   };
 
@@ -158,8 +175,8 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
         salePrice: sale,
         priceCurrency: form.priceCurrency,
         stock: 0,
-        category: form.category?.trim() || undefined,
-        brand: form.brand?.trim() || undefined,
+        category: normalizeTextField(form.category) || undefined,
+        brand: normalizeTextField(form.brand) || undefined,
         providerId: form.providerId ? Number(form.providerId) : null,
         imageUrl: imageUrl,
       };
@@ -242,8 +259,10 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
           <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" className="border p-2 rounded col-span-2" required />
           <input name="name" value={form.name} onChange={handleChange} placeholder="Nombre" className="border p-2 rounded col-span-2" required />
           <textarea name="description" value={form.description} onChange={(e) => setForm({...form, description: e.target.value })} placeholder="Descripción" className="border p-2 rounded col-span-2" />
-          <input name="category" value={form.category} onChange={handleChange} placeholder="Categoría" className="border p-2 rounded" />
-          <input name="brand" value={form.brand} onChange={handleChange} placeholder="Marca" className="border p-2 rounded" />
+          <input name="category" list="category-options" value={form.category} onChange={handleChange} placeholder="Categoría" className="border p-2 rounded" />
+          <datalist id="category-options">{categoryOptions.map((category) => <option key={category} value={category} />)}</datalist>
+          <input name="brand" list="brand-options" value={form.brand} onChange={handleChange} placeholder="Marca" className="border p-2 rounded" />
+          <datalist id="brand-options">{brandOptions.map((brand) => <option key={brand} value={brand} />)}</datalist>
           {/* ✅ NUEVO: Selector de Moneda de Precio */}
           {!isEditing && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

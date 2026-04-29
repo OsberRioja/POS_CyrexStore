@@ -21,6 +21,11 @@ export type ProductSearchParams = {
   branchId?: number;
 };
 
+export type ProductMetadata = {
+  categories: string[];
+  brands: string[];
+};
+
 export const productService = {
   getAll: (params?: ProductSearchParams) => api.get('/products', { params }),
   getById: (id: string) => api.get(`/products/${id}`),
@@ -28,6 +33,7 @@ export const productService = {
   update: (id: string, payload: Partial<ProductPayload>) => api.put(`/products/${id}`, payload),
   remove: (id: string) => api.delete(`/products/${id}`),
   search: (params?: ProductSearchParams) => api.get('/products', { params: params ?? {} }),
+  getMetadata: (branchId?: number) => api.get<ProductMetadata>('/products/metadata', { params: branchId ? { branchId } : {} }),
   deactivate: (id: string) => api.patch(`/products/${id}/deactivate`, {}),
   activate: (id: string) => api.patch(`/products/${id}/activate`, {}),
 };

@@ -2,6 +2,7 @@ import { productRepository } from "../repositories/product.repository";
 import { CreateProductDTO } from "../dtos/createProduct.dto";
 import { UpdateProductDTO } from "../dtos/updateProduct.dto";
 import { prisma } from "../prismaClient";
+import { normalizeTextField } from "../utils/normalizeTextField";
 
 export const productService = {
   async createProduct(dto: CreateProductDTO, userId: string) {
@@ -21,6 +22,9 @@ export const productService = {
     // ✅ Crear producto maestro en todas las sucursales activas
     try {
       return prisma.$transaction(async (tx) => {
+        const normalizedCategory = normalizeTextField(dto.category);
+        const normalizedBrand = normalizeTextField(dto.brand);
+
         const existingSku = await tx.product.findFirst({
           where: {
             sku: dto.sku.trim()
@@ -52,8 +56,8 @@ export const productService = {
               salePrice: dto.salePrice,
               priceCurrency: priceCurrency,
               stock: 0,
-              category: dto.category?.trim(),
-              brand: dto.brand?.trim(),
+              category: normalizedCategory,
+              brand: normalizedBrand,
               imageUrl: dto.imageUrl,
               createdBy: userId,
               providerId: dto.providerId ? Number(dto.providerId) : null,
@@ -123,7 +127,30 @@ export const productService = {
   },
 
   async updateProduct(id: string, dto: UpdateProductDTO) {
-    return await productRepository.update(id, dto);
+    const normalizedDto: UpdateProductDTO = {
+      ...dto,
+      ...(dto.category !== undefined ? { category: normalizeTextField(dto.category) } : {}),
+      ...(dto.brand !== undefined ? { brand: normalizeTextField(dto.brand) } : {}),
+    };
+    return await productRepository.update(id, normalizedDto);
+  },
+
+  async getProductMetadata(branchId?: number) {
+    const products = await prisma.product.findMany({
+      where: {
+        ...(branchId ? { branchId } : {}),
+        isActive: true
+      },
+      select: { category: true, brand: true }
+    });
+
+    const categories = Array.from(new Set(products.map((p) => normalizeTextField(p.category)).filter(Boolean))) as string[];
+    const brands = Array.from(new Set(products.map((p) => normalizeTextField(p.brand)).filter(Boolean))) as string[];
+
+    return {
+      categories: categories.sort((a, b) => a.localeCompare(b, "es-BO")),
+      brands: brands.sort((a, b) => a.localeCompare(b, "es-BO"))
+    };
   },
 
   async deleteProduct(id: string) {
