@@ -24,8 +24,8 @@ api.interceptors.request.use((config) => {
   // Agregar branchId a los parámetros de consulta para GET
   if (currentBranchId && config.method?.toLowerCase() === 'get') {
     config.params = {
-      ...config.params,
-      branchId: currentBranchId
+      branchId: currentBranchId,
+      ...config.params
     };
   }
 
