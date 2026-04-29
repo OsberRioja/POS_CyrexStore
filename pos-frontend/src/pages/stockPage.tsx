@@ -34,11 +34,14 @@ import ActiveInternalUsesTable from '../components/ActiveInternalUsesTable';
 import InternalUseModal from '../components/InternalUseModal';
 import TransferBetweenBranchesModal from '../components/TransferBetweenBranchesModal';
 import PaginationControls from '../components/PaginationControls';
+import { useAuth } from '../context/authContext';
 
 type ViewType = 'movements' | 'products' | 'active-repairs' | 'active-demos' | 'active-internal-uses';
 type MovementTypeFilter = 'ALL' | 'PURCHASE' | 'SALE' | 'REPAIR_OUT' | 'DEMO_OUT' | 'RETURN_IN' | 'ADJUSTMENT' | 'INTERNAL_USE_OUT' | 'INTERNAL_USE_RETURN' | 'TRANSFER_OUT' | 'TRANSFER_IN';
 
 export default function StockPage() {
+  const { user } = useAuth();
+  const canViewCost = user?.role === 'ADMIN';
   const [view, setView] = useState<ViewType>('movements');
   const [movements, setMovements] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -698,9 +701,13 @@ export default function StockPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Stock</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Costo</th>
+                  {canViewCost && (
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Costo</th>
+                  )}
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio Venta</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Margen</th>
+                  {canViewCost && (
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Margen</th>
+                  )}
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
                 </tr>
               </thead>
@@ -739,23 +746,24 @@ export default function StockPage() {
                         </span>
                       </td>
                       
-                      {/* ← CORREGIDO: Columna de Costo */}
-                      <td className="px-6 py-4 text-right">
-                        {product.costPrice ? (
-                          <ProductPrice
-                            product={{
-                              salePrice: product.costPrice, // Usamos salePrice para mostrar costo
-                              costPrice: product.costPrice,
-                              priceCurrency: product.priceCurrency || 'BOB'
-                            }}
-                            showCost={false}
-                            showOriginal={true}
-                            className="text-sm text-gray-600"
-                          />
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </td>
+                      {canViewCost && (
+                        <td className="px-6 py-4 text-right">
+                          {product.costPrice ? (
+                            <ProductPrice
+                              product={{
+                                salePrice: product.costPrice,
+                                costPrice: product.costPrice,
+                                priceCurrency: product.priceCurrency || 'BOB'
+                              }}
+                              showCost={false}
+                              showOriginal={true}
+                              className="text-sm text-gray-600"
+                            />
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </td>
+                      )}
                       
                       {/* ← CORREGIDO: Columna de Precio Venta */}
                       <td className="px-6 py-4 text-right">
@@ -771,18 +779,20 @@ export default function StockPage() {
                         />
                       </td>
                         
-                      <td className="px-6 py-4 text-center">
-                        {product.costPrice ? (
-                          <span className={`font-semibold ${
-                            parseFloat(margin) > 30 ? 'text-green-600' : 
-                            parseFloat(margin) > 15 ? 'text-orange-600' : 'text-red-600'
-                          }`}>
-                            {margin}%
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">N/A</span>
-                        )}
-                      </td>
+                      {canViewCost && (
+                        <td className="px-6 py-4 text-center">
+                          {product.costPrice ? (
+                            <span className={`font-semibold ${
+                              parseFloat(margin) > 30 ? 'text-green-600' : 
+                              parseFloat(margin) > 15 ? 'text-orange-600' : 'text-red-600'
+                            }`}>
+                              {margin}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">N/A</span>
+                          )}
+                        </td>
+                      )}
                       
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
