@@ -96,4 +96,32 @@ export const ClienteRepository = {
   async delete(id: number): Promise<Cliente> {
     return prisma.cliente.delete({ where: { id_cliente: id } });
   },
+
+  async findSalesByClientId(clientId: number) {
+    return prisma.sale.findMany({
+      where: { clientId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { name: true, sku: true }
+            }
+          }
+        },
+        payments: {
+          include: {
+            paymentMethod: {
+              select: { name: true, isCash: true }
+            }
+          }
+        },
+        seller: {
+          select: { id: true, name: true, userCode: true }
+        },
+        branch: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+  },
+
 };

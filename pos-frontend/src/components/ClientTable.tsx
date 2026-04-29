@@ -8,6 +8,8 @@ export default function ClientTable({
   onDelete,
   canEdit,
   canDelete,
+  canViewHistory,
+  onViewHistory,
 }: {
   clients: any[];
   loading: boolean;
@@ -15,6 +17,8 @@ export default function ClientTable({
   onDelete: () => void;
   canEdit: boolean;
   canDelete: boolean;
+  canViewHistory: boolean;
+  onViewHistory: (c: any) => void;
 }) {
   const { confirm, alert } = useDialog();
 
@@ -49,7 +53,7 @@ export default function ClientTable({
             <th className="p-3 border text-left">Teléfono</th>
             <th className="p-3 border text-left">Género</th>
             <th className="p-3 border text-left">Fecha Nac.</th>
-            {(canEdit || canDelete) && <th className="p-3 border text-left">Acciones</th>}
+            {(canEdit || canDelete || canViewHistory) && <th className="p-3 border text-left">Acciones</th>}
           </tr>
         </thead>
         <tbody>
@@ -61,10 +65,13 @@ export default function ClientTable({
               <td className="p-3 border">{`+${c.countryCode ?? "591"} ${c.phone ?? c.telefono ?? ""}`}</td>
               <td className="p-3 border">{c.genero ?? c.gender ?? "-"}</td>
               <td className="p-3 border">{c.fecha_nacimiento ? new Date(c.fecha_nacimiento).toLocaleDateString() : "-"}</td>
-              {(canEdit || canDelete) &&(
+              {(canEdit || canDelete || canViewHistory) &&(
                 <td className="p-3 border flex gap-2">
                   {canEdit && (
                     <button onClick={() => onEdit(c)} className="px-2 py-1 bg-yellow-500 text-white rounded text-sm">Editar</button>
+                  )}
+                  {canViewHistory && (
+                    <button onClick={() => onViewHistory(c)} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Ver historial</button>
                   )}
                   {canDelete && (
                     <button onClick={() => handleDelete(c.id_cliente ?? c.id ?? c.idCliente)} className="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>

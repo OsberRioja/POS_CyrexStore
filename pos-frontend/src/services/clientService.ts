@@ -14,4 +14,6 @@ export const clientService = {
     api.get('/clients', { params: params ?? {} }),
     
   getById: (id: number | string) => api.get(`/clients/${id}`),
+
+  getSales: (id: number | string) => api.get(`/clients/${id}/sales`),
 };

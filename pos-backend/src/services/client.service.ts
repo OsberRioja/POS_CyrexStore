@@ -60,4 +60,11 @@ export const ClienteService = {
     if (!exists) throw { status: 404, message: "Cliente no encontrado" };
     return ClienteRepository.delete(id);
   },
+
+  async getClientSales(id: number) {
+    const exists = await ClienteRepository.findById(id);
+    if (!exists) throw { status: 404, message: "Cliente no encontrado" };
+    return ClienteRepository.findSalesByClientId(id);
+  },
+
 };

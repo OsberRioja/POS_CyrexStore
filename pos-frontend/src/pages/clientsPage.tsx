@@ -17,8 +17,11 @@ export default function ClientsPage() {
   const [total, setTotal] = useState<number | null>(null); // si backend devuelve total
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [historyClient, setHistoryClient] = useState<any | null>(null);
+  const [salesHistory, setSalesHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  const { hasPermission } = usePermissions();
+  const { hasPermission, role } = usePermissions();
 
   const loadClients = async (q = debouncedQuery, p = page) => {
     setLoading(true);
@@ -70,6 +73,22 @@ export default function ClientsPage() {
     setShowForm(true);
   };
 
+
+
+  const openHistory = async (c: any) => {
+    setHistoryClient(c);
+    setHistoryLoading(true);
+    try {
+      const res = await clientService.getSales(c.id_cliente ?? c.id ?? c.idCliente);
+      setSalesHistory(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Error cargando historial", err);
+      setSalesHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -96,6 +115,8 @@ export default function ClientsPage() {
         onDelete={() => loadClients()}
         canEdit={hasPermission(Permission.CLIENT_UPDATE)}
         canDelete={hasPermission(Permission.CLIENT_DELETE)}
+        canViewHistory={role === "ADMIN" || role === "SUPERVISOR"}
+        onViewHistory={openHistory}
       />
 
       {/* paginación simple */}
@@ -107,6 +128,30 @@ export default function ClientsPage() {
           <button disabled={clients.length < limit} onClick={() => setPage((p) => p + 1)} className="px-3 py-1 border rounded">Siguiente</button>
         </div>
       </div>
+
+
+      {historyClient && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded shadow-lg w-full max-w-3xl p-4 max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Historial de compras - {historyClient.nombre ?? historyClient.name}</h3>
+              <button className="px-2 py-1 border rounded" onClick={() => setHistoryClient(null)}>Cerrar</button>
+            </div>
+            {historyLoading ? <div>Cargando historial...</div> : (
+              salesHistory.length ? (
+                <table className="min-w-full text-sm">
+                  <thead><tr className="bg-gray-100"><th className="p-2 border text-left">N° Venta</th><th className="p-2 border text-left">Fecha</th><th className="p-2 border text-left">Total</th><th className="p-2 border text-left">Estado</th></tr></thead>
+                  <tbody>
+                    {salesHistory.map((sale) => (
+                      <tr key={sale.id}><td className="p-2 border">{sale.saleNumber}</td><td className="p-2 border">{new Date(sale.createdAt).toLocaleString()}</td><td className="p-2 border">{sale.total?.toFixed?.(2) ?? sale.total}</td><td className="p-2 border">{sale.paymentStatus}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <div className="text-gray-500">Este cliente no tiene ventas registradas.</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <ClientForm

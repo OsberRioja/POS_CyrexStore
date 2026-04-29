@@ -34,6 +34,16 @@ export const ClienteController = {
   },
 
 
+  async getSales(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const sales = await ClienteService.getClientSales(id);
+      res.json(sales);
+    } catch (err: any) {
+      res.status(err?.status || 500).json({ error: err?.message || "Error interno" });
+    }
+  },
+
   async getById(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
