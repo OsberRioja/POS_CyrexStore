@@ -89,6 +89,72 @@ export default function ClientsPage() {
     }
   };
 
+  const closeHistoryPage = () => {
+    setHistoryClient(null);
+    setSalesHistory([]);
+  };
+
+  if (historyClient) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-700">Historial de compras</h2>
+            <p className="text-sm text-gray-500">Cliente: {historyClient.nombre ?? historyClient.name}</p>
+          </div>
+          <button className="px-3 py-2 border rounded" onClick={closeHistoryPage}>← Volver a clientes</button>
+        </div>
+
+        {historyLoading ? <div>Cargando historial...</div> : (
+          salesHistory.length ? (
+            <div className="space-y-4">
+              {salesHistory.map((sale) => (
+                <div key={sale.id} className="border rounded-lg p-4 bg-white">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3 text-sm">
+                    <div><span className="font-semibold">N° Venta:</span> {sale.saleNumber}</div>
+                    <div><span className="font-semibold">Fecha:</span> {new Date(sale.createdAt).toLocaleString()}</div>
+                    <div><span className="font-semibold">Total:</span> {sale.total?.toFixed?.(2) ?? sale.total}</div>
+                    <div><span className="font-semibold">Estado:</span> {sale.paymentStatus}</div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Productos adquiridos</h4>
+                    {sale.items?.length ? (
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="p-2 border text-left">Producto</th>
+                            <th className="p-2 border text-left">SKU</th>
+                            <th className="p-2 border text-left">Cantidad</th>
+                            <th className="p-2 border text-left">Precio Unitario</th>
+                            <th className="p-2 border text-left">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sale.items.map((item: any) => (
+                            <tr key={item.id}>
+                              <td className="p-2 border">{item.product?.name ?? '-'}</td>
+                              <td className="p-2 border">{item.product?.sku ?? '-'}</td>
+                              <td className="p-2 border">{item.quantity}</td>
+                              <td className="p-2 border">{item.unitPrice}</td>
+                              <td className="p-2 border">{item.subtotal}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="text-gray-500 text-sm">Sin detalle de productos.</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : <div className="text-gray-500">Este cliente no tiene ventas registradas.</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -128,31 +194,6 @@ export default function ClientsPage() {
           <button disabled={clients.length < limit} onClick={() => setPage((p) => p + 1)} className="px-3 py-1 border rounded">Siguiente</button>
         </div>
       </div>
-
-
-      {historyClient && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded shadow-lg w-full max-w-3xl p-4 max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Historial de compras - {historyClient.nombre ?? historyClient.name}</h3>
-              <button className="px-2 py-1 border rounded" onClick={() => setHistoryClient(null)}>Cerrar</button>
-            </div>
-            {historyLoading ? <div>Cargando historial...</div> : (
-              salesHistory.length ? (
-                <table className="min-w-full text-sm">
-                  <thead><tr className="bg-gray-100"><th className="p-2 border text-left">N° Venta</th><th className="p-2 border text-left">Fecha</th><th className="p-2 border text-left">Total</th><th className="p-2 border text-left">Estado</th></tr></thead>
-                  <tbody>
-                    {salesHistory.map((sale) => (
-                      <tr key={sale.id}><td className="p-2 border">{sale.saleNumber}</td><td className="p-2 border">{new Date(sale.createdAt).toLocaleString()}</td><td className="p-2 border">{sale.total?.toFixed?.(2) ?? sale.total}</td><td className="p-2 border">{sale.paymentStatus}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <div className="text-gray-500">Este cliente no tiene ventas registradas.</div>
-            )}
-          </div>
-        </div>
-      )}
-
       {showForm && (
         <ClientForm
           client={selectedClient}
