@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useAuth } from "../context/authContext";
 import { useBranch } from "../hooks/useBranch";
 import CurrencySelector from "./CurrencySelector";
-import BranchSelector from "./BranchSelector";
 
 export default function Navbar() {
   const { user, logout, isInBranchMode, exitToAdminHome } = useAuth();
@@ -36,7 +35,6 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center space-x-4">
-          {isInBranchMode && <BranchSelector />}
           {isInBranchMode && user?.role === 'ADMIN' && <CurrencySelector />}
 
           <div className="relative">
