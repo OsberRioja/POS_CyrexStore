@@ -805,14 +805,7 @@ export const StockMovementService = {
       const previousStock = product.stock;
       const newStock = previousStock + data.quantity;
     
-      // Validar que el stock no sea negativo después del ajuste
-      if (newStock < 0) {
-        throw { 
-          status: 400, 
-          message: `Stock insuficiente. Stock actual: ${previousStock}, ajuste: ${data.quantity}` 
-        };
-      }
-    
+      // Permitir stock negativo en ajustes manuales para reflejar faltantes/mermas
       // Actualizar stock del producto
       await tx.product.update({
         where: { id: data.productId },

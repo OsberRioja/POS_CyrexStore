@@ -17,6 +17,7 @@ const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
   const { user } = useAuth();
   const [form, setForm] = useState({
     quantity: 1,
+    direction: 'INCREMENT' as 'INCREMENT' | 'DECREMENT',
     reason: '',
     notes: ''
   });
@@ -34,9 +35,11 @@ const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
     setError(null);
 
     try {
+      const signedQuantity = form.direction === 'DECREMENT' ? -Math.abs(form.quantity) : Math.abs(form.quantity);
+
       await stockService.registerAdjustment({
         productId: product.id,
-        quantity: form.quantity,
+        quantity: signedQuantity,
         reason: form.reason,
         notes: form.notes
       });
@@ -84,24 +87,35 @@ const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
                 Cantidad de ajuste *
               </label>
               <div className="flex items-center gap-3">
+                <div className="w-40">
+                  <select
+                    value={form.direction}
+                    onChange={(e) => setForm({ ...form, direction: e.target.value as 'INCREMENT' | 'DECREMENT' })}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="INCREMENT">Incrementar</option>
+                    <option value="DECREMENT">Reducir</option>
+                  </select>
+                </div>
                 <div className="flex-1">
                   <input
                     type="number"
+                    min="1"
                     step="1"
                     value={form.quantity}
                     onChange={(e) => setForm({...form, quantity: parseInt(e.target.value) || 0})}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ej: 5 (aumento) o -3 (disminución)"
+                    placeholder="Ej: 3"
                   />
                 </div>
                 <div className="text-sm text-gray-600 whitespace-nowrap">
                   Nuevo stock: <span className="font-bold">
-                    {product.stock + form.quantity}
+                    {product.stock + (form.direction === 'DECREMENT' ? -Math.abs(form.quantity) : Math.abs(form.quantity))}
                   </span>
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Positivo para aumentar, negativo para disminuir
+                Selecciona si quieres incrementar o reducir el stock manualmente
               </p>
             </div>
 
