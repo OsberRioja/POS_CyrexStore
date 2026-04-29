@@ -60,8 +60,9 @@ export default function SaleFormModal({
   const [showClientResults, setShowClientResults] = useState(false);
 
   useEffect(() => {
-    if (currentUser?.role === 'SELLER') {
+    if (currentUser) {
       setSellerSelected(currentUser);
+      setSellerQuery(currentUser.name ?? "");
     }
   }, [currentUser]);
 
@@ -150,10 +151,13 @@ export default function SaleFormModal({
       }
 
       try {
-        // userService.getUsers acepta q opcional (ya lo tienes implementado)
-        const r = await userService.getUsers();
+        const r = await userService.getUsers(undefined, true);
         const data = Array.isArray(r.data) ? r.data : r.data?.data ?? r.data ?? [];
-        setSellerResults(data);
+        const filtered = data.filter((u: any) => {
+          const target = `${u.name ?? ""} ${u.email ?? ""} ${u.userCode ?? ""}`.toLowerCase();
+          return target.includes(q.toLowerCase());
+        });
+        setSellerResults(filtered);
         setShowSellerResults(true);
       } catch (err) {
         console.error("buscar vendedores:", err);
@@ -468,9 +472,7 @@ export default function SaleFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4"> 
-          <div className={`grid gap-3 ${currentUser?.role !== 'SELLER' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {/* VENDEDOR - ocultar para vendedores */}
-            {currentUser?.role !== 'SELLER' && (
+          <div className="grid gap-3 grid-cols-2">
               <div>
                 <label className="text-sm">Vendedor (nombre o código)</label>
                 <div className="flex gap-2">
@@ -479,7 +481,7 @@ export default function SaleFormModal({
                       placeholder="Buscar vendedor por nombre o código"
                       value={sellerQuery}
                       onChange={(e) => setSellerQuery(e.target.value)}
-                      onFocus={() => clientQuery.trim() && !clientSelected && setShowClientResults(true)}
+                      onFocus={() => sellerQuery.trim() && setShowSellerResults(true)}
                       className="border p-2 rounded flex-1"
                     />
                     {sellerSelected && (
@@ -505,25 +507,14 @@ export default function SaleFormModal({
                         className="p-2 hover:bg-gray-100 cursor-pointer"
                         onClick={() => handleSellerSelect(u)}
                       >
-                        {u.name} — {u.email} — {u.userCode ?? ""}
+                        {u.name} ({u.branch?.name ? `Sucursal ${u.branch.name}` : "Sin sucursal"}) — {u.email} — {u.userCode ?? ""}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {sellerSelected && <div className="text-sm mt-1 text-gray-600">Seleccionado: {sellerSelected.name}</div>}
+                {sellerSelected && <div className="text-sm mt-1 text-gray-600">Seleccionado: {sellerSelected.name} ({sellerSelected.branch?.name ? `Sucursal ${sellerSelected.branch.name}` : "Sin sucursal"})</div>}
               </div>
-            )}
-
-            {/* Para vendedores, mostrar info del vendedor actual */}
-            {currentUser?.role === 'SELLER' && (
-              <div>
-                <label className="text-sm">Vendedor</label>
-                <div className="p-2 bg-gray-100 rounded text-sm">
-                  {currentUser.name} (Tú)
-                </div>
-              </div>
-            )}
 
             {/* CLIENTE */}
             <div>

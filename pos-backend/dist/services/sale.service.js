@@ -11,6 +11,16 @@ const exchangeRate_service_1 = require("./exchangeRate.service");
 const phone_1 = require("../utils/phone");
 const prisma = new client_1.PrismaClient();
 exports.SaleService = {
+    async attachCreatedBy(sales) {
+        const list = Array.isArray(sales) ? sales : [sales];
+        const ids = [...new Set(list.map((s) => s.createdBy).filter(Boolean))];
+        if (ids.length === 0)
+            return sales;
+        const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, userCode: true } });
+        const map = new Map(users.map((u) => [u.id, u]));
+        const mapped = list.map((s) => ({ ...s, createdBy: s.createdBy ? (map.get(s.createdBy) ?? null) : null }));
+        return (Array.isArray(sales) ? mapped : mapped[0]);
+    },
     /**
      * Función helper para calcular estado de pago
      */
@@ -42,13 +52,16 @@ exports.SaleService = {
         // Resolver sellerId (por userCode o id, fallback actor)
         let sellerId = dto.sellerId ?? null;
         if (!sellerId && dto.sellerUserCode) {
-            const user = await prisma.user.findFirst({ where: { userCode: dto.sellerUserCode, branchId: branchId } });
+            const user = await prisma.user.findFirst({ where: { userCode: dto.sellerUserCode, deleted: false } });
             if (!user)
-                throw { status: 404, message: "Vendedor no encontrado por userCode en esta sucursal" };
+                throw { status: 404, message: "Vendedor no encontrado por userCode" };
             sellerId = user.id;
         }
         if (!sellerId)
             sellerId = actorUserId;
+        const sellerExists = await prisma.user.findFirst({ where: { id: sellerId, deleted: false } });
+        if (!sellerExists)
+            throw { status: 404, message: "sellerId no existe" };
         // comprobar que haya caja abierta en la misma sucursal(regla)
         const openBox = await cashBox_repository_1.CashBoxRepository.findOpenByBranch(branchId);
         if (!openBox) {
@@ -304,7 +317,7 @@ exports.SaleService = {
                     totalPaid: Number(totalPaid.toFixed(2)),
                     balance: Number(balance.toFixed(2)),
                     paymentStatus: paymentStatus,
-                    createdBy: dto.createdBy ?? actorUserId,
+                    createdBy: actorUserId,
                     cashBoxId: openBox.id,
                     branchId: branchId,
                     items: { create: itemsToCreate },
@@ -506,17 +519,18 @@ exports.SaleService = {
         });
     },
     async list(params) {
-        return sale_repository_1.SaleRepository.findAll(params);
+        const result = await sale_repository_1.SaleRepository.findAll(params);
+        return { ...result, data: await this.attachCreatedBy(result.data) };
     },
     async getById(id) {
         const s = await sale_repository_1.SaleRepository.findById(id);
         if (!s)
             throw { status: 404, message: "Venta no encontrada" };
-        return s;
+        return this.attachCreatedBy(s);
     },
     async findByBox(cashBoxId) {
         const sales = await sale_repository_1.SaleRepository.findByBox(cashBoxId);
-        return sales;
+        return this.attachCreatedBy(sales);
     },
     /**
      * NUEVO: Obtener ventas con saldo pendiente

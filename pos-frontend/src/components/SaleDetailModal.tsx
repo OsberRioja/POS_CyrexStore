@@ -90,6 +90,10 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) =>
                   <span className="text-gray-600">Vendedor:</span>
                   <span className="font-medium">{sale.seller?.name} (#{sale.seller?.userCode})</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Registró:</span>
+                  <span className="font-medium">{sale.createdBy?.name || 'N/A'}{sale.createdBy?.userCode ? ` (#${sale.createdBy.userCode})` : ''}</span>
+                </div>
               </div>
             </div>
 

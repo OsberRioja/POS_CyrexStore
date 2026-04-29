@@ -11,6 +11,15 @@ import { normalizeCountryCode, normalizePhoneNumber } from "../utils/phone";
 const prisma = new PrismaClient();
 
 export const SaleService = {
+  async attachCreatedBy<T extends { createdBy?: string | null }>(sales: T | T[]) {
+    const list = Array.isArray(sales) ? sales : [sales];
+    const ids = [...new Set(list.map((s) => s.createdBy).filter(Boolean) as string[])];
+    if (ids.length === 0) return sales as any;
+    const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, userCode: true } });
+    const map = new Map(users.map((u) => [u.id, u]));
+    const mapped = list.map((s: any) => ({ ...s, createdBy: s.createdBy ? (map.get(s.createdBy) ?? null) : null }));
+    return (Array.isArray(sales) ? mapped : mapped[0]) as any;
+  },
   /**
    * Función helper para calcular estado de pago
    */
@@ -41,11 +50,13 @@ export const SaleService = {
     // Resolver sellerId (por userCode o id, fallback actor)
     let sellerId = dto.sellerId ?? null;
     if (!sellerId && dto.sellerUserCode) {
-      const user = await prisma.user.findFirst({ where: { userCode: dto.sellerUserCode, branchId: branchId }  });
-      if (!user) throw { status: 404, message: "Vendedor no encontrado por userCode en esta sucursal" };
+      const user = await prisma.user.findFirst({ where: { userCode: dto.sellerUserCode, deleted: false }  });
+      if (!user) throw { status: 404, message: "Vendedor no encontrado por userCode" };
       sellerId = user.id;
     }
     if (!sellerId) sellerId = actorUserId;
+    const sellerExists = await prisma.user.findFirst({ where: { id: sellerId, deleted: false } });
+    if (!sellerExists) throw { status: 404, message: "sellerId no existe" };
 
     // comprobar que haya caja abierta en la misma sucursal(regla)
     const openBox = await CashBoxRepository.findOpenByBranch(branchId);
@@ -327,7 +338,7 @@ export const SaleService = {
           totalPaid: Number(totalPaid.toFixed(2)),
           balance: Number(balance.toFixed(2)),
           paymentStatus: paymentStatus,
-          createdBy: dto.createdBy ?? actorUserId,
+          createdBy: actorUserId,
           cashBoxId: openBox.id,
           branchId: branchId,
           items: { create: itemsToCreate },
@@ -557,18 +568,19 @@ export const SaleService = {
     search?: string;
     branchId?: number;
   }) {
-    return SaleRepository.findAll(params);
+    const result = await SaleRepository.findAll(params);
+    return { ...result, data: await this.attachCreatedBy(result.data) };
   },
 
   async getById(id: string) {
     const s = await SaleRepository.findById(id);
     if (!s) throw { status: 404, message: "Venta no encontrada" };
-    return s;
+    return this.attachCreatedBy(s);
   },
 
   async findByBox(cashBoxId: number) {
     const sales = await SaleRepository.findByBox(cashBoxId);
-    return sales;
+    return this.attachCreatedBy(sales);
   },
 
   /**

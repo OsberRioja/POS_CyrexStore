@@ -24,7 +24,8 @@ exports.UserController = {
         try {
             const currentUserBranchId = req.user?.branchId;
             const queryBranchId = req.query.branchId ? Number(req.query.branchId) : undefined;
-            const users = await user_service_1.UserService.listUsers(currentUserBranchId, queryBranchId);
+            const includeAllBranches = req.query.allBranches === 'true';
+            const users = await user_service_1.UserService.listUsers(currentUserBranchId, queryBranchId, includeAllBranches);
             return res.json(users);
         }
         catch (err) {
