@@ -14,6 +14,9 @@ export interface ReceiptData {
     quantity: number;
     unitPrice: number;
     subtotal: number;
+    discountAmount?: number;
+    discountType?: 'PERCENTAGE' | 'FIXED' | null;
+    discountValue?: number | null;
     sku?: string;
     serialNumbers?: string[];
   }>;
@@ -23,6 +26,8 @@ export interface ReceiptData {
     date: string;
   }>;
   total: number;
+  subtotal?: number;
+  globalDiscountAmount?: number;
   totalPaid: number;
   balance: number;
   paymentStatus: string;
@@ -173,7 +178,8 @@ class PdfService {
                 <th style="text-align: left; padding: 8px 5px; width: 40%;">Producto</th>
                 <th style="text-align: center; padding: 8px 5px; width: 15%;">Cantidad</th>
                 <th style="text-align: right; padding: 8px 5px; width: 20%;">P. Unit.</th>
-                <th style="text-align: right; padding: 8px 5px; width: 25%;">Subtotal</th>
+                <th style="text-align: right; padding: 8px 5px; width: 12%;">Desc.</th>
+                <th style="text-align: right; padding: 8px 5px; width: 23%;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
@@ -186,6 +192,9 @@ class PdfService {
                   </td>
                   <td style="text-align: center; padding: 8px 5px;">${item.quantity}</td>
                   <td style="text-align: right; padding: 8px 5px;">${formatCurrency(item.unitPrice)}</td>
+                  <td style="text-align: right; padding: 8px 5px; color: #e74c3c;">
+                    ${item.discountAmount && item.discountAmount > 0 ? `- ${formatCurrency(item.discountAmount)}` : '-'}
+                  </td>
                   <td style="text-align: right; padding: 8px 5px; font-weight: bold;">${formatCurrency(item.subtotal)}</td>
                 </tr>
               `).join('')}
@@ -223,6 +232,14 @@ class PdfService {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div style="text-align: right; font-weight: bold;">Total:</div>
             <div style="text-align: right; font-weight: bold; font-size: 14px;">${formatCurrency(receiptData.total)}</div>
+            <div style="text-align: right;">Subtotal:</div>
+            <div style="text-align: right;">${formatCurrency(receiptData.subtotal ?? receiptData.total)}</div>
+            <div style="text-align: right;">Desc. productos:</div>
+            <div style="text-align: right; color: #e74c3c;">
+              - ${formatCurrency(receiptData.items.reduce((acc, item) => acc + Number(item.discountAmount || 0), 0))}
+            </div>
+            <div style="text-align: right;">Desc. global:</div>
+            <div style="text-align: right; color: #e74c3c;">- ${formatCurrency(receiptData.globalDiscountAmount ?? 0)}</div>
             
             <div style="text-align: right; font-weight: bold;">Pagado:</div>
             <div style="text-align: right; font-weight: bold; color: ${receiptData.totalPaid < receiptData.total ? '#e67e22' : '#27ae60'};">

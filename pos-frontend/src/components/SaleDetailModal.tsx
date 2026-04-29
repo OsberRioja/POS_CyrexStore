@@ -130,6 +130,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) =>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
                     <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Cantidad</th>
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Precio Unit.</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Descuento</th>
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
                   </tr>
                 </thead>
@@ -149,6 +150,9 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) =>
                       </td>
                       <td className="px-4 py-3 text-center">{item.quantity}</td>
                       <td className="px-4 py-3 text-right">{formatCurrency(item.unitPrice)}</td>
+                      <td className="px-4 py-3 text-right text-red-600">
+                        {item.discountAmount ? `- ${formatCurrency(item.discountAmount)}` : '-'}
+                      </td>
                       <td className="px-4 py-3 text-right font-semibold">{formatCurrency(item.subtotal)}</td>
                     </tr>
                   ))}
@@ -194,6 +198,20 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ sale, onClose }) =>
           {/* Resumen de Totales */}
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-700">Subtotal:</span>
+                <span className="font-semibold">{formatCurrency(sale.subtotal ?? sale.total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Desc. por productos:</span>
+                <span className="font-semibold text-red-600">
+                  - {formatCurrency((sale.items || []).reduce((acc: number, it: any) => acc + Number(it.discountAmount || 0), 0))}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Desc. global:</span>
+                <span className="font-semibold text-red-600">- {formatCurrency(Number(sale.globalDiscountAmount || 0))}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-gray-700">Total:</span>
                 <span className="font-bold text-lg">{formatCurrency(sale.total)}</span>

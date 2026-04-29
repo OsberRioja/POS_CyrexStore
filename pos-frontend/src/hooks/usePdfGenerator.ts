@@ -27,6 +27,9 @@ export const usePdfGenerator = () => {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           subtotal: item.subtotal,
+          discountAmount: item.discountAmount || 0,
+          discountType: item.discountType || null,
+          discountValue: item.discountValue || null,
           sku: item.product?.sku,
           serialNumbers: item.serialNumbers || []
         })) || [],
@@ -36,6 +39,8 @@ export const usePdfGenerator = () => {
           date: payment.createdAt
         })) || [],
         total: saleData.total,
+        subtotal: saleData.subtotal ?? saleData.total,
+        globalDiscountAmount: saleData.globalDiscountAmount ?? 0,
         totalPaid: saleData.totalPaid,
         balance: saleData.balance,
         paymentStatus: saleData.paymentStatus
