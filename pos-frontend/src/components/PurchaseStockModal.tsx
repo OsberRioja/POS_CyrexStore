@@ -49,6 +49,20 @@ const buildSequentialSerials = (startSerial: string, endSerial: string) => {
   return serials;
 };
 
+const parsePositiveNumber = (value: string, fallback = 0) => {
+  if (value.trim() === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return parsed;
+};
+
+const parsePositiveInteger = (value: string, fallback = 1) => {
+  if (value.trim() === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.floor(parsed);
+};
+
 const PurchaseStockModal: React.FC<PurchaseStockModalProps> = ({ product, onClose, onSuccess }) => {
   const [quantity, setQuantity] = useState<number>(1);
   const [unitCost, setUnitCost] = useState<number>(product?.costPrice || 0);
@@ -123,8 +137,8 @@ const PurchaseStockModal: React.FC<PurchaseStockModalProps> = ({ product, onClos
       return;
     }
 
-    if (unitCost < 0) {
-      setError('El costo unitario no puede ser negativo');
+    if (unitCost <= 0) {
+      setError('El costo unitario debe ser mayor a 0');
       return;
     }
 
@@ -196,10 +210,11 @@ const PurchaseStockModal: React.FC<PurchaseStockModalProps> = ({ product, onClos
                   type="number"
                   min="1"
                   value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setQuantity(parsePositiveInteger(e.target.value, 1))}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${quantity > 0 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-400 focus:ring-red-500'}`}
                   required
                 />
+                <p className={`text-xs mt-1 ${quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>{quantity > 0 ? 'Cantidad válida.' : 'Ingresa una cantidad mayor a 0.'}</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Nuevo stock: {product.stock + quantity} unidades
                 </p>
@@ -212,12 +227,13 @@ const PurchaseStockModal: React.FC<PurchaseStockModalProps> = ({ product, onClos
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   value={unitCost}
-                  onChange={(e) => setUnitCost(Number(e.target.value))}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setUnitCost(parsePositiveNumber(e.target.value, 0))}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${unitCost > 0 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-400 focus:ring-red-500'}`}
                   required
                 />
+                <p className={`text-xs mt-1 ${unitCost > 0 ? 'text-green-600' : 'text-red-600'}`}>{unitCost > 0 ? 'Costo válido.' : 'Ingresa un costo mayor a 0. Se permiten decimales.'}</p>
               </div>
 
               <div className="bg-green-50 p-3 rounded-lg">
