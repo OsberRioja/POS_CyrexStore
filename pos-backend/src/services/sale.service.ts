@@ -373,25 +373,25 @@ export const SaleService = {
       const paymentStatus = this.calculatePaymentStatus(calculatedTotal, netCashAmount);
 
       // 3) crear venta con nested items y payments
-      const created = await tx.sale.create({
-        data: {
-          sellerId: String(sellerId),
-          clientId: clientId ?? undefined,
-          total: Number(calculatedTotal.toFixed(2)),
-          subtotal: Number(saleSubtotal.toFixed(2)),
-          globalDiscountType: dto.globalDiscountType ?? null,
-          globalDiscountValue: dto.globalDiscountValue ?? null,
-          globalDiscountAmount: Number(globalDiscountAmount.toFixed(2)),
-          totalPaid: Number(totalPaid.toFixed(2)),
-          balance: Number(balance.toFixed(2)),
-          paymentStatus: paymentStatus,
-          createdBy: actorUserId,
-          cashBoxId: openBox.id,
-          branchId: branchId,
-          items: { create: itemsToCreate },
-          payments: { create: paymentsData },
-        } as any,
-        include: {
+      const baseCreateData: any = {
+        sellerId: String(sellerId),
+        clientId: clientId ?? undefined,
+        total: Number(calculatedTotal.toFixed(2)),
+        subtotal: Number(saleSubtotal.toFixed(2)),
+        globalDiscountType: dto.globalDiscountType ?? null,
+        globalDiscountValue: dto.globalDiscountValue ?? null,
+        globalDiscountAmount: Number(globalDiscountAmount.toFixed(2)),
+        totalPaid: Number(totalPaid.toFixed(2)),
+        balance: Number(balance.toFixed(2)),
+        paymentStatus: paymentStatus,
+        createdBy: actorUserId,
+        cashBoxId: openBox.id,
+        branchId: branchId,
+        items: { create: itemsToCreate },
+        payments: { create: paymentsData },
+      };
+
+      const includeData: any = {
           items: {
             include: {
               product: {
@@ -420,8 +420,29 @@ export const SaleService = {
           },
           client: true,
           branch: { select: { name: true } }
-        },
-      });
+        };
+
+      let created: any;
+      try {
+        created = await tx.sale.create({ data: baseCreateData, include: includeData });
+      } catch (error: any) {
+        const message = String(error?.message ?? "");
+        const isLegacySchemaError = message.includes("Unknown argument `subtotal`") || message.includes("Unknown argument `globalDiscount");
+        if (!isLegacySchemaError) throw error;
+
+        // Compatibilidad temporal: si la BD/cliente Prisma no está migrada, crear sin campos nuevos.
+        const legacyItems = itemsToCreate.map(({ discountType, discountValue, discountAmount, ...rest }) => rest);
+        const legacyCreateData = {
+          ...baseCreateData,
+          items: { create: legacyItems },
+        };
+        delete legacyCreateData.subtotal;
+        delete legacyCreateData.globalDiscountType;
+        delete legacyCreateData.globalDiscountValue;
+        delete legacyCreateData.globalDiscountAmount;
+
+        created = await tx.sale.create({ data: legacyCreateData, include: includeData });
+      }
 
       // 4) Decrementar stock y registrar movimientos
       for (const item of itemsToCreate) {
