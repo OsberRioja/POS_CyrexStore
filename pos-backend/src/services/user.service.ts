@@ -197,9 +197,9 @@ export const UserService = {
     throw { status: 500, message: "No se pudo generar un usercode único. Intenta de nuevo." };
   },
 
-  async listUsers(currentUserBranchId?: number | null) {
-    // ← NUEVO: Pasar branchId para filtrar
-    return UserRepository.findAll(currentUserBranchId);
+  async listUsers(currentUserBranchId?: number | null, queryBranchId?: number) {
+    const effectiveBranchId = currentUserBranchId ?? queryBranchId;
+    return UserRepository.findAll(effectiveBranchId);
   },
 
   async getUserById(id: string) {

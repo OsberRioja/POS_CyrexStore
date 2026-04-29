@@ -5,8 +5,9 @@ import { productService } from "../services/productService";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
-import { useAuth } from "../context/authContext"; // ← importar useAuth
-import { useBranch } from "../hooks/useBranch"; // ← importar useBranch
+import { useAuth } from "../context/authContext";
+import VisualBranchSelector from "../components/VisualBranchSelector";
+import { useVisualBranchFilter } from "../context/visualBranchFilterContext";
 import { useDialog } from "../context/DialogContext";
 import PaginationControls from "../components/PaginationControls";
 
@@ -22,18 +23,15 @@ export default function ProductsPage() {
 
   const { hasPermission } = usePermissions();
   const { confirm, alert } = useDialog();
-  const { currentBranchId, user } = useAuth(); // ← obtener currentBranchId
-  const { branches, currentBranchId: branchId } = useBranch(); // usar hook de sucursal
-
-  // Obtener nombre de la sucursal actual
-  const currentBranchName = branches.find(b => b.id === branchId)?.name;
+  const { user } = useAuth();
+  const { selectedBranchId } = useVisualBranchFilter();
 
   const loadProducts = async () => {
     setLoading(true);
     try {
       const res = await productService.getAll({ 
         onlyActive: !showInactive,
-        branchId: currentBranchId ?? undefined 
+        branchId: selectedBranchId ?? undefined 
       });
       setProducts(res.data ?? []);
     } catch (err) {
@@ -46,11 +44,11 @@ export default function ProductsPage() {
 
   useEffect(() => { 
     loadProducts(); 
-  }, [currentBranchId, showInactive]); // ← NUEVO: recargar cuando cambie la sucursal
+  }, [selectedBranchId, showInactive]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [showInactive, currentBranchId, products.length]);
+  }, [showInactive, selectedBranchId, products.length]);
 
   const openNew = () => { 
     setSelected(null); 
@@ -111,14 +109,9 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-700">Productos</h2>
-          {/* ← NUEVO: Mostrar sucursal actual */}
-          {currentBranchName && (
-            <p className="text-sm text-gray-500">
-              Sucursal: {currentBranchName}
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-4">
+          <VisualBranchSelector />
           <PermissionGuard permission={Permission.PRODUCT_READ}>
             <label className="flex items-center gap-2 text-sm text-gray-600">
               <input

@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const client_controller_1 = require("../controllers/client.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const permissions_1 = require("../types/permissions");
+const router = (0, express_1.Router)();
+router.post("/", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.CLIENT_CREATE), client_controller_1.ClienteController.create);
+router.get("/", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.CLIENT_READ), client_controller_1.ClienteController.list);
+router.get("/:id/sales", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.CLIENT_READ), (0, auth_middleware_1.requireRole)("ADMIN", "SUPERVISOR"), client_controller_1.ClienteController.getSales);
+router.get("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.CLIENT_READ), client_controller_1.ClienteController.getById);
+router.put("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.CLIENT_UPDATE), client_controller_1.ClienteController.update);
+router.delete("/:id", auth_middleware_1.authMiddleware, (0, auth_middleware_1.requirePermission)(permissions_1.Permission.CLIENT_DELETE), client_controller_1.ClienteController.remove);
+exports.default = router;

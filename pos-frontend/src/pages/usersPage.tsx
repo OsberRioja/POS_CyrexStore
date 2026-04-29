@@ -6,8 +6,8 @@ import { useDebounce } from "../hooks/useDebounce";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 import { PermissionGuard } from "../components/PermissionGuard";
-import { useAuth } from "../context/authContext";
-import { useBranch } from "../hooks/useBranch";
+import VisualBranchSelector from "../components/VisualBranchSelector";
+import { useVisualBranchFilter } from "../context/visualBranchFilterContext";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -20,11 +20,7 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<"ALL" | "ADMIN" | "SUPERVISOR" | "SELLER">("ALL");
 
   const { hasPermission } = usePermissions();
-  const { currentBranchId } = useAuth(); // ← obtener currentBranchId
-  const { branches, currentBranchId: branchId } = useBranch(); // ← usar hook de sucursal
-
-  // Obtener nombre de la sucursal actual
-  const currentBranchName = branches.find(b => b.id === branchId)?.name;
+  const { selectedBranchId } = useVisualBranchFilter();
 
   const loadUsers = async () => {
     if(!hasPermission(Permission.USER_READ)) {
@@ -33,12 +29,8 @@ export default function UsersPage() {
 
     setLoading(true);
     try {
-      const res = await userService.getUsers();
-      // Filtrar usuarios por sucursal si no es admin global
+      const res = await userService.getUsers(selectedBranchId ?? undefined);
       let usersData = res.data || [];
-      if (currentBranchId) {
-        usersData = usersData.filter((user: any) => user.branchId === currentBranchId);
-      }
       setUsers(usersData);
       setFiltered(usersData);
     } catch (err) {
@@ -54,7 +46,7 @@ export default function UsersPage() {
     if (hasPermission(Permission.USER_READ)){
       loadUsers();
     } 
-  }, [currentBranchId]); // ← recargar cuando cambie la sucursal
+  }, [selectedBranchId]);
 
   useEffect(() => {
     const q = (debouncedQuery || "").trim().toLowerCase();
@@ -123,14 +115,9 @@ export default function UsersPage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-700">Usuarios</h2>
-          {/* ← NUEVO: Mostrar sucursal actual */}
-          {currentBranchName && (
-            <p className="text-sm text-gray-500">
-              Sucursal: {currentBranchName}
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-3">
+          <VisualBranchSelector />
           <PermissionGuard permission={Permission.USER_READ}>
             <input
               value={query}
