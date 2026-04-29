@@ -4,6 +4,8 @@ export type SaleItemDTO = {
   productId: string;
   quantity: number;
   unitPrice?: number; // opcional, se puede tomar del producto
+  discountType?: "PERCENTAGE" | "FIXED" | null;
+  discountValue?: number | null;
   originalPrice?: number;
   originalCurrency?: string;
   conversionRate?: number;
@@ -31,6 +33,8 @@ export interface CreateSaleDTO {
     fecha_nacimiento?: string 
   } // crear al vuelo o usar existente
   items: SaleItemDTO[];
+  globalDiscountType?: "PERCENTAGE" | "FIXED" | null;
+  globalDiscountValue?: number | null;
   payments: SalePaymentDTO[]; // suma puede ser menor al total (anticipo)
   allowPartialPayment?: boolean; // NUEVO: indica si se permite pago parcial
   note?: string; // opcional

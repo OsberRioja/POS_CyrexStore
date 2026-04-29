@@ -8,8 +8,12 @@ interface CreateSalePayload {
     productId: string;
     quantity: number;
     unitPrice: number;
+    discountType?: 'PERCENTAGE' | 'FIXED' | null;
+    discountValue?: number | null;
     serialNumbers?: string[];
   }>;
+  globalDiscountType?: 'PERCENTAGE' | 'FIXED' | null;
+  globalDiscountValue?: number | null;
   payments: Array<{
     paymentMethodId: number;
     amount: number;

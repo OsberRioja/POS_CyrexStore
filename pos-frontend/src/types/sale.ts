@@ -12,6 +12,10 @@ export interface Sale {
     branchId: number;
     items: SaleItem[];
     payments: SalePayment[];
+    subtotal?: number;
+    globalDiscountType?: 'PERCENTAGE' | 'FIXED' | null;
+    globalDiscountValue?: number | null;
+    globalDiscountAmount?: number;
     client?: any;
     seller?: any;
 }
@@ -22,6 +26,9 @@ export interface SaleItem {
     quantity: number;
     unitPrice: number;
     subtotal: number;
+    discountType?: 'PERCENTAGE' | 'FIXED' | null;
+    discountValue?: number | null;
+    discountAmount?: number;
     originalPrice?: number;
     originalCurrency?: string;
     conversionRate?: number;

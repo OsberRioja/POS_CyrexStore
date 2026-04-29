@@ -149,6 +149,10 @@ model Sale {
   saleNumber     Int             @unique @default(autoincrement())
   sellerId       String
   clientId       Int?
+  subtotal       Float           @default(0)
+  globalDiscountType DiscountType?
+  globalDiscountValue Float?
+  globalDiscountAmount Float     @default(0)
   total          Float
   totalPaid      Float           @default(0)
   balance        Float           @default(0)
@@ -180,6 +184,9 @@ model SaleItem {
   quantity         Int
   unitPrice        Float
   subtotal         Float
+  discountType     DiscountType?
+  discountValue    Float?
+  discountAmount   Float          @default(0)
   originalPrice    Float?
   originalCurrency String?
   conversionRate   Float?
@@ -189,6 +196,11 @@ model SaleItem {
   sale             Sale            @relation(fields: [saleId], references: [id])
 
   @@map("sale_items")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
 }
 
 model ProductSerial {

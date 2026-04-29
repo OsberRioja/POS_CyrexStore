@@ -11,6 +11,23 @@ import { normalizeCountryCode, normalizePhoneNumber } from "../utils/phone";
 const prisma = new PrismaClient();
 
 export const SaleService = {
+  round2(value: number): number {
+    return Math.round(value * 100) / 100;
+  },
+  calculateDiscount(subtotal: number, discountType?: "PERCENTAGE" | "FIXED" | null, discountValue?: number | null): number {
+    if (!discountType || discountValue == null) return 0;
+    const value = Number(discountValue);
+    if (Number.isNaN(value)) throw { status: 400, message: "Valor de descuento inválido" };
+    if (discountType === "PERCENTAGE") {
+      if (value < 0 || value > 100) throw { status: 400, message: "El descuento porcentual debe estar entre 0 y 100" };
+      return this.round2((subtotal * value) / 100);
+    }
+    if (discountType === "FIXED") {
+      if (value < 0) throw { status: 400, message: "El descuento fijo no puede ser negativo" };
+      return this.round2(value);
+    }
+    throw { status: 400, message: "Tipo de descuento inválido" };
+  },
   async attachCreatedBy<T extends { createdBy?: string | null }>(sales: T | T[]) {
     const list = Array.isArray(sales) ? sales : [sales];
     const ids = [...new Set(list.map((s) => s.createdBy).filter(Boolean) as string[])];
@@ -102,6 +119,8 @@ export const SaleService = {
         originalPrice: Number(it.originalPrice) || unitPrice, // Precio en moneda original
         originalCurrency: it.originalCurrency || 'BOB', // Moneda Original
         conversionRate: Number(it.conversionRate) || 1, // Tasa de cambio
+        discountType: it.discountType ?? null,
+        discountValue: it.discountValue ?? null,
         serialNumbers
       });
     }
@@ -182,7 +201,8 @@ export const SaleService = {
 
       // ✅ 1) CORRECCIÓN: Validar productos pero USAR unitPrice del frontend
       const itemsToCreate: any[] = [];
-      let calculatedTotal = 0;
+      let saleSubtotal = 0;
+      let itemsDiscountTotal = 0;
 
       const allSerialNumbers = itemsData.flatMap((item) => item.serialNumbers);
       if (new Set(allSerialNumbers).size !== allSerialNumbers.length) {
@@ -252,8 +272,15 @@ export const SaleService = {
         }
 
         const unitPrice = Number(it.unitPrice);
-        const subtotal = unitPrice * Number(it.quantity);
-        calculatedTotal += subtotal;
+        const subtotal = this.round2(unitPrice * Number(it.quantity));
+        const discountAmountRaw = this.calculateDiscount(subtotal, it.discountType, it.discountValue);
+        if (discountAmountRaw > subtotal) {
+          throw { status: 400, message: `El descuento del item ${product.name} no puede ser mayor al subtotal` };
+        }
+        const discountAmount = this.round2(Math.min(discountAmountRaw, subtotal));
+        const finalSubtotal = this.round2(Math.max(0, subtotal - discountAmount));
+        saleSubtotal += subtotal;
+        itemsDiscountTotal += discountAmount;
 
         let conversionRate = 1;
         const originalPrice = it.originalPrice;
@@ -276,7 +303,10 @@ export const SaleService = {
           productId: it.productId,
           quantity: it.quantity,
           unitPrice,
-          subtotal,
+          subtotal: finalSubtotal,
+          discountType: it.discountType ?? null,
+          discountValue: it.discountValue ?? null,
+          discountAmount,
           originalPrice: it.originalPrice,
           originalCurrency: it.originalCurrency,
           conversionRate: conversionRate,
@@ -287,8 +317,15 @@ export const SaleService = {
       let adjustedPayments = [...paymentsDto];
       let netCashAmount = totalPaid;
 
+      const subtotalAfterItemsDiscount = this.round2(Math.max(0, saleSubtotal - itemsDiscountTotal));
+      const globalDiscountAmountRaw = this.calculateDiscount(subtotalAfterItemsDiscount, dto.globalDiscountType, dto.globalDiscountValue);
+      if (globalDiscountAmountRaw > subtotalAfterItemsDiscount) {
+        throw { status: 400, message: "El descuento global no puede ser mayor al subtotal de la venta" };
+      }
+      const globalDiscountAmount = this.round2(Math.min(globalDiscountAmountRaw, subtotalAfterItemsDiscount));
+      const calculatedTotal = this.round2(Math.max(0, subtotalAfterItemsDiscount - globalDiscountAmount));
+
       if (totalPaid > calculatedTotal) {
-        const change = totalPaid - calculatedTotal;
         netCashAmount = calculatedTotal; // solo se considera hasta el total de la venta
 
         //buscar pagos en efectivo para ajustarlos
@@ -335,6 +372,10 @@ export const SaleService = {
           sellerId: String(sellerId),
           clientId: clientId ?? undefined,
           total: Number(calculatedTotal.toFixed(2)),
+          subtotal: Number(saleSubtotal.toFixed(2)),
+          globalDiscountType: dto.globalDiscountType ?? null,
+          globalDiscountValue: dto.globalDiscountValue ?? null,
+          globalDiscountAmount: Number(globalDiscountAmount.toFixed(2)),
           totalPaid: Number(totalPaid.toFixed(2)),
           balance: Number(balance.toFixed(2)),
           paymentStatus: paymentStatus,
@@ -343,7 +384,7 @@ export const SaleService = {
           branchId: branchId,
           items: { create: itemsToCreate },
           payments: { create: paymentsData },
-        },
+        } as any,
         include: {
           items: {
             include: {

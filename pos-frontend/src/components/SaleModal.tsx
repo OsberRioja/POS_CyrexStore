@@ -11,7 +11,8 @@ import { useAuth } from "../context/authContext";
 import { usePermissions } from "../hooks/usePermissions";
 import { Permission } from "../types/permissions";
 
-type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number; originalPrice?: number; originalCurrency?: string; conversionRate?: number; serialNumbers: string[]; availableSerials: string[] };
+type DiscountType = 'PERCENTAGE' | 'FIXED' | null;
+type Item = { productId: string; name: string; qty: number; unitPrice: number; subtotal: number; discountType: DiscountType; discountValue: number | null; discountAmount: number; finalSubtotal: number; originalPrice?: number; originalCurrency?: string; conversionRate?: number; serialNumbers: string[]; availableSerials: string[] };
 type Payment = { paymentMethodId: number; amount: number };
 
 export default function SaleFormModal({
@@ -52,6 +53,8 @@ export default function SaleFormModal({
   // NUEVO: Estado para pagos parciales
   const [allowPartialPayment, setAllowPartialPayment] = useState(false);
   const [paymentWarning, setPaymentWarning] = useState("");
+  const [globalDiscountType, setGlobalDiscountType] = useState<DiscountType>(null);
+  const [globalDiscountValue, setGlobalDiscountValue] = useState<number>(0);
 
   // UI
   const [saving, setSaving] = useState(false);
@@ -168,23 +171,8 @@ export default function SaleFormModal({
     return () => clearTimeout(t);
   }, [sellerQuery]);
 
-  // NUEVA: Función para calcular totales
-  const calculateTotals = () => {
-    const itemsTotal = items.reduce((sum, item) => {
-      return sum + item.subtotal;
-    }, 0);
-    
-    const paymentsTotal = payments.reduce((sum, payment) => {
-      return sum + Number(payment.amount || 0);
-    }, 0);
-    
-    return { itemsTotal, paymentsTotal };
-  };
-
   // NUEVA: Validación actualizada
   const validateSale = () => {
-    const { itemsTotal, paymentsTotal } = calculateTotals();
-    
     if (paymentsTotal < 0) {
       setPaymentWarning('Los pagos no pueden ser negativos');
       return false;
@@ -209,7 +197,7 @@ export default function SaleFormModal({
     if (items.length > 0 && payments.length > 0) {
       validateSale();
     }
-  }, [items, payments, allowPartialPayment]);
+  }, [items, payments, allowPartialPayment, globalDiscountType, globalDiscountValue]);
 
   //cerrar resultados al hacer clic fuera
   useEffect(() => {
@@ -234,11 +222,24 @@ export default function SaleFormModal({
     };
   }, []);
 
-  const syncItemQuantity = (item: Item) => ({
-    ...item,
-    qty: item.serialNumbers.length,
-    subtotal: Math.round(item.unitPrice * item.serialNumbers.length * 100) / 100,
-  });
+  const round2 = (value: number) => Math.round(value * 100) / 100;
+  const calculateDiscount = (subtotal: number, type: DiscountType, value: number | null) => {
+    if (!type || value == null) return 0;
+    if (type === 'PERCENTAGE') return round2((subtotal * value) / 100);
+    return round2(value);
+  };
+
+  const syncItemQuantity = (item: Item) => {
+    const subtotal = round2(item.unitPrice * item.serialNumbers.length);
+    const discount = Math.min(subtotal, calculateDiscount(subtotal, item.discountType, item.discountValue));
+    return {
+      ...item,
+      qty: item.serialNumbers.length,
+      subtotal,
+      discountAmount: round2(discount),
+      finalSubtotal: round2(Math.max(0, subtotal - discount)),
+    };
+  };
 
   const getSelectableSerials = (item: Item, currentSerial?: string) => {
     return item.availableSerials.filter((serial) => serial === currentSerial || !item.serialNumbers.includes(serial));
@@ -305,6 +306,10 @@ export default function SaleFormModal({
         qty: 1, 
         unitPrice: Number(finalPrice), 
         subtotal: Number(finalPrice),
+        discountType: null,
+        discountValue: null,
+        discountAmount: 0,
+        finalSubtotal: Number(finalPrice),
         originalPrice: Number(originalPrice),
         originalCurrency: productCurrency,
         conversionRate: conversionRate,
@@ -355,7 +360,12 @@ export default function SaleFormModal({
 
   const removeItem = (idx: number) => setItems((s) => s.filter((_, i) => i !== idx));
 
-  const { itemsTotal, paymentsTotal } = calculateTotals();
+  const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+  const itemsDiscountTotal = items.reduce((sum, item) => sum + item.discountAmount, 0);
+  const subtotalAfterItemDiscounts = Math.max(0, subtotal - itemsDiscountTotal);
+  const globalDiscountAmount = Math.min(subtotalAfterItemDiscounts, calculateDiscount(subtotalAfterItemDiscounts, globalDiscountType, globalDiscountValue));
+  const itemsTotal = round2(Math.max(0, subtotalAfterItemDiscounts - globalDiscountAmount));
+  const paymentsTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   const remaining = Math.max(0, Math.round((itemsTotal - paymentsTotal) * 100) / 100);
   const change = Math.max(0, Math.round((paymentsTotal - itemsTotal) * 100) / 100);
   const isPartial = paymentsTotal < itemsTotal;
@@ -442,7 +452,9 @@ export default function SaleFormModal({
       sellerUserCode: sellerSelected ? sellerSelected.userCode : undefined,
       sellerId: sellerSelected ? sellerSelected.id : undefined,
       client: { id_cliente: clientSelected.id_cliente },
-      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice, originalPrice: it.originalPrice, originalCurrency: it.originalCurrency, conversionRate: it.conversionRate, serialNumbers: it.serialNumbers })),
+      items: items.map((it) => ({ productId: it.productId, quantity: it.qty, unitPrice: it.unitPrice, discountType: it.discountType, discountValue: it.discountValue, originalPrice: it.originalPrice, originalCurrency: it.originalCurrency, conversionRate: it.conversionRate, serialNumbers: it.serialNumbers })),
+      globalDiscountType,
+      globalDiscountValue: globalDiscountType ? globalDiscountValue : null,
       payments: payments.map((p) => ({ paymentMethodId: p.paymentMethodId, amount: p.amount })),
       allowPartialPayment: allowPartialPayment, // NUEVO: enviar flag
       cashBoxId,
@@ -610,6 +622,7 @@ export default function SaleFormModal({
                       <th className="p-2">Producto</th>
                       <th className="p-2">Cant.</th>
                       <th className="p-2 text-right">Precio Unit.</th>
+                      <th className="p-2">Descuento</th>
                       <th className="p-2 text-right">Subtotal</th>
                       <th></th>
                     </tr>
@@ -647,8 +660,17 @@ export default function SaleFormModal({
                         <td className="p-2 text-right">
                           <div className="font-semibold">Bs. {it.unitPrice.toFixed(2)}</div>
                         </td>
+                        <td className="p-2">
+                          <select value={it.discountType ?? ''} onChange={(e) => setItems((curr) => curr.map((x, i) => i === idx ? syncItemQuantity({ ...x, discountType: (e.target.value || null) as DiscountType, discountValue: x.discountValue ?? 0 }) : x))} className="border p-1 rounded text-xs w-full mb-1">
+                            <option value="">Sin desc.</option>
+                            <option value="PERCENTAGE">%</option>
+                            <option value="FIXED">Bs.</option>
+                          </select>
+                          <input type="number" min={0} max={it.discountType === 'PERCENTAGE' ? 100 : undefined} value={it.discountValue ?? 0} onChange={(e) => setItems((curr) => curr.map((x, i) => i === idx ? syncItemQuantity({ ...x, discountValue: Number(e.target.value || 0) }) : x))} className="border p-1 rounded text-xs w-full" />
+                        </td>
                         <td className="p-2 text-right">
-                          <div className="font-semibold">Bs. {it.subtotal.toFixed(2)}</div>
+                          <div className="text-xs text-gray-500 line-through">Bs. {it.subtotal.toFixed(2)}</div>
+                          <div className="font-semibold">Bs. {it.finalSubtotal.toFixed(2)}</div>
                           <div className="mt-2 space-y-2 text-left">
                             {it.serialNumbers.map((serial, serialIndex) => (
                               <div key={`${idx}-${serialIndex}`}>
@@ -690,7 +712,19 @@ export default function SaleFormModal({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal de productos:</span>
-                <span className="font-semibold">Bs. {itemsTotal.toFixed(2)}</span>
+                <span className="font-semibold">Bs. {subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Descuento por items:</span>
+                <span className="font-semibold text-red-600">- Bs. {itemsDiscountTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex gap-2 items-center">
+                <span>Descuento global:</span>
+                <select value={globalDiscountType ?? ''} onChange={(e) => setGlobalDiscountType((e.target.value || null) as DiscountType)} className="border p-1 rounded text-xs">
+                  <option value="">Sin desc.</option><option value="PERCENTAGE">%</option><option value="FIXED">Bs.</option>
+                </select>
+                <input type="number" min={0} max={globalDiscountType === 'PERCENTAGE' ? 100 : undefined} value={globalDiscountValue} onChange={(e) => setGlobalDiscountValue(Number(e.target.value || 0))} className="border p-1 rounded text-xs w-24" />
+                <span className="text-red-600 text-sm">- Bs. {globalDiscountAmount.toFixed(2)}</span>
               </div>
 
               {/* ← NUEVO: Mostrar si hay productos en otras monedas */}
