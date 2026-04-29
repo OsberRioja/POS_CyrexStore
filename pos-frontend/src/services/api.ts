@@ -13,17 +13,19 @@ api.interceptors.request.use((config) => {
     console.warn('⚠️ Interceptor - No hay token en localStorage');
   }
 
-  // Obtener branchId del usuario autenticado (contexto real de sesión)
+  // Obtener branchId del contexto real de sesión (modo sucursal)
+  const selectedBranch = localStorage.getItem('selectedBranch');
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
-  const currentBranchId = user?.branchId;
+  const userBranchId = user?.branchId;
+  const currentBranchId = selectedBranch ? Number(selectedBranch) : userBranchId;
 
 
   // Agregar branchId a los parámetros de consulta para GET
   if (currentBranchId && config.method?.toLowerCase() === 'get') {
     config.params = {
-      ...config.params,
-      branchId: currentBranchId
+      branchId: currentBranchId,
+      ...config.params
     };
   }
 
