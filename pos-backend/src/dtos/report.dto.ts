@@ -3,6 +3,7 @@ export interface PeriodReportFilters {
   endDate: Date;
   branchId?: number;
   sellerId?: string;
+  sellerIds?: string[];
   paymentMethodId?: number;
   reportType: 'sales' | 'expenses' | 'combined' | 'payment-methods';
 }
