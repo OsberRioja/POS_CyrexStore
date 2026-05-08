@@ -13,15 +13,6 @@ export default function ReportsPage() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [activeReport, setActiveReport] = useState<'sales' | 'expenses' | 'combined'>('sales');
   const [previewData, setPreviewData] = useState<any | null>(null);
-  const [salesPage, setSalesPage] = useState(1);
-  const [salesSellersPage, setSalesSellersPage] = useState(1);
-  const [salesProductsPage, setSalesProductsPage] = useState(1);
-  const [salesWeekdaysPage, setSalesWeekdaysPage] = useState(1);
-  const [expensesConceptsPage, setExpensesConceptsPage] = useState(1);
-  const [expensesUsersPage, setExpensesUsersPage] = useState(1);
-  const [expensesWeekdaysPage, setExpensesWeekdaysPage] = useState(1);
-  const [combinedBranchesPage, setCombinedBranchesPage] = useState(1);
-  const PREVIEW_PAGE_SIZE = 10;
   const [filters, setFilters] = useState({
     period: 'month',
     startDate: '',
@@ -36,14 +27,6 @@ export default function ReportsPage() {
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
     setPreviewData(null);
-    setSalesPage(1);
-    setSalesSellersPage(1);
-    setSalesProductsPage(1);
-    setSalesWeekdaysPage(1);
-    setExpensesConceptsPage(1);
-    setExpensesUsersPage(1);
-    setExpensesWeekdaysPage(1);
-    setCombinedBranchesPage(1);
   };
 
   const handlePreview = async () => {
@@ -82,14 +65,6 @@ export default function ReportsPage() {
         );
       }
       setPreviewData(preview);
-      setSalesPage(1);
-      setSalesSellersPage(1);
-      setSalesProductsPage(1);
-      setSalesWeekdaysPage(1);
-      setExpensesConceptsPage(1);
-      setExpensesUsersPage(1);
-      setExpensesWeekdaysPage(1);
-      setCombinedBranchesPage(1);
     } catch (error: any) {
       console.error('Error cargando previsualización:', error);
       alert(error.message || 'Error al previsualizar reporte');
@@ -222,14 +197,6 @@ export default function ReportsPage() {
                 onClick={() => {
                   setActiveReport(report.id as any);
                   setPreviewData(null);
-                  setSalesPage(1);
-                  setSalesSellersPage(1);
-                  setSalesProductsPage(1);
-                  setSalesWeekdaysPage(1);
-                  setExpensesConceptsPage(1);
-                  setExpensesUsersPage(1);
-                  setExpensesWeekdaysPage(1);
-                  setCombinedBranchesPage(1);
                 }}
                 className={`p-4 rounded-lg border cursor-pointer transition-all ${
                   activeReport === report.id
@@ -290,7 +257,7 @@ export default function ReportsPage() {
 
       {activeReport === 'sales' && previewData && (
         <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
-          <h3 className="text-lg font-semibold text-gray-800">Previsualización de Resultados</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Previsualización de Resultados (Top 15)</h3>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="p-3 bg-blue-50 rounded-lg"><p className="text-xs text-gray-600">Ventas</p><p className="font-bold">{previewData.summary.totalSales}</p></div>
@@ -305,62 +272,35 @@ export default function ReportsPage() {
             <div>
               <h4 className="font-semibold text-gray-700 mb-2">Ranking vendedores</h4>
               <ul className="text-sm space-y-1">
-                {(previewData.rankings.sellers || [])
-                  .slice((salesSellersPage - 1) * PREVIEW_PAGE_SIZE, salesSellersPage * PREVIEW_PAGE_SIZE)
-                  .map((s: any, idx: number) => (
+                {previewData.rankings.sellers.map((s: any, idx: number) => (
                   <li key={`${s.sellerId}-${idx}`} className="flex justify-between border-b pb-1">
-                    <span>{(salesSellersPage - 1) * PREVIEW_PAGE_SIZE + idx + 1}. {s.sellerName} <span className="text-xs text-gray-500">({s.branchName})</span></span>
+                    <span>{idx + 1}. {s.sellerName} <span className="text-xs text-gray-500">({s.branchName})</span></span>
                     <span className="font-medium">Bs. {s.totalAmount.toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
-              <PaginationControls
-                currentPage={salesSellersPage}
-                totalPages={Math.max(1, Math.ceil((previewData.rankings.sellers || []).length / PREVIEW_PAGE_SIZE))}
-                totalItems={(previewData.rankings.sellers || []).length}
-                pageSize={PREVIEW_PAGE_SIZE}
-                onPageChange={setSalesSellersPage}
-              />
             </div>
             <div>
               <h4 className="font-semibold text-gray-700 mb-2">Ranking productos</h4>
               <ul className="text-sm space-y-1">
-                {(previewData.rankings.products || [])
-                  .slice((salesProductsPage - 1) * PREVIEW_PAGE_SIZE, salesProductsPage * PREVIEW_PAGE_SIZE)
-                  .map((p: any, idx: number) => (
+                {previewData.rankings.products.map((p: any, idx: number) => (
                   <li key={`${p.productId}-${idx}`} className="flex justify-between border-b pb-1">
-                    <span>{(salesProductsPage - 1) * PREVIEW_PAGE_SIZE + idx + 1}. {p.productName}</span>
+                    <span>{idx + 1}. {p.productName}</span>
                     <span className="font-medium">{p.quantity} u</span>
                   </li>
                 ))}
               </ul>
-              <PaginationControls
-                currentPage={salesProductsPage}
-                totalPages={Math.max(1, Math.ceil((previewData.rankings.products || []).length / PREVIEW_PAGE_SIZE))}
-                totalItems={(previewData.rankings.products || []).length}
-                pageSize={PREVIEW_PAGE_SIZE}
-                onPageChange={setSalesProductsPage}
-              />
             </div>
             <div>
               <h4 className="font-semibold text-gray-700 mb-2">Ranking días de semana</h4>
               <ul className="text-sm space-y-1">
-                {(previewData.rankings.weekdays || [])
-                  .slice((salesWeekdaysPage - 1) * PREVIEW_PAGE_SIZE, salesWeekdaysPage * PREVIEW_PAGE_SIZE)
-                  .map((d: any, idx: number) => (
+                {previewData.rankings.weekdays.map((d: any, idx: number) => (
                   <li key={`${d.day}-${idx}`} className="flex justify-between border-b pb-1">
-                    <span>{(salesWeekdaysPage - 1) * PREVIEW_PAGE_SIZE + idx + 1}. {d.day}</span>
+                    <span>{idx + 1}. {d.day}</span>
                     <span className="font-medium">Bs. {d.totalAmount.toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
-              <PaginationControls
-                currentPage={salesWeekdaysPage}
-                totalPages={Math.max(1, Math.ceil((previewData.rankings.weekdays || []).length / PREVIEW_PAGE_SIZE))}
-                totalItems={(previewData.rankings.weekdays || []).length}
-                pageSize={PREVIEW_PAGE_SIZE}
-                onPageChange={setSalesWeekdaysPage}
-              />
             </div>
           </div>
 
@@ -380,9 +320,7 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(previewData.previewSales || [])
-                    .slice((salesPage - 1) * PREVIEW_PAGE_SIZE, salesPage * PREVIEW_PAGE_SIZE)
-                    .map((sale: any) => (
+                  {previewData.previewSales.map((sale: any) => (
                     <tr key={sale.id} className="border-b">
                       <td className="p-2">{new Date(sale.createdAt).toLocaleString('es-BO')}</td>
                       <td className="p-2">{sale.branchName}</td>
@@ -396,13 +334,6 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
-            <PaginationControls
-              currentPage={salesPage}
-              totalPages={Math.max(1, Math.ceil((previewData.previewSales || []).length / PREVIEW_PAGE_SIZE))}
-              totalItems={(previewData.previewSales || []).length}
-              pageSize={PREVIEW_PAGE_SIZE}
-              onPageChange={setSalesPage}
-            />
           </div>
         </div>
       )}
@@ -419,59 +350,32 @@ export default function ReportsPage() {
             <div>
               <h4 className="font-semibold text-gray-700 mb-2">Ranking por concepto</h4>
               <ul className="text-sm space-y-1">
-                {(previewData.rankings.concepts || [])
-                  .slice((expensesConceptsPage - 1) * PREVIEW_PAGE_SIZE, expensesConceptsPage * PREVIEW_PAGE_SIZE)
-                  .map((c: any, idx: number) => (
+                {previewData.rankings.concepts.map((c: any, idx: number) => (
                   <li key={`${c.concept}-${idx}`} className="flex justify-between border-b pb-1">
-                    <span>{(expensesConceptsPage - 1) * PREVIEW_PAGE_SIZE + idx + 1}. {c.concept}</span><span className="font-medium">Bs. {c.totalAmount.toFixed(2)}</span>
+                    <span>{idx + 1}. {c.concept}</span><span className="font-medium">Bs. {c.totalAmount.toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
-              <PaginationControls
-                currentPage={expensesConceptsPage}
-                totalPages={Math.max(1, Math.ceil((previewData.rankings.concepts || []).length / PREVIEW_PAGE_SIZE))}
-                totalItems={(previewData.rankings.concepts || []).length}
-                pageSize={PREVIEW_PAGE_SIZE}
-                onPageChange={setExpensesConceptsPage}
-              />
             </div>
             <div>
               <h4 className="font-semibold text-gray-700 mb-2">Ranking por usuario</h4>
               <ul className="text-sm space-y-1">
-                {(previewData.rankings.users || [])
-                  .slice((expensesUsersPage - 1) * PREVIEW_PAGE_SIZE, expensesUsersPage * PREVIEW_PAGE_SIZE)
-                  .map((u: any, idx: number) => (
+                {previewData.rankings.users.map((u: any, idx: number) => (
                   <li key={`${u.userId}-${idx}`} className="flex justify-between border-b pb-1">
-                    <span>{(expensesUsersPage - 1) * PREVIEW_PAGE_SIZE + idx + 1}. {u.userName}</span><span className="font-medium">Bs. {u.totalAmount.toFixed(2)}</span>
+                    <span>{idx + 1}. {u.userName}</span><span className="font-medium">Bs. {u.totalAmount.toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
-              <PaginationControls
-                currentPage={expensesUsersPage}
-                totalPages={Math.max(1, Math.ceil((previewData.rankings.users || []).length / PREVIEW_PAGE_SIZE))}
-                totalItems={(previewData.rankings.users || []).length}
-                pageSize={PREVIEW_PAGE_SIZE}
-                onPageChange={setExpensesUsersPage}
-              />
             </div>
             <div>
               <h4 className="font-semibold text-gray-700 mb-2">Ranking por día de semana</h4>
               <ul className="text-sm space-y-1">
-                {(previewData.rankings.weekdays || [])
-                  .slice((expensesWeekdaysPage - 1) * PREVIEW_PAGE_SIZE, expensesWeekdaysPage * PREVIEW_PAGE_SIZE)
-                  .map((d: any, idx: number) => (
+                {previewData.rankings.weekdays.map((d: any, idx: number) => (
                   <li key={`${d.day}-${idx}`} className="flex justify-between border-b pb-1">
-                    <span>{(expensesWeekdaysPage - 1) * PREVIEW_PAGE_SIZE + idx + 1}. {d.day}</span><span className="font-medium">Bs. {d.totalAmount.toFixed(2)}</span>
+                    <span>{idx + 1}. {d.day}</span><span className="font-medium">Bs. {d.totalAmount.toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
-              <PaginationControls
-                currentPage={expensesWeekdaysPage}
-                totalPages={Math.max(1, Math.ceil((previewData.rankings.weekdays || []).length / PREVIEW_PAGE_SIZE))}
-                totalItems={(previewData.rankings.weekdays || []).length}
-                pageSize={PREVIEW_PAGE_SIZE}
-                onPageChange={setExpensesWeekdaysPage}
-              />
             </div>
           </div>
         </div>
@@ -491,22 +395,13 @@ export default function ReportsPage() {
           <div>
             <h4 className="font-semibold text-gray-700 mb-2">Rentabilidad por sucursal</h4>
             <ul className="text-sm space-y-1">
-              {(previewData.rankings.branchProfitability || [])
-                .slice((combinedBranchesPage - 1) * PREVIEW_PAGE_SIZE, combinedBranchesPage * PREVIEW_PAGE_SIZE)
-                .map((b: any, idx: number) => (
+              {previewData.rankings.branchProfitability.map((b: any, idx: number) => (
                 <li key={`${b.branchName}-${idx}`} className="flex justify-between border-b pb-1">
-                  <span>{(combinedBranchesPage - 1) * PREVIEW_PAGE_SIZE + idx + 1}. {b.branchName}</span>
+                  <span>{idx + 1}. {b.branchName}</span>
                   <span className="font-medium">Neto Bs. {b.net.toFixed(2)}</span>
                 </li>
               ))}
             </ul>
-            <PaginationControls
-              currentPage={combinedBranchesPage}
-              totalPages={Math.max(1, Math.ceil((previewData.rankings.branchProfitability || []).length / PREVIEW_PAGE_SIZE))}
-              totalItems={(previewData.rankings.branchProfitability || []).length}
-              pageSize={PREVIEW_PAGE_SIZE}
-              onPageChange={setCombinedBranchesPage}
-            />
           </div>
         </div>
       )}
