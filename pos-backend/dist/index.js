@@ -36,6 +36,7 @@ const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"))
 const saleEdit_routes_1 = __importDefault(require("./routes/saleEdit.routes"));
 const expenseEdit_routes_1 = __importDefault(require("./routes/expenseEdit.routes"));
 const receipt_routes_1 = __importDefault(require("./routes/receipt.routes"));
+const promotion_routes_1 = __importDefault(require("./routes/promotion.routes"));
 const app = (0, express_1.default)();
 // ✅ 1. PRIMERO: Middlewares básicos
 app.use(express_1.default.json()); // <- DEBE estar ANTES de las rutas
@@ -70,6 +71,7 @@ app.use('/api/dashboard', dashboard_routes_1.default);
 app.use('/api/sales-edit', saleEdit_routes_1.default);
 app.use('/api/expenses-edit', expenseEdit_routes_1.default);
 app.use('/api/receipts', receipt_routes_1.default);
+app.use('/api/promotions', promotion_routes_1.default);
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler_1.errorHandler);
 // ✅ 4. CUARTO: Inicialización y arranque del servidor

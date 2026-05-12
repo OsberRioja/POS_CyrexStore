@@ -31,6 +31,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import saleEditRoutes from './routes/saleEdit.routes';
 import expenseEditRoutes from './routes/expenseEdit.routes';
 import comprobanteRoutes from './routes/receipt.routes';
+import promotionRoutes from './routes/promotion.routes';
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sales-edit', saleEditRoutes);
 app.use('/api/expenses-edit', expenseEditRoutes);
 app.use('/api/receipts', comprobanteRoutes);
+app.use('/api/promotions', promotionRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);

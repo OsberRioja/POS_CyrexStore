@@ -272,7 +272,25 @@ exports.SaleService = {
                 }
                 const unitPrice = Number(it.unitPrice);
                 const subtotal = this.round2(unitPrice * Number(it.quantity));
-                const discountAmountRaw = this.calculateDiscount(subtotal, it.discountType, it.discountValue, it.discountAmount);
+                let effectiveDiscountType = it.discountType ?? null;
+                let effectiveDiscountValue = it.discountValue ?? null;
+                if (!effectiveDiscountType || effectiveDiscountValue == null) {
+                    const now = new Date();
+                    const activePromotion = await tx.promotion.findFirst({
+                        where: {
+                            isActive: true,
+                            startDate: { lte: now },
+                            endDate: { gte: now },
+                            products: { some: { id: it.productId } }
+                        },
+                        orderBy: { discountValue: 'desc' }
+                    });
+                    if (activePromotion) {
+                        effectiveDiscountType = activePromotion.discountType;
+                        effectiveDiscountValue = activePromotion.discountValue;
+                    }
+                }
+                const discountAmountRaw = this.calculateDiscount(subtotal, effectiveDiscountType, effectiveDiscountValue, it.discountAmount);
                 if (discountAmountRaw > subtotal) {
                     throw { status: 400, message: `El descuento del item ${product.name} no puede ser mayor al subtotal` };
                 }
@@ -302,8 +320,8 @@ exports.SaleService = {
                     quantity: it.quantity,
                     unitPrice,
                     subtotal: finalSubtotal,
-                    discountType: it.discountType ?? null,
-                    discountValue: it.discountValue ?? null,
+                    discountType: effectiveDiscountType,
+                    discountValue: effectiveDiscountValue,
                     discountAmount,
                     originalPrice: it.originalPrice,
                     originalCurrency: it.originalCurrency,

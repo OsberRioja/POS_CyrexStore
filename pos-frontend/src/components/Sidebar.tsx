@@ -134,6 +134,12 @@ const SidebarProfessional: React.FC<SidebarProps> = ({ selected, onSelect, user 
       color: 'text-gray-500'
     },
     {
+      id: 'config-promociones',
+      label: 'Promociones',
+      icon: <Bell size={18} />,
+      color: 'text-pink-400'
+    },
+    {
       id: 'config-sucursales',
       label: 'Sucursales',
       icon: <Building size={18} />,

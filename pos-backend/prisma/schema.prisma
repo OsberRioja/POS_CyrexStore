@@ -69,6 +69,7 @@ model Provider {
   Product        Product[]
   stockMovements StockMovement[]
   serialItems    ProductSerial[]
+  promotions     Promotion[]
 }
 
 model Product {
@@ -101,9 +102,24 @@ model Product {
   saleItems      SaleItem[]
   stockMovements StockMovement[]
   serialItems    ProductSerial[]
+  promotions     Promotion[]
 
   @@unique([sku, branchId])
   @@unique([codigoInterno, branchId])
+}
+
+
+model Promotion {
+  id            String       @id @default(uuid())
+  name          String
+  discountType  DiscountType
+  discountValue Float
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  products      Product[]
 }
 
 model PaymentMethod {
@@ -167,6 +183,7 @@ model Sale {
   items          SaleItem[]
   payments       SalePayment[]
   serialItems    ProductSerial[]
+  promotions     Promotion[]
   cashBox        CashBox?        @relation("box_sales", fields: [cashBoxId], references: [id])
   branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   client         Cliente?        @relation(fields: [clientId], references: [id_cliente])
