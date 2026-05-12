@@ -218,23 +218,20 @@ export const SaleService = {
       for (const it of itemsData) {
         const product = await tx.product.findUnique({ where: { id: it.productId } });
         if (!product) throw { status: 404, message: `Producto ${it.productId} no encontrado` };
-        if (product.stock < it.quantity) throw { status: 400, message: `Stock insuficiente para producto ${product.name}` };
 
-        const availableSerials = await tx.productSerial.findMany({
+        const existingSerials = await tx.productSerial.findMany({
           where: {
             productId: it.productId,
-            serialNumber: { in: it.serialNumbers },
-            status: ProductSerialStatus.AVAILABLE
+            serialNumber: { in: it.serialNumbers }
           },
-          select: { serialNumber: true }
+          select: { serialNumber: true, status: true }
         });
 
-        if (availableSerials.length !== it.serialNumbers.length) {
-          const found = new Set(availableSerials.map((item: { serialNumber: string }) => item.serialNumber));
-          const missing = it.serialNumbers.filter((serial: string) => !found.has(serial));
+        const unavailableSerials = existingSerials.filter((serial) => serial.status !== ProductSerialStatus.AVAILABLE);
+        if (unavailableSerials.length > 0) {
           throw {
             status: 400,
-            message: `Los siguientes números de serie no están disponibles para ${product.name}: ${missing.join(', ')}`
+            message: `Los siguientes números de serie no están disponibles para ${product.name}: ${unavailableSerials.map((serial) => serial.serialNumber).join(', ')}`
           };
         }
 
@@ -245,7 +242,7 @@ export const SaleService = {
             },
             isCompleted: false,
             serialNumbers: {
-              hasSome: it.serialNumbers
+              hasSome: existingSerials.map((serial) => serial.serialNumber)
             }
           },
           select: {
@@ -338,7 +335,8 @@ export const SaleService = {
           originalPrice: it.originalPrice,
           originalCurrency: it.originalCurrency,
           conversionRate: conversionRate,
-          serialNumbers: it.serialNumbers
+          serialNumbers: it.serialNumbers,
+          existingSerialNumbers: existingSerials.map((serial) => serial.serialNumber)
         });
       }
       
@@ -491,7 +489,7 @@ export const SaleService = {
         await tx.productSerial.updateMany({
           where: {
             productId: item.productId,
-            serialNumber: { in: item.serialNumbers },
+            serialNumber: { in: item.existingSerialNumbers ?? [] },
             status: ProductSerialStatus.AVAILABLE
           },
           data: {
@@ -500,6 +498,19 @@ export const SaleService = {
             soldAt: created.createdAt
           }
         });
+
+        const pendingSerialNumbers = item.serialNumbers.filter((serial: string) => !(item.existingSerialNumbers ?? []).includes(serial));
+        if (pendingSerialNumbers.length > 0) {
+          await tx.productSerial.createMany({
+            data: pendingSerialNumbers.map((serialNumber: string) => ({
+              productId: item.productId,
+              serialNumber,
+              status: ProductSerialStatus.SOLD,
+              saleId: created.id,
+              soldAt: created.createdAt
+            }))
+          });
+        }
 
         await tx.stockMovement.create({
           data: {

@@ -264,11 +264,6 @@ export default function SaleFormModal({
   };
 
   const addProduct = async (p: any) => {
-    if (Number(p.stock ?? 0) < 1) {
-      alert(`El producto ${p.name} no tiene stock disponible.`);
-      return;
-    }
-
     if (items.some((item) => item.productId === p.id)) {
       alert(`El producto ${p.name} ya fue agregado. Ajusta la cantidad o las series en la fila existente.`);
       return;
@@ -277,11 +272,6 @@ export default function SaleFormModal({
     try {
       const serialsResponse = await stockService.getAvailableSerials(p.id);
       const availableSerials = (serialsResponse.data?.data ?? []).map((item: any) => item.serialNumber);
-
-      if (availableSerials.length === 0) {
-        alert(`El producto ${p.name} no tiene números de serie disponibles para vender.`);
-        return;
-      }
 
       const productCurrency = p.priceCurrency || 'BOB';
       const originalPrice = p.salePrice ?? p.sale_price ?? 0;
@@ -313,7 +303,7 @@ export default function SaleFormModal({
         originalPrice: Number(originalPrice),
         originalCurrency: productCurrency,
         conversionRate: conversionRate,
-        serialNumbers: [availableSerials[0]],
+        serialNumbers: [availableSerials[0] ?? ""],
         availableSerials
       };
       
@@ -330,11 +320,6 @@ export default function SaleFormModal({
     if (qty < 1) qty = 1;
     setItems((current) => current.map((item, index) => {
       if (index !== idx) return item;
-
-      if (qty > item.availableSerials.length) {
-        alert(`Solo hay ${item.availableSerials.length} números de serie disponibles para ${item.name}.`);
-        qty = item.availableSerials.length;
-      }
 
       const serialNumbers = [...item.serialNumbers];
 
@@ -652,11 +637,10 @@ export default function SaleFormModal({
                             type="number" 
                             value={it.qty} 
                             min={1} 
-                            max={it.availableSerials.length}
                             onChange={(e) => changeQty(idx, Number(e.target.value))} 
                             className="w-20 border p-1 rounded" 
                           />
-                          <div className="text-xs text-gray-500 mt-1">Disponibles: {it.availableSerials.length}</div>
+                          <div className="text-xs text-gray-500 mt-1">Disponibles: {it.availableSerials.length} (puedes ingresar serie manual)</div>
                         </td>
                         <td className="p-2 text-right">
                           <div className="font-semibold">Bs. {it.unitPrice.toFixed(2)}</div>
@@ -676,17 +660,18 @@ export default function SaleFormModal({
                             {it.serialNumbers.map((serial, serialIndex) => (
                               <div key={`${idx}-${serialIndex}`}>
                                 <label className="block text-xs text-gray-500 mb-1">Serie #{serialIndex + 1}</label>
-                                <select
+                                <input
                                   value={serial}
                                   onChange={(e) => changeSerial(idx, serialIndex, e.target.value)}
+                                  list={`serial-options-${idx}-${serialIndex}`}
                                   className="w-full min-w-[180px] border p-1 rounded text-xs"
-                                >
+                                  placeholder="Ingrese o seleccione serie"
+                                />
+                                <datalist id={`serial-options-${idx}-${serialIndex}`}>
                                   {getSelectableSerials(it, serial).map((option) => (
-                                    <option key={option} value={option}>
-                                      {option}
-                                    </option>
+                                    <option key={option} value={option} />
                                   ))}
-                                </select>
+                                </datalist>
                               </div>
                             ))}
                           </div>

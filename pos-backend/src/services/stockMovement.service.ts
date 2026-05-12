@@ -78,13 +78,20 @@ const registerPurchaseTx = async (
 
   const existingSerials = await tx.productSerial.findMany({
     where: { serialNumber: { in: cleanedSerialNumbers } },
-    select: { serialNumber: true }
+    select: { id: true, productId: true, serialNumber: true, status: true, saleId: true }
   });
 
-  if (existingSerials.length > 0) {
+  const reconcilableSerials = existingSerials.filter((serial) =>
+    serial.productId === data.productId &&
+    serial.status === ProductSerialStatus.SOLD &&
+    !!serial.saleId
+  );
+  const conflictingSerials = existingSerials.filter((serial) => !reconcilableSerials.some((candidate) => candidate.id === serial.id));
+
+  if (conflictingSerials.length > 0) {
     throw {
       status: 400,
-      message: `Los siguientes números de serie ya existen: ${existingSerials.map((item: { serialNumber: string }) => item.serialNumber).join(', ')}`
+      message: `Los siguientes números de serie ya existen: ${conflictingSerials.map((item) => item.serialNumber).join(', ')}`
     };
   }
 
@@ -112,15 +119,31 @@ const registerPurchaseTx = async (
     });
   }
 
-  await tx.productSerial.createMany({
-    data: cleanedSerialNumbers.map((serialNumber) => ({
-      productId: data.productId,
-      serialNumber,
-      status: ProductSerialStatus.AVAILABLE,
-      unitCost: data.unitCost,
-      providerId: data.providerId
-    }))
-  });
+  const reconciledSet = new Set(reconcilableSerials.map((serial) => serial.serialNumber));
+  const newSerialNumbers = cleanedSerialNumbers.filter((serialNumber) => !reconciledSet.has(serialNumber));
+
+  if (newSerialNumbers.length > 0) {
+    await tx.productSerial.createMany({
+      data: newSerialNumbers.map((serialNumber) => ({
+        productId: data.productId,
+        serialNumber,
+        status: ProductSerialStatus.AVAILABLE,
+        unitCost: data.unitCost,
+        providerId: data.providerId
+      }))
+    });
+  }
+
+  if (reconcilableSerials.length > 0) {
+    await tx.productSerial.updateMany({
+      where: { id: { in: reconcilableSerials.map((serial) => serial.id) } },
+      data: {
+        unitCost: data.unitCost,
+        providerId: data.providerId,
+        purchasedAt: new Date()
+      }
+    });
+  }
 
   return tx.stockMovement.create({
     data: {
