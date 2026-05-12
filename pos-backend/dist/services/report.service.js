@@ -1547,7 +1547,7 @@ exports.reportService = {
                     }
                 }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'asc' }
         });
         const totalSales = sales.length;
         const totalAmount = sales.reduce((sum, sale) => sum + sale.total, 0);
@@ -1597,7 +1597,7 @@ exports.reportService = {
                 const currentProduct = productRankingMap.get(productKey) || {
                     productId: item.product.id,
                     productName: item.product.name,
-                    sku: item.product.sku || "",
+                    sku: item.product.sku,
                     quantity: 0,
                     revenue: 0
                 };
@@ -1620,7 +1620,7 @@ exports.reportService = {
                 balance: sale.total - paidAmount,
                 products: sale.items.map(item => ({
                     name: item.product.name,
-                    sku: item.product.sku || "",
+                    sku: item.product.sku,
                     quantity: item.quantity
                 }))
             };
@@ -1686,7 +1686,7 @@ exports.reportService = {
                     }
                 }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'asc' }
         });
         const totalExpenses = expenses.length;
         const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -1791,6 +1791,83 @@ exports.reportService = {
             previewSales: salesPreview.previewSales,
             previewExpenses: expensesPreview.previewExpenses,
             generatedAt: new Date()
+        };
+    },
+    async getProfitReport(filters) {
+        const adjustedStartDate = new Date(filters.startDate);
+        adjustedStartDate.setHours(0, 0, 0, 0);
+        const adjustedEndDate = new Date(filters.endDate);
+        adjustedEndDate.setHours(23, 59, 59, 999);
+        const sales = await prismaClient_1.prisma.sale.findMany({
+            where: {
+                createdAt: { gte: adjustedStartDate, lte: adjustedEndDate },
+                ...(filters.branchId ? { branchId: filters.branchId } : {}),
+                ...(filters.productId
+                    ? {
+                        items: {
+                            some: { productId: filters.productId }
+                        }
+                    }
+                    : {})
+            },
+            include: {
+                items: {
+                    where: filters.productId ? { productId: filters.productId } : undefined,
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                sku: true,
+                                costPrice: true
+                            }
+                        }
+                    }
+                },
+                serialItems: {
+                    select: {
+                        productId: true,
+                        unitCost: true
+                    }
+                }
+            }
+        });
+        const breakdownMap = new Map();
+        let totalSales = 0;
+        let totalCost = 0;
+        sales.forEach((sale) => {
+            totalSales += sale.total;
+            sale.items.forEach((item) => {
+                const serialCosts = sale.serialItems.filter((serial) => serial.productId === item.productId && typeof serial.unitCost === 'number');
+                const historicalUnitCost = serialCosts.length > 0
+                    ? serialCosts.reduce((sum, serial) => sum + (serial.unitCost || 0), 0) / serialCosts.length
+                    : undefined;
+                const unitCost = historicalUnitCost ?? item.product.costPrice;
+                const itemCost = unitCost * item.quantity;
+                totalCost += itemCost;
+                const current = breakdownMap.get(item.productId) || {
+                    productId: item.productId,
+                    productName: item.product.name,
+                    sku: item.product.sku,
+                    quantity: 0,
+                    sales: 0,
+                    cost: 0,
+                    profit: 0
+                };
+                current.quantity += item.quantity;
+                current.sales += item.subtotal - item.discountAmount;
+                current.cost += itemCost;
+                current.profit = current.sales - current.cost;
+                breakdownMap.set(item.productId, current);
+            });
+        });
+        const breakdownByProduct = Array.from(breakdownMap.values()).sort((a, b) => b.profit - a.profit);
+        const totalProfit = totalSales - totalCost;
+        return {
+            totalSales,
+            totalCost,
+            totalProfit,
+            breakdownByProduct
         };
     },
     async generatePeriodExpensesReport(filters) {

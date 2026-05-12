@@ -11,6 +11,33 @@ const exchangeRate_service_1 = require("./exchangeRate.service");
 const phone_1 = require("../utils/phone");
 const prisma = new client_1.PrismaClient();
 exports.SaleService = {
+    round2(value) {
+        return Math.round(value * 100) / 100;
+    },
+    calculateDiscount(subtotal, discountType, discountValue, discountAmount) {
+        if ((!discountType || discountValue == null) && discountAmount != null) {
+            const amount = Number(discountAmount);
+            if (Number.isNaN(amount) || amount < 0)
+                throw { status: 400, message: "Monto de descuento inválido" };
+            return this.round2(amount);
+        }
+        if (!discountType || discountValue == null)
+            return 0;
+        const value = Number(discountValue);
+        if (Number.isNaN(value))
+            throw { status: 400, message: "Valor de descuento inválido" };
+        if (discountType === "PERCENTAGE") {
+            if (value < 0 || value > 100)
+                throw { status: 400, message: "El descuento porcentual debe estar entre 0 y 100" };
+            return this.round2((subtotal * value) / 100);
+        }
+        if (discountType === "FIXED") {
+            if (value < 0)
+                throw { status: 400, message: "El descuento fijo no puede ser negativo" };
+            return this.round2(value);
+        }
+        throw { status: 400, message: "Tipo de descuento inválido" };
+    },
     async attachCreatedBy(sales) {
         const list = Array.isArray(sales) ? sales : [sales];
         const ids = [...new Set(list.map((s) => s.createdBy).filter(Boolean))];
@@ -102,6 +129,9 @@ exports.SaleService = {
                 originalPrice: Number(it.originalPrice) || unitPrice, // Precio en moneda original
                 originalCurrency: it.originalCurrency || 'BOB', // Moneda Original
                 conversionRate: Number(it.conversionRate) || 1, // Tasa de cambio
+                discountType: it.discountType ?? null,
+                discountValue: it.discountValue ?? null,
+                discountAmount: it.discountAmount ?? null,
                 serialNumbers
             });
         }
@@ -178,7 +208,8 @@ exports.SaleService = {
             }
             // ✅ 1) CORRECCIÓN: Validar productos pero USAR unitPrice del frontend
             const itemsToCreate = [];
-            let calculatedTotal = 0;
+            let saleSubtotal = 0;
+            let itemsDiscountTotal = 0;
             const allSerialNumbers = itemsData.flatMap((item) => item.serialNumbers);
             if (new Set(allSerialNumbers).size !== allSerialNumbers.length) {
                 throw { status: 400, message: "No puede vender el mismo número de serie más de una vez en la misma venta" };
@@ -240,8 +271,15 @@ exports.SaleService = {
                     }
                 }
                 const unitPrice = Number(it.unitPrice);
-                const subtotal = unitPrice * Number(it.quantity);
-                calculatedTotal += subtotal;
+                const subtotal = this.round2(unitPrice * Number(it.quantity));
+                const discountAmountRaw = this.calculateDiscount(subtotal, it.discountType, it.discountValue, it.discountAmount);
+                if (discountAmountRaw > subtotal) {
+                    throw { status: 400, message: `El descuento del item ${product.name} no puede ser mayor al subtotal` };
+                }
+                const discountAmount = this.round2(Math.min(discountAmountRaw, subtotal));
+                const finalSubtotal = this.round2(Math.max(0, subtotal - discountAmount));
+                saleSubtotal += subtotal;
+                itemsDiscountTotal += discountAmount;
                 let conversionRate = 1;
                 const originalPrice = it.originalPrice;
                 const originalCurrency = it.originalCurrency || 'BOB';
@@ -263,7 +301,10 @@ exports.SaleService = {
                     productId: it.productId,
                     quantity: it.quantity,
                     unitPrice,
-                    subtotal,
+                    subtotal: finalSubtotal,
+                    discountType: it.discountType ?? null,
+                    discountValue: it.discountValue ?? null,
+                    discountAmount,
                     originalPrice: it.originalPrice,
                     originalCurrency: it.originalCurrency,
                     conversionRate: conversionRate,
@@ -272,8 +313,14 @@ exports.SaleService = {
             }
             let adjustedPayments = [...paymentsDto];
             let netCashAmount = totalPaid;
+            const subtotalAfterItemsDiscount = this.round2(Math.max(0, saleSubtotal - itemsDiscountTotal));
+            const globalDiscountAmountRaw = this.calculateDiscount(subtotalAfterItemsDiscount, dto.globalDiscountType, dto.globalDiscountValue, dto.globalDiscountAmount);
+            if (globalDiscountAmountRaw > subtotalAfterItemsDiscount) {
+                throw { status: 400, message: "El descuento global no puede ser mayor al subtotal de la venta" };
+            }
+            const globalDiscountAmount = this.round2(Math.min(globalDiscountAmountRaw, subtotalAfterItemsDiscount));
+            const calculatedTotal = this.round2(Math.max(0, subtotalAfterItemsDiscount - globalDiscountAmount));
             if (totalPaid > calculatedTotal) {
-                const change = totalPaid - calculatedTotal;
                 netCashAmount = calculatedTotal; // solo se considera hasta el total de la venta
                 //buscar pagos en efectivo para ajustarlos
                 const cashPaymentIndex = adjustedPayments.findIndex(async (p) => {
@@ -309,51 +356,74 @@ exports.SaleService = {
             const balance = Math.max(0, calculatedTotal - netCashAmount);
             const paymentStatus = this.calculatePaymentStatus(calculatedTotal, netCashAmount);
             // 3) crear venta con nested items y payments
-            const created = await tx.sale.create({
-                data: {
-                    sellerId: String(sellerId),
-                    clientId: clientId ?? undefined,
-                    total: Number(calculatedTotal.toFixed(2)),
-                    totalPaid: Number(totalPaid.toFixed(2)),
-                    balance: Number(balance.toFixed(2)),
-                    paymentStatus: paymentStatus,
-                    createdBy: actorUserId,
-                    cashBoxId: openBox.id,
-                    branchId: branchId,
-                    items: { create: itemsToCreate },
-                    payments: { create: paymentsData },
-                },
-                include: {
-                    items: {
-                        include: {
-                            product: {
-                                select: {
-                                    name: true,
-                                    sku: true
-                                }
+            const baseCreateData = {
+                sellerId: String(sellerId),
+                clientId: clientId ?? undefined,
+                total: Number(calculatedTotal.toFixed(2)),
+                subtotal: Number(saleSubtotal.toFixed(2)),
+                globalDiscountType: dto.globalDiscountType ?? null,
+                globalDiscountValue: dto.globalDiscountValue ?? null,
+                globalDiscountAmount: Number(globalDiscountAmount.toFixed(2)),
+                totalPaid: Number(totalPaid.toFixed(2)),
+                balance: Number(balance.toFixed(2)),
+                paymentStatus: paymentStatus,
+                createdBy: actorUserId,
+                cashBoxId: openBox.id,
+                branchId: branchId,
+                items: { create: itemsToCreate },
+                payments: { create: paymentsData },
+            };
+            const includeData = {
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                name: true,
+                                sku: true
                             }
                         }
-                    },
-                    payments: {
-                        include: {
-                            paymentMethod: {
-                                select: {
-                                    name: true,
-                                    isCash: true
-                                }
+                    }
+                },
+                payments: {
+                    include: {
+                        paymentMethod: {
+                            select: {
+                                name: true,
+                                isCash: true
                             }
                         }
-                    },
-                    seller: {
-                        select: {
-                            name: true,
-                            userCode: true
-                        }
-                    },
-                    client: true,
-                    branch: { select: { name: true } }
+                    }
                 },
-            });
+                seller: {
+                    select: {
+                        name: true,
+                        userCode: true
+                    }
+                },
+                client: true,
+                branch: { select: { name: true } }
+            };
+            let created;
+            try {
+                created = await tx.sale.create({ data: baseCreateData, include: includeData });
+            }
+            catch (error) {
+                const message = String(error?.message ?? "");
+                const isLegacySchemaError = message.includes("Unknown argument `subtotal`") || message.includes("Unknown argument `globalDiscount");
+                if (!isLegacySchemaError)
+                    throw error;
+                // Compatibilidad temporal: si la BD/cliente Prisma no está migrada, crear sin campos nuevos.
+                const legacyItems = itemsToCreate.map(({ discountType, discountValue, discountAmount, ...rest }) => rest);
+                const legacyCreateData = {
+                    ...baseCreateData,
+                    items: { create: legacyItems },
+                };
+                delete legacyCreateData.subtotal;
+                delete legacyCreateData.globalDiscountType;
+                delete legacyCreateData.globalDiscountValue;
+                delete legacyCreateData.globalDiscountAmount;
+                created = await tx.sale.create({ data: legacyCreateData, include: includeData });
+            }
             // 4) Decrementar stock y registrar movimientos
             for (const item of itemsToCreate) {
                 // Obtener el stock ANTES de decrementar

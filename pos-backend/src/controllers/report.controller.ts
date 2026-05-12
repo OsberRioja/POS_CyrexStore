@@ -349,5 +349,29 @@ export const reportController = {
         error: error.message || 'Error interno del servidor' 
       });
     }
+  },
+
+  async getProfitReport(req: Request, res: Response) {
+    try {
+      const { startDate, endDate, branchId, productId } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Fecha inicio y fecha fin requeridas' });
+      }
+
+      const report = await reportService.getProfitReport({
+        startDate: new Date(startDate as string),
+        endDate: new Date(endDate as string),
+        branchId: branchId ? parseInt(branchId as string) : undefined,
+        productId: productId as string | undefined
+      });
+
+      return res.json(report);
+    } catch (error: any) {
+      console.error('Error generando reporte de ganancias:', error);
+      return res.status(error.status || 500).json({
+        error: error.message || 'Error interno del servidor'
+      });
+    }
   }
 };  

@@ -10,7 +10,7 @@ export default function ReportsPage() {
   //const { currentBranchId } = useBranch();
   const [loading, setLoading] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
-  const [activeReport, setActiveReport] = useState<'sales' | 'expenses' | 'combined'>('sales');
+  const [activeReport, setActiveReport] = useState<'sales' | 'expenses' | 'combined' | 'profit'>('sales');
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [filters, setFilters] = useState({
     period: 'month',
@@ -53,7 +53,7 @@ export default function ReportsPage() {
           filters.branchId ? parseInt(filters.branchId) : undefined,
           filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined
         );
-      } else {
+      } else if (activeReport === 'combined') {
         preview = await reportService.getCombinedPreview(
           filters.startDate,
           filters.endDate,
@@ -61,6 +61,12 @@ export default function ReportsPage() {
           filters.sellerId || undefined,
           filters.paymentMethodId ? parseInt(filters.paymentMethodId) : undefined,
           filters.sellerIds
+        );
+      } else {
+        preview = await reportService.getProfitReport(
+          filters.startDate,
+          filters.endDate,
+          filters.branchId ? parseInt(filters.branchId) : undefined
         );
       }
       setPreviewData(preview);
@@ -107,6 +113,9 @@ export default function ReportsPage() {
             filters.endDate,
             filters.branchId ? parseInt(filters.branchId) : undefined
           );
+          break;
+        case 'profit':
+          await handlePreview();
           break;
       }
     } catch (error: any) {
@@ -160,6 +169,13 @@ export default function ReportsPage() {
       description: 'Ventas y gastos en un solo reporte',
       icon: <Receipt className="h-6 w-6" />,
       color: 'green'
+    },
+    {
+      id: 'profit',
+      name: 'Reporte de Ganancias',
+      description: 'Ganancia real por ventas y costos',
+      icon: <BarChart3 className="h-6 w-6" />,
+      color: 'emerald'
     }
   ];
 
@@ -189,7 +205,7 @@ export default function ReportsPage() {
         {/* Selector de tipo de reporte */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Tipo de Reporte</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {reportTypes.map((report) => (
               <div
                 key={report.id}
@@ -401,6 +417,44 @@ export default function ReportsPage() {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {activeReport === 'profit' && previewData && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+          <h3 className="text-lg font-semibold text-gray-800">Resumen de Ganancias</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3 bg-blue-50 rounded-lg"><p className="text-xs text-gray-600">Total vendido</p><p className="font-bold">Bs. {previewData.totalSales.toFixed(2)}</p></div>
+            <div className="p-3 bg-amber-50 rounded-lg"><p className="text-xs text-gray-600">Total costo</p><p className="font-bold">Bs. {previewData.totalCost.toFixed(2)}</p></div>
+            <div className="p-3 bg-green-50 rounded-lg"><p className="text-xs text-gray-600">Ganancia</p><p className="font-bold">Bs. {previewData.totalProfit.toFixed(2)}</p></div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="py-2">Producto</th>
+                  <th className="py-2">SKU</th>
+                  <th className="py-2">Cantidad</th>
+                  <th className="py-2">Ventas</th>
+                  <th className="py-2">Costo</th>
+                  <th className="py-2">Ganancia</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previewData.breakdownByProduct.map((item: any) => (
+                  <tr key={item.productId} className="border-b">
+                    <td className="py-2">{item.productName}</td>
+                    <td className="py-2">{item.sku || '-'}</td>
+                    <td className="py-2">{item.quantity}</td>
+                    <td className="py-2">Bs. {item.sales.toFixed(2)}</td>
+                    <td className="py-2">Bs. {item.cost.toFixed(2)}</td>
+                    <td className="py-2 font-semibold">Bs. {item.profit.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

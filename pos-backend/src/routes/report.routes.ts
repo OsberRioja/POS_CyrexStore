@@ -22,5 +22,6 @@ router.get('/period-expenses', reportController.downloadPeriodExpensesReport);
 router.get('/period-expenses-preview', reportController.getPeriodExpensesPreview);
 router.get('/combined-report', reportController.downloadCombinedReport);
 router.get('/combined-preview', reportController.getCombinedPreview);
+router.get('/profit', reportController.getProfitReport);
 
 export default router;

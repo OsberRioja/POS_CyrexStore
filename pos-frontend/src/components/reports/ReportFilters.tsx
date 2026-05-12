@@ -10,7 +10,7 @@ interface ReportFiltersProps {
   showSellerFilter?: boolean;
   showPaymentMethodFilter?: boolean;
   initialFilters?: any;
-  reportType?: 'sales' | 'expenses' | 'combined';
+  reportType?: 'sales' | 'expenses' | 'combined' | 'profit';
 }
 
 const ReportFilters: React.FC<ReportFiltersProps> = ({ 

@@ -3,6 +3,24 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 class ReportService {
+  async getProfitReport(startDate: string, endDate: string, branchId?: number, productId?: string) {
+    try {
+      const params: any = { startDate, endDate };
+      if (branchId) params.branchId = branchId;
+      if (productId) params.productId = productId;
+
+      const response = await axios.get(`${API_URL}/reports/profit`, {
+        headers: this.getAuthHeaders(),
+        params
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error cargando reporte de ganancias:', error);
+      throw new Error(error.response?.data?.error || 'Error cargando reporte de ganancias');
+    }
+  }
+
   async getAvailableSellers(branchId?: number) {
     try {
       const params: any = {};
