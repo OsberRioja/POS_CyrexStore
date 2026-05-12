@@ -4,7 +4,6 @@ import { useAuth } from '../context/authContext';
 import ReportFilters from '../components/reports/ReportFilters';
 import { reportService } from '../services/reportService';
 import { FileText, Download, BarChart3, CreditCard, Receipt } from 'lucide-react';
-import PaginationControls from '../components/PaginationControls';
 
 export default function ReportsPage() {
   const { user } = useAuth();
