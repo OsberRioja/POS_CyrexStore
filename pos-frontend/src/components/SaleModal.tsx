@@ -92,7 +92,7 @@ export default function SaleFormModal({
         return;
       }
       try {
-        const r = await productService.search({ q: queryProduct, onlyActive: true, onlyInStock: true });
+        const r = await productService.search({ q: queryProduct, onlyActive: true, onlyInStock: false });
         setProductResults(r.data ?? []);
       } catch (err) {
         console.error(err);
