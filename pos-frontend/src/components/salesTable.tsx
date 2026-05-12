@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, Plus, RefreshCw, Edit, Download, MessageCircle } from 'lucide-react';
+import { Eye, Plus, RefreshCw, Edit, Printer, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import ReturnModal from './ReturnModal';
 import { returnService } from '../services/returnService';
@@ -25,7 +25,8 @@ interface SalesTableProps {
   onAddPayment?: (sale: Sale) => void;
   onReload?: () => void;
   onEditSale?: (sale: any) => void;
-  onDownloadReceipt?: (sale: Sale) => void;
+  onPrintReceipt?: (sale: Sale) => void;
+  isGeneratingReceipt?: boolean;
   onSendWhatsApp?: (sale: Sale) => void;
 }
 
@@ -35,8 +36,9 @@ const SalesTable: React.FC<SalesTableProps> = ({
   onAddPayment, 
   onReload,
   onEditSale,
-  onDownloadReceipt,
-  onSendWhatsApp
+  onPrintReceipt,
+  onSendWhatsApp,
+  isGeneratingReceipt = false
 }) => {
   const { user } = useAuth();
 
@@ -213,13 +215,14 @@ const SalesTable: React.FC<SalesTableProps> = ({
                       <Eye size={16} />
                     </button>
 
-                    {onDownloadReceipt && (
+                    {onPrintReceipt && (
                       <button
-                        onClick={() => onDownloadReceipt(sale)}
-                        className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
-                        title="Descargar comprobante"
+                        onClick={() => onPrintReceipt(sale)}
+                        className="text-indigo-600 hover:text-indigo-900 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Imprimir comprobante"
+                        disabled={isGeneratingReceipt}
                       >
-                        <Download size={16} />
+                        <Printer size={16} />
                       </button>
                     )}
 

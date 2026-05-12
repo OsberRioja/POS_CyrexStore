@@ -76,6 +76,33 @@ export const usePdfGenerator = () => {
     }
   };
 
+
+  const printReceipt = async (saleData: any) => {
+    const pdfBlob = await generateReceipt(saleData);
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const printWindow = window.open(blobUrl, '_blank');
+
+    if (!printWindow) {
+      URL.revokeObjectURL(blobUrl);
+      throw new Error('El navegador bloqueó la ventana de impresión. Habilita pop-ups e inténtalo nuevamente.');
+    }
+
+    const cleanup = () => {
+      URL.revokeObjectURL(blobUrl);
+      printWindow.removeEventListener('afterprint', cleanup);
+    };
+
+    printWindow.addEventListener('afterprint', cleanup);
+    printWindow.addEventListener('load', () => {
+      printWindow.focus();
+      printWindow.print();
+    }, { once: true });
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+    }, 60000);
+  };
+
   const sendReceiptWhatsApp = async (saleData: any) => {
     try {
       const pdfBlob = await generateReceipt(saleData);
@@ -125,6 +152,7 @@ export const usePdfGenerator = () => {
   return {
     generateReceipt,
     downloadReceipt,
+    printReceipt,
     sendReceiptWhatsApp,
     isGenerating,
     progress

@@ -26,7 +26,7 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { downloadReceipt, isGenerating } = usePdfGenerator();
+  const { printReceipt, sendReceiptWhatsApp, isGenerating } = usePdfGenerator();
 
   //const { currentBranchId } = useAuth();
   const { branches, currentBranchId: branchId } = useBranch();
@@ -55,21 +55,21 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
     await onReload();
   };
 
-  const handleDownloadReceipt = async (sale: any) => {
+  const handlePrintReceipt = async (sale: any) => {
     try {
-      await downloadReceipt(sale);
+      await printReceipt(sale);
     } catch (error: any) {
-      console.error('Error descargando comprobante:', error);
-      alert(error.message || 'No se pudo descargar el comprobante');
+      console.error('Error imprimiendo comprobante:', error);
+      alert(error.message || 'No se pudo imprimir el comprobante');
     }
   };
 
-  const sendReceiptWhatsApp = async (sale: any) => {
+  const handleSendReceiptWhatsApp = async (sale: any) => {
     try {
-      await downloadReceipt(sale); // Esto sube el PDF al backend y obtiene la URL
+      await sendReceiptWhatsApp(sale);
     } catch (error: any) {
-      console.error('Error descargando comprobante:', error);
-      alert(error.message || 'No se pudo descargar el comprobante');
+      console.error('Error enviando comprobante por WhatsApp:', error);
+      alert(error.message || 'No se pudo enviar el comprobante por WhatsApp');
     }
   };
 
@@ -174,8 +174,9 @@ export default function SalesPage({ sales, onReload, openCashboxId, token, isClo
         onAddPayment={handleAddPayment}
         onEditSale={onEditSale}
         onReload={onReload}
-        onDownloadReceipt={handleDownloadReceipt}
-        onSendWhatsApp={sendReceiptWhatsApp}
+        onPrintReceipt={handlePrintReceipt}
+        onSendWhatsApp={handleSendReceiptWhatsApp}
+        isGeneratingReceipt={isGenerating}
       />
 
       {isGenerating && (
