@@ -391,6 +391,9 @@ export const SaleService = {
       // Calcular saldo y estado
       const balance = Math.max(0, calculatedTotal - netCashAmount);
       const paymentStatus = this.calculatePaymentStatus(calculatedTotal, netCashAmount);
+      const prismaItemsToCreate = itemsToCreate.map(
+        ({ existingSerialNumbers, ...item }) => item
+      );
 
       // 3) crear venta con nested items y payments
       const baseCreateData: any = {
@@ -407,7 +410,7 @@ export const SaleService = {
         createdBy: actorUserId,
         cashBoxId: openBox.id,
         branchId: branchId,
-        items: { create: itemsToCreate },
+        items: { create: prismaItemsToCreate },
         payments: { create: paymentsData },
       };
 
