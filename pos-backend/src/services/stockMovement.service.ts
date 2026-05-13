@@ -471,59 +471,70 @@ export const StockMovementService = {
     costPrice?: number;
     salePrice?: number;
     notes?: string;
+    applyToAllBranches?: boolean;
   }, userId: string) {
-    const product = await prisma.product.findUnique({
-      where: { id: productId }
+    return prisma.$transaction(async (tx) => {
+      const sourceProduct = await tx.product.findUnique({ where: { id: productId } });
+      if (!sourceProduct) throw { status: 404, message: "Producto no encontrado" };
+
+      const applyToAllBranches = Boolean(data.applyToAllBranches);
+      const familyWhere = applyToAllBranches
+        ? (sourceProduct.codigoInterno
+            ? { codigoInterno: sourceProduct.codigoInterno }
+            : sourceProduct.sku
+              ? { sku: sourceProduct.sku }
+              : null)
+        : { id: sourceProduct.id };
+
+      if (!familyWhere) {
+        throw { status: 400, message: "No se pudo identificar la familia del producto para actualización global" };
+      }
+
+      const familyProducts = await tx.product.findMany({ where: familyWhere });
+      if (!familyProducts.length) throw { status: 404, message: "No se encontraron productos para actualizar" };
+
+      const historyCreates: any[] = [];
+      let hasChanges = false;
+
+      for (const product of familyProducts) {
+        const updates: any = {};
+        if (data.costPrice !== undefined && data.costPrice !== product.costPrice) {
+          updates.costPrice = data.costPrice;
+          historyCreates.push(tx.priceHistory.create({
+            data: {
+              productId: product.id,
+              oldPrice: product.costPrice,
+              newPrice: data.costPrice,
+              priceType: 'cost',
+              changedBy: userId,
+              notes: data.notes || `Cambio de precio de costo: ${product.costPrice} → ${data.costPrice}`
+            }
+          }));
+        }
+        if (data.salePrice !== undefined && data.salePrice !== product.salePrice) {
+          updates.salePrice = data.salePrice;
+          historyCreates.push(tx.priceHistory.create({
+            data: {
+              productId: product.id,
+              oldPrice: product.salePrice,
+              newPrice: data.salePrice,
+              priceType: 'sale',
+              changedBy: userId,
+              notes: data.notes || `Cambio de precio de venta: ${product.salePrice} → ${data.salePrice}`
+            }
+          }));
+        }
+        if (Object.keys(updates).length > 0) {
+          hasChanges = true;
+          await tx.product.update({ where: { id: product.id }, data: updates });
+        }
+      }
+
+      if (!hasChanges) throw { status: 400, message: "No hay cambios en los precios" };
+      await Promise.all(historyCreates);
+
+      return tx.product.findUnique({ where: { id: sourceProduct.id } });
     });
-
-    if (!product) {
-      throw { status: 404, message: "Producto no encontrado" };
-    }
-
-    const updates: any = {};
-    const priceChanges = [];
-
-    if (data.costPrice !== undefined && data.costPrice !== product.costPrice) {
-      updates.costPrice = data.costPrice;
-      priceChanges.push(
-        PriceHistoryRepository.create({
-          productId,
-          oldPrice: product.costPrice,
-          newPrice: data.costPrice,
-          priceType: 'cost',
-          changedBy: userId,
-          notes: data.notes || `Cambio de precio de costo: ${product.costPrice} → ${data.costPrice}`
-        })
-      );
-    }
-
-    if (data.salePrice !== undefined && data.salePrice !== product.salePrice) {
-      updates.salePrice = data.salePrice;
-      priceChanges.push(
-        PriceHistoryRepository.create({
-          productId,
-          oldPrice: product.salePrice,
-          newPrice: data.salePrice,
-          priceType: 'sale',
-          changedBy: userId,
-          notes: data.notes || `Cambio de precio de venta: ${product.salePrice} → ${data.salePrice}`
-        })
-      );
-    }
-
-    if (Object.keys(updates).length === 0) {
-      throw { status: 400, message: "No hay cambios en los precios" };
-    }
-
-    const [updatedProduct] = await Promise.all([
-      prisma.product.update({
-        where: { id: productId },
-        data: updates
-      }),
-      ...priceChanges
-    ]);
-
-    return updatedProduct;
   },
 
   /**

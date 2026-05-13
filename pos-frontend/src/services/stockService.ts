@@ -157,6 +157,7 @@ export const stockService = {
     salePrice?: number;
     notes?: string;
     serialNumbers?: string[];
+    applyToAllBranches?: boolean;
   }) => {
     return api.put(`/stock/product/${productId}/prices`, data);
   },
