@@ -479,11 +479,17 @@ export const StockMovementService = {
 
       const applyToAllBranches = Boolean(data.applyToAllBranches);
       const familyWhere = applyToAllBranches
-        ? (sourceProduct.codigoInterno
-            ? { codigoInterno: sourceProduct.codigoInterno }
-            : sourceProduct.sku
-              ? { sku: sourceProduct.sku }
-              : null)
+        ? (() => {
+            const conditions: any[] = [];
+            if (sourceProduct.codigoInterno?.trim()) {
+              conditions.push({ codigoInterno: sourceProduct.codigoInterno.trim() });
+            }
+            if (sourceProduct.sku?.trim()) {
+              conditions.push({ sku: sourceProduct.sku.trim() });
+            }
+            if (conditions.length === 0) return null;
+            return conditions.length === 1 ? conditions[0] : { OR: conditions };
+          })()
         : { id: sourceProduct.id };
 
       if (!familyWhere) {
