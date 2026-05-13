@@ -211,7 +211,7 @@ export const StockMovementController = {
     try {
       const userId = (req as any).userId;
       const { productId } = req.params;
-      const { costPrice, salePrice, notes } = req.body;
+      const { costPrice, salePrice, notes, applyToAllBranches } = req.body;
 
       if (!productId) {
         return res.status(400).json({ error: "productId es requerido" });
@@ -225,7 +225,7 @@ export const StockMovementController = {
 
       const updatedProduct = await StockMovementService.updatePrices(
         productId,
-        { costPrice, salePrice, notes },
+        { costPrice, salePrice, notes, applyToAllBranches },
         userId
       );
 
