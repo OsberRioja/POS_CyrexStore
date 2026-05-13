@@ -489,8 +489,10 @@ export const StockMovementService = {
             }
             if (sourceProduct.name?.trim()) {
               conditions.push({
-                name: sourceProduct.name.trim(),
-                ...(sourceProduct.providerId ? { providerId: sourceProduct.providerId } : {}),
+                name: {
+                  equals: sourceProduct.name.trim(),
+                  mode: 'insensitive',
+                },
               });
             }
             if (conditions.length === 0) return null;
