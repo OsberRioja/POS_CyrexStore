@@ -8,4 +8,5 @@ export interface UpdateProductDTO {
   brand?: string;
   providerId?: number;
   imageUrl?: string; // URL de la imagen del producto
+  applyToAllBranches?: boolean;
 }
