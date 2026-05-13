@@ -487,6 +487,12 @@ export const StockMovementService = {
             if (sourceProduct.sku?.trim()) {
               conditions.push({ sku: sourceProduct.sku.trim() });
             }
+            if (sourceProduct.name?.trim()) {
+              conditions.push({
+                name: sourceProduct.name.trim(),
+                ...(sourceProduct.providerId ? { providerId: sourceProduct.providerId } : {}),
+              });
+            }
             if (conditions.length === 0) return null;
             return conditions.length === 1 ? conditions[0] : { OR: conditions };
           })()
