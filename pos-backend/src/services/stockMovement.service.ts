@@ -504,7 +504,17 @@ export const StockMovementService = {
         throw { status: 400, message: "No se pudo identificar la familia del producto para actualización global" };
       }
 
-      const familyProducts = await tx.product.findMany({ where: familyWhere });
+      let familyProducts = await tx.product.findMany({ where: familyWhere });
+
+      if (applyToAllBranches && familyProducts.length <= 1 && sourceProduct.name?.trim()) {
+        const normalizedName = sourceProduct.name.trim().toLowerCase().replace(/\s+/g, " ");
+        familyProducts = await tx.$queryRaw<any[]>`
+          SELECT *
+          FROM "public"."Product"
+          WHERE lower(regexp_replace(trim(name), '\s+', ' ', 'g')) = ${normalizedName}
+        `;
+      }
+
       if (!familyProducts.length) throw { status: 404, message: "No se encontraron productos para actualizar" };
 
       const historyCreates: any[] = [];
