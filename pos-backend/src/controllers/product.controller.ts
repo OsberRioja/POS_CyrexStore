@@ -144,4 +144,20 @@ export const productController = {
       res.status(error?.status || 400).json({ error: error?.message || "Error al activar producto" });
     }
   },
+
+  async getNextCodigoInterno(req: Request, res: Response) {
+    try {
+      const codigoInterno = await productService.getNextCodigoInterno();
+
+      return res.json({
+        codigoInterno
+      });
+    } catch (error: any) {
+      console.error("Error obteniendo siguiente código interno:", error);
+
+      return res.status(500).json({
+        error: "Error obteniendo siguiente código interno"
+      });
+    }
+  },
 };

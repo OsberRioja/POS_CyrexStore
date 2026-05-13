@@ -32,6 +32,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
   const [pendingPayload, setPendingPayload] = useState<ProductPayload | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [autoGenerateCode, setAutoGenerateCode] = useState(!product);
 
   const [form, setForm] = useState<FormState>({
     sku: product?.sku ?? "",
@@ -79,6 +80,11 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     }
     setImageFile(null);
   }, [product]);
+  useEffect(() => {
+    if (!isEditing && autoGenerateCode) {
+      generateNextCodigoInterno();
+    }
+  }, [autoGenerateCode]);
 
   const loadSuppliers = async () => {
     try {
@@ -101,6 +107,19 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
       console.error("Error cargando metadata de productos", err);
       setCategoryOptions([]);
       setBrandOptions([]);
+    }
+  };
+  const generateNextCodigoInterno = async () => {
+    try {
+      const res = await productService.getNextCodigoInterno();
+
+      setForm((prev) => ({
+        ...prev,
+        codigoInterno: res.data.codigoInterno
+      }));
+    } catch (err) {
+      console.error("Error generando código interno", err);
+      alert("No se pudo generar el código interno");
     }
   };
 
@@ -294,15 +313,45 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
           </div>
 
           <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU (opcional)" className="border p-2 rounded col-span-2" />
-          <div className="col-span-2 grid grid-cols-[1fr_auto] gap-2">
-            <input name="codigoInterno" value={form.codigoInterno} onChange={handleChange} placeholder="Código interno (7 dígitos)" className="border p-2 rounded" required pattern="\d{7}" maxLength={7} />
-            <button
-              type="button"
-              className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-              onClick={() => setForm((prev) => ({ ...prev, codigoInterno: String(Math.floor(Math.random() * 10_000_000)).padStart(7, '0') }))}
-            >
-              Generar código automáticamente
-            </button>
+          <div className="col-span-2 space-y-2">
+            <input
+              name="codigoInterno"
+              value={form.codigoInterno}
+              onChange={handleChange}
+              placeholder="Código interno (7 dígitos)"
+              className={`border p-2 rounded w-full ${
+                autoGenerateCode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+              }`}
+              required
+              pattern="\d{7}"
+              maxLength={7}
+              disabled={autoGenerateCode}
+            />
+          
+            {!isEditing && (
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={autoGenerateCode}
+                  onChange={async (e) => {
+                    const checked = e.target.checked;
+                  
+                    setAutoGenerateCode(checked);
+                  
+                    if (checked) {
+                      await generateNextCodigoInterno();
+                    } else {
+                      setForm((prev) => ({
+                        ...prev,
+                        codigoInterno: ""
+                      }));
+                    }
+                  }}
+                />
+          
+                Generar código automáticamente
+              </label>
+            )}
           </div>
           <input name="name" value={form.name} onChange={handleChange} placeholder="Nombre" className="border p-2 rounded col-span-2" required />
           <textarea name="description" value={form.description} onChange={(e) => setForm({...form, description: e.target.value })} placeholder="Descripción" className="border p-2 rounded col-span-2" />

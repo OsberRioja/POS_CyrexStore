@@ -20,9 +20,39 @@ export const productService = {
       throw { status: 400, message: "name, costPrice y salePrice son requeridos" };
     }
 
-    const codigoInterno = dto.codigoInterno?.trim();
-    if (!codigoInterno || !/^\d{7}$/.test(codigoInterno)) {
-      throw { status: 400, message: "codigoInterno es requerido y debe tener exactamente 7 dígitos numéricos" };
+    let codigoInterno = dto.codigoInterno?.trim();
+
+    // Si NO viene código → generar correlativo
+    if (!codigoInterno) {
+    
+      // Buscar el último código registrado
+      const lastProduct = await prisma.product.findFirst({
+        orderBy: {
+          codigoInterno: 'desc'
+        },
+        select: {
+          codigoInterno: true
+        }
+      });
+    
+      // Obtener número actual
+      const lastNumber = lastProduct?.codigoInterno
+        ? parseInt(lastProduct.codigoInterno, 10)
+        : 0;
+    
+      // Siguiente número
+      const nextNumber = lastNumber + 1;
+    
+      // Convertir a 7 dígitos
+      codigoInterno = nextNumber.toString().padStart(7, '0');
+    }
+
+    // Validar formato final
+    if (!/^\d{7}$/.test(codigoInterno)) {
+      throw {
+        status: 400,
+        message: "codigoInterno debe tener exactamente 7 dígitos numéricos"
+      };
     }
 
     // Validar moneda
@@ -243,5 +273,31 @@ export const productService = {
         deactivatedBy: null
       }
     });
+  },
+
+  async getNextCodigoInterno() {
+    // Buscar el producto con el código interno más alto
+    const lastProduct = await prisma.product.findFirst({
+      orderBy: {
+        codigoInterno: 'desc'
+      },
+      select: {
+        codigoInterno: true
+      }
+    });
+
+    // Si no existe ninguno, empezar desde 1
+    if (!lastProduct?.codigoInterno) {
+      return "0000001";
+    }
+
+    // Convertir a número
+    const lastNumber = parseInt(lastProduct.codigoInterno, 10);
+
+    // Incrementar
+    const nextNumber = lastNumber + 1;
+
+    // Formatear a 7 dígitos
+    return String(nextNumber).padStart(7, '0');
   },
 };

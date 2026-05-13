@@ -38,4 +38,5 @@ export const productService = {
   getMetadata: (branchId?: number) => api.get<ProductMetadata>('/products/metadata', { params: branchId ? { branchId } : {} }),
   deactivate: (id: string) => api.patch(`/products/${id}/deactivate`, {}),
   activate: (id: string) => api.patch(`/products/${id}/activate`, {}),
+  getNextCodigoInterno: () => api.get('/products/next-codigo-interno'),
 };
