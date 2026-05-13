@@ -152,11 +152,17 @@ export const productService = {
   },
 
   async updateProduct(id: string, dto: UpdateProductDTO) {
-    const { applyToAllBranches = false, ...updateFields } = dto;
+    const { applyToAllBranches = false } = dto;
     const normalizedDto: UpdateProductDTO = {
-      ...updateFields,
+      ...(dto.name !== undefined ? { name: dto.name } : {}),
+      ...(dto.description !== undefined ? { description: dto.description } : {}),
+      ...(dto.costPrice !== undefined ? { costPrice: dto.costPrice } : {}),
+      ...(dto.salePrice !== undefined ? { salePrice: dto.salePrice } : {}),
+      ...(dto.priceCurrency !== undefined ? { priceCurrency: dto.priceCurrency } : {}),
       ...(dto.category !== undefined ? { category: normalizeTextField(dto.category) } : {}),
       ...(dto.brand !== undefined ? { brand: normalizeTextField(dto.brand) } : {}),
+      ...(dto.providerId !== undefined ? { providerId: dto.providerId } : {}),
+      ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl } : {}),
     };
 
     if (!applyToAllBranches) {
@@ -185,13 +191,7 @@ export const productService = {
 
       await tx.product.updateMany({
         where: whereByFamily,
-        data: {
-          ...normalizedDto,
-          // Nunca tocar campos de identidad multi-sucursal en actualización masiva
-          sku: undefined,
-          codigoInterno: undefined,
-          stock: undefined,
-        },
+        data: normalizedDto,
       });
 
       return tx.product.findUnique({
