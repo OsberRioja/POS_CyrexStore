@@ -17,6 +17,8 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { confirm } = useDialog();
+  const [showScopeModal, setShowScopeModal] = useState(false);
+  const [pendingData, setPendingData] = useState<{ costPrice?: number; salePrice?: number; notes?: string } | null>(null);
 
   // Función para obtener el símbolo de moneda
   const getCurrencySymbol = (currency: string = 'BOB') => {
@@ -72,15 +74,24 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
       return;
     }
 
-    setLoading(true);
+    setPendingData({
+      costPrice: newCostPrice !== product.costPrice ? newCostPrice : undefined,
+      salePrice: newSalePrice !== product.salePrice ? newSalePrice : undefined,
+      notes: notes.trim() || undefined
+    });
+    setShowScopeModal(true);
+  };
 
+  const submitPriceUpdate = async (applyToAllBranches: boolean) => {
+    if (!pendingData) return;
+    setLoading(true);
     try {
       await stockService.updatePrices(product.id, {
-        costPrice: newCostPrice !== product.costPrice ? newCostPrice : undefined,
-        salePrice: newSalePrice !== product.salePrice ? newSalePrice : undefined,
-        notes: notes.trim() || undefined
+        ...pendingData,
+        applyToAllBranches,
       });
-
+      setShowScopeModal(false);
+      setPendingData(null);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -251,6 +262,27 @@ const UpdatePricesModal: React.FC<UpdatePricesModalProps> = ({ product, onClose,
           </div>
         </form>
       </div>
+      {showScopeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
+            <h3 className="text-lg font-semibold mb-2">Aplicar ajuste de precio</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              ¿Desea aplicar este cambio solo en esta sucursal o en todas las sucursales?
+            </p>
+            <div className="space-y-2">
+              <button type="button" className="w-full py-2 rounded bg-blue-600 text-white" onClick={() => submitPriceUpdate(false)} disabled={loading}>
+                Solo esta sucursal
+              </button>
+              <button type="button" className="w-full py-2 rounded bg-emerald-600 text-white" onClick={() => submitPriceUpdate(true)} disabled={loading}>
+                Todas las sucursales
+              </button>
+              <button type="button" className="w-full py-2 rounded border" onClick={() => setShowScopeModal(false)} disabled={loading}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

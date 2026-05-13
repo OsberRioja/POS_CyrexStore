@@ -3,9 +3,11 @@ export interface UpdateProductDTO {
   description?: string;
   costPrice?: number;
   salePrice?: number;
+  priceCurrency?: string;
   stock?: number;
   category?: string;
   brand?: string;
   providerId?: number;
   imageUrl?: string; // URL de la imagen del producto
+  applyToAllBranches?: boolean;
 }

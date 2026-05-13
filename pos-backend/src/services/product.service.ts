@@ -152,12 +152,53 @@ export const productService = {
   },
 
   async updateProduct(id: string, dto: UpdateProductDTO) {
+    const { applyToAllBranches = false } = dto;
     const normalizedDto: UpdateProductDTO = {
-      ...dto,
+      ...(dto.name !== undefined ? { name: dto.name } : {}),
+      ...(dto.description !== undefined ? { description: dto.description } : {}),
+      ...(dto.costPrice !== undefined ? { costPrice: dto.costPrice } : {}),
+      ...(dto.salePrice !== undefined ? { salePrice: dto.salePrice } : {}),
+      ...(dto.priceCurrency !== undefined ? { priceCurrency: dto.priceCurrency } : {}),
       ...(dto.category !== undefined ? { category: normalizeTextField(dto.category) } : {}),
       ...(dto.brand !== undefined ? { brand: normalizeTextField(dto.brand) } : {}),
+      ...(dto.providerId !== undefined ? { providerId: dto.providerId } : {}),
+      ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl } : {}),
     };
-    return await productRepository.update(id, normalizedDto);
+
+    if (!applyToAllBranches) {
+      return await productRepository.update(id, normalizedDto);
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const sourceProduct = await tx.product.findUnique({
+        where: { id },
+        select: { id: true, codigoInterno: true, sku: true }
+      });
+
+      if (!sourceProduct) {
+        throw new Error("Producto no encontrado");
+      }
+
+      const whereByFamily = sourceProduct.codigoInterno
+        ? { codigoInterno: sourceProduct.codigoInterno }
+        : sourceProduct.sku
+          ? { sku: sourceProduct.sku }
+          : null;
+
+      if (!whereByFamily) {
+        throw new Error("No se pudo identificar la familia del producto para actualización global");
+      }
+
+      await tx.product.updateMany({
+        where: whereByFamily,
+        data: normalizedDto,
+      });
+
+      return tx.product.findUnique({
+        where: { id },
+        include: { user: true, provider: true, branch: { select: { name: true } } },
+      });
+    });
   },
 
   async getProductMetadata(branchId?: number) {

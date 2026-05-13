@@ -28,6 +28,8 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(product?.imageUrl || null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showScopeModal, setShowScopeModal] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState<ProductPayload | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
 
@@ -138,6 +140,14 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     setForm((f) => ({ ...f, [name]: value }));
   };
 
+  const saveProduct = async (payload: ProductPayload) => {
+    if (isEditing) {
+      await productService.update(product.id ?? product._id, payload);
+    } else {
+      await productService.create(payload);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -188,10 +198,12 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
         imageUrl: imageUrl,
       };
       if (isEditing) {
-        await productService.update(product.id ?? product._id, payload);
-      } else {
-        await productService.create(payload);
+        setPendingPayload(payload);
+        setShowScopeModal(true);
+        return;
       }
+
+      await saveProduct(payload);
 
       onSaved?.();
       onClose();
@@ -201,6 +213,23 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
     } finally {
       setSaving(false);
       setUploadingImage(false);
+    }
+  };
+
+  const handleScopeSelection = async (applyToAllBranches: boolean) => {
+    if (!pendingPayload) return;
+    setSaving(true);
+    try {
+      await saveProduct({ ...pendingPayload, applyToAllBranches });
+      setShowScopeModal(false);
+      setPendingPayload(null);
+      onSaved?.();
+      onClose();
+    } catch (err: any) {
+      console.error("Error guardando producto", err);
+      alert(err?.response?.data?.error ?? err?.message ?? "Error al guardar producto");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -221,6 +250,7 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white w-[720px] rounded shadow p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-semibold mb-4">{product ? "Editar producto" : "Nuevo producto"}</h3>
@@ -410,5 +440,45 @@ export default function ProductForm({ product, onClose, onSaved } : { product?: 
         </div>
       )}
     </div>
+    {showScopeModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+        <div className="bg-white w-full max-w-lg rounded-lg shadow-xl p-6">
+          <h4 className="text-lg font-semibold mb-2">Aplicar cambio de precios</h4>
+          <p className="text-sm text-gray-600 mb-4">
+            ¿Desea aplicar este cambio solo en esta sucursal o en todas las sucursales?
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              className="w-full px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => handleScopeSelection(false)}
+              disabled={saving}
+            >
+              Solo esta sucursal
+            </button>
+            <button
+              type="button"
+              className="w-full px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={() => handleScopeSelection(true)}
+              disabled={saving}
+            >
+              Todas las sucursales
+            </button>
+            <button
+              type="button"
+              className="w-full px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+              onClick={() => {
+                setShowScopeModal(false);
+                setPendingPayload(null);
+              }}
+              disabled={saving}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

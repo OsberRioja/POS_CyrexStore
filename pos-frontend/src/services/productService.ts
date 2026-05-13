@@ -13,6 +13,7 @@ export type ProductPayload = {
   brand?: string;
   providerId?: number | null;
   imageUrl?: string;
+  applyToAllBranches?: boolean;
 };
 
 export type ProductSearchParams = {
