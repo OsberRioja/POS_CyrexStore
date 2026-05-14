@@ -26,6 +26,7 @@ export default function CashboxPage() {
   const [cashboxes, setCashboxes] = useState<any[]>([]);
   const [totalCashboxes, setTotalCashboxes] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingCashboxDetails, setLoadingCashboxDetails] = useState(false);
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [view, setView] = useState<"ventas" | "gastos" | "paymentMethods" | "history" | null>(null);
@@ -135,12 +136,22 @@ export default function CashboxPage() {
   };
 
   const handleViewDetails = async (box: any) => {
-    setSelectedCashbox(box);
     setView("ventas"); // Comenzar mostrando ventas
+    setLoadingCashboxDetails(true);
+
+    // Cuando la navegación viene desde /cash-boxes/:id solo tenemos el id.
+    // Evitamos renderizar una caja parcial porque campos como initialAmount aún no existen.
+    if (box?.openedAt && typeof box?.initialAmount === 'number') {
+      setSelectedCashbox(box);
+    } else {
+      setSelectedCashbox(null);
+    }
+
     try {
       // Cargar datos completos de la caja
       const cashboxDetails = await cashboxService.getById(box.id);
-      setSelectedCashbox(cashboxDetails.data || cashboxDetails);
+      const detailedCashbox = cashboxDetails.data || cashboxDetails;
+      setSelectedCashbox(detailedCashbox);
       
       await Promise.all([
         loadSales(box.id),
@@ -148,6 +159,9 @@ export default function CashboxPage() {
       ]);
     } catch (error) {
       console.error("Error loading cashbox details:", error);
+      alert("No se pudo cargar el detalle de la caja.", 'error');
+    } finally {
+      setLoadingCashboxDetails(false);
     }
   };
 
@@ -167,9 +181,14 @@ export default function CashboxPage() {
 
   const handleCloseDetails = () => {
     setSelectedCashbox(null);
+    setLoadingCashboxDetails(false);
     setView(null);
     setSales([]);
     setExpenses([]);
+
+    if (window.location.pathname.startsWith('/cash-boxes/')) {
+      window.history.pushState({}, '', '/');
+    }
   };
 
   const handleCloseCashbox = async () => {
@@ -616,6 +635,17 @@ export default function CashboxPage() {
       </div>
     );
   };
+
+  if (loadingCashboxDetails && !selectedCashbox) {
+    return (
+      <div className="p-6 min-h-[320px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-gray-600">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <div>Cargando detalle de caja...</div>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedCashbox) {
     return (

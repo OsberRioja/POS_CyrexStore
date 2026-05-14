@@ -71,10 +71,16 @@ function MainApp() {
   const shouldShowAdminHome = isGlobalAdmin && !isInBranchMode;
 
   useEffect(() => {
+    const cashBoxRouteMatch = window.location.pathname.match(/^\/cash-boxes\/(\d+)$/);
+
+    if (cashBoxRouteMatch?.[1]) {
+      localStorage.setItem('pendingCashBoxId', cashBoxRouteMatch[1]);
+    }
+
     if (isInBranchMode && localStorage.getItem('pendingCashBoxId')) {
       setMainPage('caja');
     }
-  }, [isInBranchMode]);
+  }, [isInBranchMode, isAuthenticated]);
 
   // Mostrar modal cuando se requiera cambio de contraseña
   useEffect(() => {
