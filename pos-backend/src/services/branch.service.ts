@@ -21,14 +21,14 @@ export class BranchService {
     return branch;
   }
 
-  async createBranch(data: CreateBranchDTO) {
+  async createBranch(data: CreateBranchDTO, createdBy: string) {
     // Validar que el nombre sea único
     const existingBranch = await this.branchRepository.findAll();
     if (existingBranch.some(branch => branch.name.toLowerCase() === data.name.toLowerCase())) {
       throw { status: 400, message: 'Ya existe una sucursal con ese nombre' };
     }
 
-    return this.branchRepository.create(data);
+    return this.branchRepository.create(data, createdBy);
   }
 
   async updateBranch(id: number, data: UpdateBranchDTO) {

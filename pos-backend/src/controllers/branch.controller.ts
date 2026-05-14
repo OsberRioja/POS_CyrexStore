@@ -31,7 +31,12 @@ export class BranchController {
   createBranch = async (req: Request, res: Response) => {
     try {
       const validatedData = CreateBranchSchema.parse(req.body);
-      const branch = await this.branchService.createBranch(validatedData);
+      const createdBy = req.userId;
+      if (!createdBy) {
+        throw { status: 401, message: 'Usuario autenticado no identificado' };
+      }
+
+      const branch = await this.branchService.createBranch(validatedData, createdBy);
       res.status(201).json(branch);
     } catch (error: any) {
       if (error.name === 'ZodError') {
