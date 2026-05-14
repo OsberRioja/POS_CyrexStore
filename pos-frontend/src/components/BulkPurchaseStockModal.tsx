@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Trash2, Wand2, X } from 'lucide-react';
+import { Search, Trash2, Wand2, X } from 'lucide-react';
 import axios from 'axios';
 import { stockService } from '../services/stockService';
 
@@ -155,7 +155,7 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
 
       if (!line.providerId) return `Debes seleccionar un proveedor para ${line.product.name}.`;
       if (line.quantity <= 0) return `La cantidad para ${line.product.name} debe ser mayor a cero.`;
-      if (line.unitCost < 0) return `El costo unitario para ${line.product.name} no puede ser negativo.`;
+      if (line.unitCost <= 0) return `El costo unitario para ${line.product.name} debe ser mayor a cero.`;
 
       const cleanedSerials = line.serialNumbers.map((serial) => serial.trim()).filter(Boolean);
       if (cleanedSerials.length !== line.quantity) return `Debes completar una serie por cada unidad de ${line.product.name}.`;
@@ -169,6 +169,20 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
 
     if (duplicatedSerials.size > 0) return `Hay números de serie repetidos entre productos: ${Array.from(duplicatedSerials).join(', ')}`;
     return null;
+  };
+
+  const parsePositiveNumber = (value: string, fallback = 0) => {
+    if (value.trim() === '') return fallback;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+    return parsed;
+  };
+
+  const parsePositiveInteger = (value: string, fallback = 1) => {
+    if (value.trim() === '') return fallback;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+    return Math.floor(parsed);
   };
 
   const submitPurchase = async () => {
@@ -265,11 +279,31 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
-                        <input type="number" min="1" value={line.quantity} onChange={(e) => updateLine(line.localId, (current) => syncQuantity(current, Number(e.target.value)))} className="w-full px-3 py-2 border rounded-md" />
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={line.quantity}
+                          onChange={(e) => updateLine(line.localId, (current) => syncQuantity(current, parsePositiveInteger(e.target.value, 1)))}
+                          className={`w-full px-3 py-2 border rounded-md ${line.quantity > 0 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-400 focus:ring-red-500'} focus:outline-none focus:ring-2`}
+                        />
+                        <p className={`text-xs mt-1 ${line.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {line.quantity > 0 ? 'Cantidad válida.' : 'Ingresa una cantidad mayor a 0.'}
+                        </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Costo unitario ({symbol})</label>
-                        <input type="number" min="0" step="0.01" value={line.unitCost} onChange={(e) => updateLine(line.localId, (current) => ({ ...current, unitCost: Number(e.target.value) }))} className="w-full px-3 py-2 border rounded-md" />
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={line.unitCost}
+                          onChange={(e) => updateLine(line.localId, (current) => ({ ...current, unitCost: parsePositiveNumber(e.target.value, 0) }))}
+                          className={`w-full px-3 py-2 border rounded-md ${line.unitCost > 0 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-400 focus:ring-red-500'} focus:outline-none focus:ring-2`}
+                        />
+                        <p className={`text-xs mt-1 ${line.unitCost > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {line.unitCost > 0 ? 'Costo válido.' : 'Ingresa un costo mayor a 0. Se permiten decimales.'}
+                        </p>
                         <p className="text-xs text-gray-500 mt-1">Se actualizará el costo base del producto con este lote.</p>
                       </div>
                       <div>
@@ -313,7 +347,7 @@ const BulkPurchaseStockModal: React.FC<BulkPurchaseStockModalProps> = ({ product
                     <div className="border rounded-lg overflow-hidden">
                       <div className="px-4 py-3 bg-gray-100 flex items-center justify-between">
                         <p className="text-xs text-gray-500">{line.serialNumbers.filter((serial) => serial.trim()).length}/{line.quantity} series</p>
-                          <button type="button" onClick={() => updateLine(line.localId, (current) => syncQuantity(current, current.quantity + 1))} className="inline-flex items-center gap-2 px-3 py-2 border rounded-md text-sm hover:bg-white"><Plus size={16} />Añadir fila</button>
+                          <p className="text-xs text-gray-500">La cantidad define cuántas series se muestran.</p>
                       </div>
                       <div className="max-h-72 overflow-y-auto divide-y">
                         {line.serialNumbers.map((serial, serialIndex) => (
