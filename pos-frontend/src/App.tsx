@@ -70,6 +70,12 @@ function MainApp() {
   const isGlobalAdmin = user?.role === 'ADMIN' && user?.branchId === null;
   const shouldShowAdminHome = isGlobalAdmin && !isInBranchMode;
 
+  useEffect(() => {
+    if (isInBranchMode && localStorage.getItem('pendingCashBoxId')) {
+      setMainPage('caja');
+    }
+  }, [isInBranchMode]);
+
   // Mostrar modal cuando se requiera cambio de contraseña
   useEffect(() => {
     if (isAuthenticated && requiresPasswordChange) {

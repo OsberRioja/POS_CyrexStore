@@ -4,11 +4,14 @@ import { useBranch } from "../hooks/useBranch";
 import BranchCard from "../components/BranchCard";
 import BranchFormModal from "../components/BranchFormModal";
 import { dashboardService } from "../services/dashboardService";
+import { systemAlertService } from "../services/systemAlertService";
 import MetricCard from "../components/dashboard/MetricCard";
 import DashboardMoney from "../components/dashboard/DashboardMoney";
 import BranchRanking from "../components/dashboard/BranchRanking";
 import ProductRanking from "../components/dashboard/ProductRanking";
 import PeriodFilter from "../components/dashboard/PeriodFilter";
+import SystemAlertsPanel from "../components/SystemAlertsPanel";
+import type { SystemAlert } from "../types/systemAlert";
 import { Building2, DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AdminHomePage() {
@@ -28,6 +31,26 @@ export default function AdminHomePage() {
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [period, setPeriod] = useState<string>('day');
   const [refreshing, setRefreshing] = useState(false);
+  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
+  const [systemAlertsTotal, setSystemAlertsTotal] = useState(0);
+  const [loadingSystemAlerts, setLoadingSystemAlerts] = useState(true);
+  const [systemAlertsError, setSystemAlertsError] = useState<string | null>(null);
+
+
+  async function loadSystemAlerts() {
+    try {
+      setLoadingSystemAlerts(true);
+      const response = await systemAlertService.list({ page: 1, limit: 10 });
+      setSystemAlerts(response.data);
+      setSystemAlertsTotal(response.total);
+      setSystemAlertsError(null);
+    } catch (err: any) {
+      console.error("Error loading system alerts:", err);
+      setSystemAlertsError(err?.response?.data?.error || err.message || "Error al cargar alertas");
+    } finally {
+      setLoadingSystemAlerts(false);
+    }
+  }
 
   // Efecto para cargar dashboard general con período
   useEffect(() => {
@@ -48,6 +71,10 @@ export default function AdminHomePage() {
 
     loadGeneralDashboard();
   }, [period]);
+
+  useEffect(() => {
+    loadSystemAlerts();
+  }, []);
 
   // Efecto para ingresar automáticamente a la sucursal recién creada
   useEffect(() => {
@@ -82,6 +109,38 @@ export default function AdminHomePage() {
         console.error("Error refreshing dashboard:", err);
         setRefreshing(false);
       });
+  };
+
+
+  const handleViewCashboxFromAlert = (alert: SystemAlert) => {
+    if (!alert.referenceId || !alert.branch?.id) return;
+
+    localStorage.setItem('pendingCashBoxId', String(alert.referenceId));
+    window.history.pushState({}, '', `/cash-boxes/${alert.referenceId}`);
+    enterBranch(alert.branch.id);
+  };
+
+  const handleMarkAlertAsRead = async (alertId: number) => {
+    try {
+      const updatedAlert = await systemAlertService.markAsRead(alertId);
+      setSystemAlerts((currentAlerts) =>
+        currentAlerts.map((alert) => (alert.id === alertId ? updatedAlert : alert))
+      );
+    } catch (err: any) {
+      console.error("Error marking alert as read:", err);
+      setSystemAlertsError(err?.response?.data?.error || err.message || "Error al marcar alerta como leída");
+    }
+  };
+
+  const handleDismissAlert = async (alertId: number) => {
+    try {
+      await systemAlertService.delete(alertId);
+      setSystemAlerts((currentAlerts) => currentAlerts.filter((alert) => alert.id !== alertId));
+      setSystemAlertsTotal((currentTotal) => Math.max(0, currentTotal - 1));
+    } catch (err: any) {
+      console.error("Error dismissing alert:", err);
+      setSystemAlertsError(err?.response?.data?.error || err.message || "Error al descartar alerta");
+    }
   };
 
   // Función para obtener el título del período
@@ -243,6 +302,17 @@ export default function AdminHomePage() {
           </div>
         )}
       </div>
+
+      <SystemAlertsPanel
+        alerts={systemAlerts}
+        total={systemAlertsTotal}
+        loading={loadingSystemAlerts}
+        error={systemAlertsError}
+        onViewCashbox={handleViewCashboxFromAlert}
+        onMarkAsRead={handleMarkAlertAsRead}
+        onDismiss={handleDismissAlert}
+        onRefresh={loadSystemAlerts}
+      />
 
       {/* Gestión de Sucursales */}
       <div className="bg-white rounded-lg shadow-md p-6">

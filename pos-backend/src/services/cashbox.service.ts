@@ -1,6 +1,7 @@
 import { CashBoxRepository } from "../repositories/cashBox.repository";
 import { PrismaClient, Prisma, CashBoxStatus } from "@prisma/client";
 import type { OpenCashBoxDTO, CloseCashBoxDTO } from "../dtos/cashBox.dto";
+import { SYSTEM_ALERT_TYPES } from "./systemAlert.service";
 
 const prisma = new PrismaClient();
 
@@ -386,11 +387,12 @@ export const CashBoxService = {
     }
 
     return await prisma.$transaction(async (tx) => {
-      return await tx.cashBox.update({
+      const reopenedAt = new Date();
+      const reopened = await tx.cashBox.update({
         where: { id: boxId },
         data: {
           status: "REOPENED",
-          reopenedAt: new Date(),
+          reopenedAt,
           reopenedById: actorUserId,
         },
         include: {
@@ -400,6 +402,31 @@ export const CashBoxService = {
           branch: { select: { name: true } }
         }
       });
+
+      const actorName = reopened.reopenedByUser?.name ?? "Usuario desconocido";
+      const branchName = reopened.branch?.name ?? `Sucursal ${reopened.branchId}`;
+      const reopenedAtText = new Intl.DateTimeFormat("es-BO", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(reopenedAt);
+
+      await tx.systemAlert.create({
+        data: {
+          type: SYSTEM_ALERT_TYPES.CASHBOX_REOPENED,
+          title: "Caja reabierta",
+          message: `El usuario ${actorName} reabrió la caja #${reopened.id} de la sucursal ${branchName} el ${reopenedAtText}`,
+          referenceId: reopened.id,
+          branchId: reopened.branchId,
+          createdBy: actorUserId,
+          createdAt: reopenedAt,
+        },
+      });
+
+      return reopened;
     });
   },
 

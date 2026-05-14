@@ -151,6 +151,20 @@ export default function CashboxPage() {
     }
   };
 
+  useEffect(() => {
+    const pendingCashBoxId = localStorage.getItem('pendingCashBoxId');
+    if (!pendingCashBoxId || loading) return;
+
+    const cashBoxId = Number(pendingCashBoxId);
+    if (!Number.isInteger(cashBoxId) || cashBoxId <= 0) {
+      localStorage.removeItem('pendingCashBoxId');
+      return;
+    }
+
+    localStorage.removeItem('pendingCashBoxId');
+    void handleViewDetails({ id: cashBoxId });
+  }, [loading]);
+
   const handleCloseDetails = () => {
     setSelectedCashbox(null);
     setView(null);

@@ -39,6 +39,7 @@ model User {
   commissionConfigs CommissionConfig[]
   commissions       Commission[]
   PasswordResetToken PasswordResetToken[]
+  systemAlerts SystemAlert[]
 
   @@map("User")
 }
@@ -451,6 +452,27 @@ model Branch {
   cashBoxes  CashBox[]
   expenses   Expense[]
   stockMovements StockMovement[]
+  systemAlerts SystemAlert[]
+}
+
+model SystemAlert {
+  id          Int      @id @default(autoincrement())
+  type        String
+  title       String
+  message     String
+  referenceId Int?
+  branchId    Int?
+  createdBy   String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [createdBy], references: [id])
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+
+  @@index([type])
+  @@index([isRead, createdAt])
+  @@index([branchId])
+  @@map("SystemAlert")
 }
 
 enum CommissionType {

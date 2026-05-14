@@ -32,6 +32,7 @@ import saleEditRoutes from './routes/saleEdit.routes';
 import expenseEditRoutes from './routes/expenseEdit.routes';
 import comprobanteRoutes from './routes/receipt.routes';
 import promotionRoutes from './routes/promotion.routes';
+import systemAlertRoutes from './routes/systemAlert.routes';
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use('/api/sales-edit', saleEditRoutes);
 app.use('/api/expenses-edit', expenseEditRoutes);
 app.use('/api/receipts', comprobanteRoutes);
 app.use('/api/promotions', promotionRoutes);
+app.use('/api/system-alerts', systemAlertRoutes);
 
 // ✅ 3. TERCERO: Error handler (debe estar DESPUÉS de las rutas)
 app.use(errorHandler);
