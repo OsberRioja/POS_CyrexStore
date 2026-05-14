@@ -1,6 +1,11 @@
 import { Branch, Prisma } from '@prisma/client';
 import { prisma } from '../prismaClient';
 
+const normalizeSku = (sku?: string | null): string | null => {
+  const normalized = sku?.trim();
+  return normalized ? normalized : null;
+};
+
 type CreateBranchResult = Branch & {
   syncedProductsCount?: number;
   syncedClientsCount?: number;
@@ -85,6 +90,18 @@ export class BranchRepository {
       }
     });
 
+    const productsWithSkuInBranch = await tx.product.findMany({
+      where: {
+        branchId,
+        sku: { not: null },
+      },
+      select: { sku: true }
+    });
+    const usedSkus = new Set(
+      productsWithSkuInBranch
+        .map((product) => normalizeSku(product.sku))
+        .filter((sku): sku is string => Boolean(sku))
+    );
     let syncedProductsCount = 0;
 
     for (const product of sourceProducts) {
@@ -98,9 +115,12 @@ export class BranchRepository {
 
       if (existingInBranch) continue;
 
+      const normalizedSku = normalizeSku(product.sku);
+      const sku = normalizedSku && !usedSkus.has(normalizedSku) ? normalizedSku : null;
+
       const createdProduct = await tx.product.create({
         data: {
-          sku: product.sku,
+          sku,
           codigoInterno: product.codigoInterno,
           name: product.name,
           salePrice: product.salePrice,
@@ -118,6 +138,10 @@ export class BranchRepository {
           isActive: true,
         }
       });
+
+      if (sku) {
+        usedSkus.add(sku);
+      }
 
       await tx.priceHistory.createMany({
         data: [

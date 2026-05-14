@@ -68,16 +68,17 @@ export const productService = {
       return prisma.$transaction(async (tx) => {
         const normalizedCategory = normalizeTextField(dto.category);
         const normalizedBrand = normalizeTextField(dto.brand);
+        const normalizedSku = dto.sku?.trim() || null;
 
-        if (dto.sku?.trim()) {
+        if (normalizedSku) {
           const existingSku = await tx.product.findFirst({
             where: {
-              sku: dto.sku.trim()
+              sku: normalizedSku
             }
           });
 
           if (existingSku) {
-            throw { status: 400, message: `El SKU '${dto.sku}' ya existe.` };
+            throw { status: 400, message: `El SKU '${normalizedSku}' ya existe.` };
           }
         }
 
@@ -103,7 +104,7 @@ export const productService = {
         for (const branch of activeBranches) {
           const created = await tx.product.create({
             data: {
-              sku: dto.sku?.trim() || "",
+              sku: normalizedSku,
               codigoInterno,
               name: dto.name.trim(),
               description: dto.description?.trim(),
