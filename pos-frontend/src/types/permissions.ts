@@ -62,6 +62,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionType[]> = {
     Permission.SALE_READ_ALL,
     Permission.CASHBOX_OPEN_CLOSE,
     Permission.CASHBOX_READ,
+    Permission.CASHBOX_READ_ALL,
+    Permission.CASHBOX_REOPEN,
     Permission.CLIENT_READ,
     Permission.CLIENT_CREATE,
     Permission.CLIENT_UPDATE,

@@ -375,6 +375,16 @@ export const CashBoxService = {
     const box = await CashBoxRepository.findById(boxId);
     if (!box) throw { status: 404, message: "Caja no encontrada" };
     if (box.status !== "CLOSED") throw { status: 400, message: "La caja ya está abierta" };
+    if (!box.closedAt) throw { status: 400, message: "La caja no tiene fecha de cierre registrada" };
+
+    const maxReopenWindowMs = 60 * 24 * 60 * 60 * 1000;
+    const timeSinceClosedMs = Date.now() - box.closedAt.getTime();
+    if (timeSinceClosedMs > maxReopenWindowMs) {
+      throw {
+        status: 400,
+        message: "Solo se pueden reabrir cajas hasta 60 días después de su cierre"
+      };
+    }
 
     // VERIFICACIÓN MODIFICADA: Solo verificar si hay caja abierta en la MISMA sucursal
     const openCashboxInBranch = await CashBoxRepository.findOpenByBranch(box.branchId);

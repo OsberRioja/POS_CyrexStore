@@ -16,6 +16,7 @@ export enum Permission {
   CASHBOX_OPEN_CLOSE = 'cashbox:open_close',
   CASHBOX_READ = 'cashbox:read',
   CASHBOX_READ_ALL = 'cashbox:read_all',
+  CASHBOX_REOPEN = 'cashbox:reopen',
   
   // Clientes
   CLIENT_READ = 'client:read',
@@ -68,6 +69,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.CASHBOX_OPEN_CLOSE,
     Permission.CASHBOX_READ,
     Permission.CASHBOX_READ_ALL,
+    Permission.CASHBOX_REOPEN,
 
     //Usuarios
     Permission.USER_READ,

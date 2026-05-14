@@ -126,6 +126,11 @@ export default function CashboxPage() {
   const shouldShowReopenButton = (box: any) => {
     if (!hasPermission(Permission.CASHBOX_REOPEN)) return false;
     if (box.status !== 'CLOSED') return false;
+    if (!box.closedAt) return false;
+
+    const closedAt = new Date(box.closedAt).getTime();
+    const maxReopenWindowMs = 60 * 24 * 60 * 60 * 1000;
+    if (Number.isNaN(closedAt) || Date.now() - closedAt > maxReopenWindowMs) return false;
     
     // Verificar si hay caja abierta en la MISMA sucursal
     if (openCashbox && openCashbox.branchId === box.branchId) {
