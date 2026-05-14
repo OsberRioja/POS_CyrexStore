@@ -28,6 +28,7 @@ import ReportsPage from "./pages/ReportsPage";
 import PurchasesPage from "./pages/purchasesPage";
 import BranchSettingsPage from "./pages/BranchSettingsPage";
 import PromotionSettingsPage from "./pages/PromotionSettingsPage";
+import GlobalStockPage from "./pages/GlobalStockPage";
 
 // Componente con manejo de errores
 function MainAppWithErrorBoundary() {
@@ -211,7 +212,8 @@ function MainApp() {
             {mainPage === "usuarios" && <UsersPage />}
             {mainPage === "clientes" && <ClientsPage />}
             {mainPage === "proveedores" && <ProvidersPage />}
-            {mainPage === "productos" && <ProductsPage />}
+            {mainPage === "productos" && <ProductsPage onNavigate={setMainPage} />}
+            {mainPage === "stock-global" && <GlobalStockPage />}
             {mainPage === "compras" && user?.role !== 'SELLER' && <PurchasesPage />}
             {mainPage === "compras" && user?.role === 'SELLER' && (
               <div className="flex items-center justify-center h-64">

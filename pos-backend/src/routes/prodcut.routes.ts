@@ -9,6 +9,7 @@ router.post("/", authMiddleware, requirePermission(Permission.PRODUCT_CREATE), p
 router.get("/", authMiddleware, requirePermission(Permission.PRODUCT_READ), productController.getAll);
 router.get("/metadata", authMiddleware, requirePermission(Permission.PRODUCT_READ), productController.getMetadata);
 router.get("/next-codigo-interno", authMiddleware, requirePermission(Permission.PRODUCT_CREATE), productController.getNextCodigoInterno);
+router.get("/global-stock", authMiddleware, requirePermission(Permission.PRODUCT_READ), productController.getGlobalStock);
 router.get("/:id", authMiddleware, requirePermission(Permission.PRODUCT_READ), productController.getById);
 router.put("/:id", authMiddleware, requirePermission(Permission.PRODUCT_UPDATE), productController.update);
 router.delete("/:id", authMiddleware, requirePermission(Permission.PRODUCT_DELETE), productController.delete);

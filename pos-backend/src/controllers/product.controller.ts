@@ -78,6 +78,34 @@ export const productController = {
     }
   },
 
+  async getGlobalStock(req: Request, res: Response) {
+    try {
+      const validSortBy = ["name", "sku", "codigoInterno", "category", "brand", "totalStock"] as const;
+      const validSortDir = ["asc", "desc"] as const;
+      const sortBy = validSortBy.includes(req.query.sortBy as any)
+        ? (req.query.sortBy as typeof validSortBy[number])
+        : undefined;
+      const sortDir = validSortDir.includes(req.query.sortDir as any)
+        ? (req.query.sortDir as typeof validSortDir[number])
+        : undefined;
+
+      const response = await productService.getGlobalStock({
+        q: req.query.q?.toString(),
+        category: req.query.category?.toString(),
+        brand: req.query.brand?.toString(),
+        page: req.query.page ? Number(req.query.page) : undefined,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+        sortBy,
+        sortDir
+      });
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("GET /products/global-stock error:", error);
+      res.status(error?.status || 500).json({ error: error?.message || "Error interno" });
+    }
+  },
+
   async getById(req: Request, res: Response) {
     try {
       const product = await productService.getProductById(req.params.id);

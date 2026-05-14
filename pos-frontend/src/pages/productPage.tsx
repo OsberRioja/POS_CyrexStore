@@ -11,7 +11,7 @@ import { useVisualBranchFilter } from "../context/visualBranchFilterContext";
 import { useDialog } from "../context/DialogContext";
 import PaginationControls from "../components/PaginationControls";
 
-export default function ProductsPage() {
+export default function ProductsPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -122,6 +122,15 @@ export default function ProductsPage() {
               />
               Mostrar productos desactivados
             </label>
+          </PermissionGuard>
+          <PermissionGuard permission={Permission.PRODUCT_READ}>
+            <button
+              type="button"
+              onClick={() => onNavigate?.("stock-global")}
+              className="rounded bg-indigo-600 px-4 py-2 text-white transition hover:bg-indigo-700"
+            >
+              Ver Stock Global
+            </button>
           </PermissionGuard>
           <PermissionGuard permission={Permission.PRODUCT_CREATE}>
             <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded">+ NUEVO</button>

@@ -4,6 +4,39 @@ import { UpdateProductDTO } from "../dtos/updateProduct.dto";
 import { prisma } from "../prismaClient";
 import { normalizeTextField } from "../utils/normalizeTextField";
 
+export type GlobalStockBranch = {
+  branchId: number;
+  branchName: string;
+  stock: number;
+};
+
+export type GlobalStockProduct = {
+  codigoInterno: string;
+  sku: string | null;
+  name: string;
+  category: string | null;
+  brand: string | null;
+  branches: GlobalStockBranch[];
+  totalStock: number;
+};
+
+export type GlobalStockParams = {
+  q?: string;
+  category?: string;
+  brand?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: "name" | "sku" | "codigoInterno" | "category" | "brand" | "totalStock";
+  sortDir?: "asc" | "desc";
+};
+
+export type GlobalStockResponse = {
+  data: GlobalStockProduct[];
+  branches: { id: number; name: string }[];
+  pagination: { page: number; limit: number; totalItems: number; totalPages: number };
+  metadata: { categories: string[]; brands: string[] };
+};
+
 export const productService = {
   async generateUniqueCodigoInterno(tx: typeof prisma) {
     for (let i = 0; i < 20; i++) {
@@ -180,6 +213,115 @@ export const productService = {
     const product = await productRepository.findById(id);
     if (!product) throw new Error("Producto no encontrado");
     return product;
+  },
+
+  async getGlobalStock(params: GlobalStockParams = {}): Promise<GlobalStockResponse> {
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
+    const sortBy = params.sortBy ?? "name";
+    const sortDir = params.sortDir ?? "asc";
+    const query = params.q?.trim();
+    const category = normalizeTextField(params.category);
+    const brand = normalizeTextField(params.brand);
+
+    const activeBranches = await prisma.branch.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" }
+    });
+
+    const products = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        branch: { isActive: true },
+        ...(category ? { category } : {}),
+        ...(brand ? { brand } : {}),
+        ...(query
+          ? {
+              OR: [
+                { name: { contains: query, mode: "insensitive" } },
+                { sku: { contains: query, mode: "insensitive" } },
+                { codigoInterno: { contains: query, mode: "insensitive" } }
+              ]
+            }
+          : {})
+      },
+      select: {
+        codigoInterno: true,
+        sku: true,
+        name: true,
+        category: true,
+        brand: true,
+        stock: true,
+        branchId: true,
+        createdAt: true
+      },
+      orderBy: [{ codigoInterno: "asc" }, { sku: "asc" }, { createdAt: "asc" }]
+    });
+
+    const grouped = new Map<string, GlobalStockProduct>();
+
+    for (const product of products) {
+      const groupKey = product.codigoInterno || product.sku || product.name;
+      const existing = grouped.get(groupKey);
+
+      if (!existing) {
+        grouped.set(groupKey, {
+          codigoInterno: product.codigoInterno,
+          sku: product.sku,
+          name: product.name,
+          category: product.category,
+          brand: product.brand,
+          branches: activeBranches.map((branch) => ({
+            branchId: branch.id,
+            branchName: branch.name,
+            stock: branch.id === product.branchId ? product.stock : 0
+          })),
+          totalStock: product.stock
+        });
+        continue;
+      }
+
+      const branchStock = existing.branches.find((branch) => branch.branchId === product.branchId);
+      if (branchStock) {
+        branchStock.stock += product.stock;
+      }
+      existing.totalStock += product.stock;
+      existing.sku = existing.sku ?? product.sku;
+      existing.category = existing.category ?? product.category;
+      existing.brand = existing.brand ?? product.brand;
+    }
+
+    const allItems = Array.from(grouped.values());
+    const categories = Array.from(new Set(allItems.map((item) => normalizeTextField(item.category)).filter(Boolean))) as string[];
+    const brands = Array.from(new Set(allItems.map((item) => normalizeTextField(item.brand)).filter(Boolean))) as string[];
+
+    allItems.sort((a, b) => {
+      const multiplier = sortDir === "desc" ? -1 : 1;
+
+      if (sortBy === "totalStock") {
+        return (a.totalStock - b.totalStock) * multiplier;
+      }
+
+      const left = String(a[sortBy] ?? "");
+      const right = String(b[sortBy] ?? "");
+      return left.localeCompare(right, "es-BO", { numeric: true, sensitivity: "base" }) * multiplier;
+    });
+
+    const totalItems = allItems.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    const safePage = Math.min(page, totalPages);
+    const data = allItems.slice((safePage - 1) * limit, safePage * limit);
+
+    return {
+      data,
+      branches: activeBranches,
+      pagination: { page: safePage, limit, totalItems, totalPages },
+      metadata: {
+        categories: categories.sort((a, b) => a.localeCompare(b, "es-BO")),
+        brands: brands.sort((a, b) => a.localeCompare(b, "es-BO"))
+      }
+    };
   },
 
   async updateProduct(id: string, dto: UpdateProductDTO) {
